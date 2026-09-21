@@ -39,7 +39,8 @@ law roundtrip_space:
 
 # LAW: escapes print decoded
 law roundtrip_escapes:
-  {again("\"q\\\" b\\\\ n\\n t\\t u\\u0041\"") == "\"q\\\" b\\\\ n\\n t\\t uA\"" : String}
+  {again("\"q\\\" b\\\\ n\\n t\\t u\\u0041\"") ++ again("\"\\b\\f\\/\\u0001\"")
+    == "\"q\\\" b\\\\ n\\n t\\t uA\"" ++ "\"\\b\\f/\\u0001\"" : String}
 
 # LAW: nesting round-trips
 law roundtrip_nest:
@@ -167,7 +168,7 @@ law lex_text:
 
 # LAW: n unescapes to newline
 law lex_unescape_n:
-  {Char.to_u32(Lex.unescape('n')) == 10 : U32}
+  {Char.to_u32(Maybe.default(&2, Char, Lex.unescape('n'), '?')) == 10 : U32}
 
 # LAW: hex of A is 10
 law lex_hex_A:
@@ -246,3 +247,74 @@ law public_str_or:
 # LAW: the public u32_or
 law public_u32_or:
   {Ezjson.u32_or(V.JNum{"7"}, 0) == 7 : U32}
+
+# LAW: a missing comma, a trailing comma, a missing colon, and a trailing root
+# comma are not JSON
+law parse_seps:
+  {again("[1,2]") ++ again("[1 2]") ++ again("[1,]") ++ again("{\"a\":1}")
+    ++ again("{\"a\" 1}") ++ again("{\"a\":1,}") ++ again("1,")
+    == "[1,2]<bad><bad>{\"a\":1}<bad><bad><bad>" : String}
+
+# LAW: a number keeps its spelling, and a non-number word is bad
+law parse_number:
+  {again("[-0,1e+2,3.50]") ++ again("01") ++ again("-") ++ again("1.") ++ again("+1")
+    == "[-0,1e+2,3.50]<bad><bad><bad><bad>" : String}
+
+# LAW: a bad escape, a short \\u, and a raw control are bad
+law parse_bad_text:
+  {again("\"\\a\"") ++ again("\"\\u12\"") ++ again("\"\\uXXXX\"") ++ again("\"\n\"")
+    ++ again("\"\\uDEAD\"") ++ again("\"\\uD800\"")
+    == "<bad><bad><bad><bad><bad><bad>" : String}
+
+def code.go(m: Maybe<&2, Char>) -> U32:
+  match m:
+    case None{}:
+      0
+    case Some{c}:
+      Char.to_u32(c)
+
+# the code point of a string's first char, or 0
+def code(s: String) -> U32:
+  code.go(String.get(s, 0n))
+
+# LAW: a surrogate pair is one code point
+law parse_surrogate:
+  {code(V.str_or(parsed(Parse.parse("\"\\uD800\\uDC00\"")), "")) == 65536 : U32}
+
+# LAW: the public null
+law public_null:
+  {Ezjson.print(Ezjson.null()) == Print.print(V.null()) : String}
+
+# LAW: the public bool
+law public_bool:
+  {Ezjson.print(Ezjson.bool(False{})) == Print.print(V.bool(False{})) : String}
+
+# LAW: the public str
+law public_str:
+  {Ezjson.str_or(Ezjson.str("a"), "?") == V.str_or(V.str("a"), "?") : String}
+
+# LAW: the public neg; zero stays zero
+law public_neg:
+  {Ezjson.print(Ezjson.neg(2)) ++ Print.print(V.neg(0)) == "-2" ++ "0" : String}
+
+# LAW: the public f32 is the value f32
+law public_f32:
+  {Ezjson.print(Ezjson.f32((1.5 : F32))) == Print.print(V.f32((1.5 : F32))) : String}
+
+# LAW: the public number keeps a JSON number and drops any other text
+law public_number:
+  {Ezjson.print(Ezjson.number("3.50")) ++ Print.print(V.number("01")) == "3.50null" : String}
+
+# LAW: the public at
+law public_at:
+  {Ezjson.str_or(Ezjson.at(Ezjson.arr([Ezjson.str("z")]), 0), "?")
+    == V.str_or(V.at(V.arr([V.str("z")]), 0), "?") : String}
+
+# LAW: the public bool_or
+law public_bool_or:
+  {Ezjson.bool_or(Ezjson.bool(True{}), False{}) == V.bool_or(V.bool(True{}), False{}) : Bool}
+
+# LAW: the public f32_or
+law public_f32_or:
+  {F32.show(Ezjson.f32_or(Ezjson.num(2), (0.0 : F32)))
+    == F32.show(V.f32_or(V.num(2), (0.0 : F32))) : String}

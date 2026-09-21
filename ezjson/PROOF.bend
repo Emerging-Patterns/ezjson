@@ -166,3 +166,42 @@ def Laws.public_str_or():
 
 def Laws.public_u32_or():
   {==}
+
+def Laws.parse_seps():
+  {==}
+
+def Laws.parse_number():
+  {==}
+
+def Laws.parse_bad_text():
+  {==}
+
+def Laws.parse_surrogate():
+  {==}
+
+def Laws.public_null():
+  {==}
+
+def Laws.public_bool():
+  {==}
+
+def Laws.public_str():
+  {==}
+
+def Laws.public_neg():
+  {==}
+
+def Laws.public_f32():
+  {==}
+
+def Laws.public_number():
+  {==}
+
+def Laws.public_at():
+  {==}
+
+def Laws.public_bool_or():
+  {==}
+
+def Laws.public_f32_or():
+  {==}
