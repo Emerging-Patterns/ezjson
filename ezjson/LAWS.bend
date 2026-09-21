@@ -21,23 +21,23 @@ def msg() -> V.Json:
 def parsed(m: Maybe<&2, V.Json>) -> V.Json:
   Maybe.default(&2, V.Json, m, V.JNull{})
 
-# LAW: null round-trips
+# LAW: RFC 8259 §3 — null round-trips
 law roundtrip_null:
   {again("null") == "null" : String}
 
-# LAW: booleans round-trip
+# LAW: RFC 8259 §3 — true and false round-trip
 law roundtrip_bools:
   {again("[true,false]") == "[true,false]" : String}
 
-# LAW: numbers keep their text
+# LAW: RFC 8259 §6 — numbers keep their spelling
 law roundtrip_nums:
   {again("[0,-12,3.50,1e9]") == "[0,-12,3.50,1e9]" : String}
 
-# LAW: whitespace goes
+# LAW: RFC 8259 §2 — space, tab, and line feed inside a value are insignificant
 law roundtrip_space:
   {again(" { \"a\" : [ 1 , 2 ] ,\n\t\"b\" : { } } ") == "{\"a\":[1,2],\"b\":{}}" : String}
 
-# LAW: escapes print decoded
+# LAW: RFC 8259 §7 — escapes decode and reprint
 law roundtrip_escapes:
   {again("\"q\\\" b\\\\ n\\n t\\t u\\u0041\"") ++ again("\"\\b\\f\\/\\u0001\"")
     == "\"q\\\" b\\\\ n\\n t\\t uA\"" ++ "\"\\b\\f/\\u0001\"" : String}
@@ -58,7 +58,7 @@ law parse_unclosed_arr:
 law parse_stray:
   {again("]") == "<bad>" : String}
 
-# LAW: two roots are bad
+# LAW: RFC 8259 §2 — two values are not one JSON text
 law parse_two_roots:
   {again("1 2") == "<bad>" : String}
 
@@ -120,15 +120,15 @@ law print_quote:
 law print_escape:
   {Print.escape(['"']) == "\\\"" : String}
 
-# LAW: a bare null word
+# LAW: RFC 8259 §3 — null is the lowercase word
 law parse_word_null:
   {Print.print(Parse.word("null")) == "null" : String}
 
-# LAW: a bare true word
+# LAW: RFC 8259 §3 — true is the lowercase word
 law parse_word_true:
   {Print.print(Parse.word("true")) == "true" : String}
 
-# LAW: a bare false word
+# LAW: RFC 8259 §3 — false is the lowercase word
 law parse_word_false:
   {Print.print(Parse.word("false")) == "false" : String}
 
@@ -208,7 +208,7 @@ law lex_unicode:
 law lex_finish_idle:
   {List.is_empty(&2, Lex.Tok, Lex.finish(Lex.Lex{Lex.Idle{}, [], []})) == True{} : Bool}
 
-# LAW: an empty object prints
+# LAW: RFC 8259 §4 — an empty object prints
 law value_obj:
   {Print.print(V.obj([])) == "{}" : String}
 
@@ -228,7 +228,7 @@ law public_print:
 law public_obj:
   {Ezjson.print(Ezjson.obj([])) == "{}" : String}
 
-# LAW: the public arr
+# LAW: RFC 8259 §5 — an empty array prints
 law public_arr:
   {Ezjson.print(Ezjson.arr([])) == "[]" : String}
 
@@ -241,19 +241,21 @@ law public_get:
   {Ezjson.as_str(Ezjson.get(Ezjson.obj([("k", Ezjson.str("v"))]), "k"))
     == Some{"v"} : Maybe<&2, String>}
 
-# LAW: a missing comma, a trailing comma, a missing colon, and a trailing root
-# comma are not JSON
+# LAW: RFC 8259 §4 and §5 — a missing comma, a trailing comma, a missing colon,
+# and a trailing root comma are rejected
 law parse_seps:
   {again("[1,2]") ++ again("[1 2]") ++ again("[1,]") ++ again("{\"a\":1}")
     ++ again("{\"a\" 1}") ++ again("{\"a\":1,}") ++ again("1,")
     == "[1,2]<bad><bad>{\"a\":1}<bad><bad><bad>" : String}
 
-# LAW: a number keeps its spelling, and a non-number word is bad
+# LAW: RFC 8259 §6 — a number keeps its spelling; a leading zero, a bare minus,
+# a trailing dot, and a leading plus are rejected
 law parse_number:
   {again("[-0,1e+2,3.50]") ++ again("01") ++ again("-") ++ again("1.") ++ again("+1")
     == "[-0,1e+2,3.50]<bad><bad><bad><bad>" : String}
 
-# LAW: a bad escape, a short \\u, and a raw control are bad
+# LAW: RFC 8259 §7 and §8.2 — a bad escape, a short \\u, a raw line feed, and a
+# lone surrogate are rejected
 law parse_bad_text:
   {again("\"\\a\"") ++ again("\"\\u12\"") ++ again("\"\\uXXXX\"") ++ again("\"\n\"")
     ++ again("\"\\uDEAD\"") ++ again("\"\\uD800\"")
@@ -270,7 +272,7 @@ def code.go(m: Maybe<&2, Char>) -> U32:
 def code(s: String) -> U32:
   code.go(String.get(s, 0n))
 
-# LAW: a surrogate pair is one code point
+# LAW: RFC 8259 §7 — a surrogate pair is one code point
 law parse_surrogate:
   {code(Maybe.default(&2, String, V.as_str(parsed(Parse.parse("\"\\uD800\\uDC00\""))), ""))
     == 65536 : U32}
@@ -310,3 +312,213 @@ law public_as_u32:
 # LAW: the public as_f32
 law public_as_f32:
   {Ezjson.as_f32(Ezjson.num("1.5")) == V.as_f32(V.num("1.5")) : Maybe<&2, F32>}
+
+# the kind of a parse result: null, true, false, num, str, arr, obj, or bad
+def kind.go(m: Maybe<&2, V.Json>) -> String:
+  match m:
+    case None{}:
+      "bad"
+    case Some{V.JNull{}}:
+      "null"
+    case Some{V.JBool{True{}}}:
+      "true"
+    case Some{V.JBool{False{}}}:
+      "false"
+    case Some{V.JNum{raw}}:
+      "num:" ++ raw
+    case Some{V.JStr{text}}:
+      "str:" ++ text
+    case Some{V.JArr{items}}:
+      "arr:" ++ Print.print(V.JArr{items})
+    case Some{V.JObj{pairs}}:
+      "obj:" ++ Print.print(V.JObj{pairs})
+    case Some{other}:
+      "bad"
+
+# the kind of one JSON text
+def kind(s: String) -> String:
+  kind.go(Parse.parse(s))
+
+# LAW: RFC 8259 §3 — null, true, false, a number, a string, an array, and an
+# object parse as those kinds
+law rfc_values:
+  {kind("null") ++ kind("true") ++ kind("false") ++ kind("-0") ++ kind("\"a\"")
+    ++ kind("[]") ++ kind("{}")
+    == "nulltruefalsenum:-0str:aarr:[]obj:{}" : String}
+
+# LAW: RFC 8259 §3 — true, false, and null are lowercase, and a longer word is
+# not one of them
+law rfc_literals:
+  {again("True") ++ again("TRUE") ++ again("False") ++ again("FALSE")
+    ++ again("Null") ++ again("NULL") ++ again("truex") ++ again("nul")
+    ++ again("True ")
+    == "<bad><bad><bad><bad><bad><bad><bad><bad><bad>" : String}
+
+# LAW: RFC 8259 §2 — space, tab, line feed, and carriage return are insignificant
+law rfc_ws:
+  {again(" \t\r\n[ \t]\r\n") ++ again("{ \n\t\r}") ++ again("[\n1\r,\t2 ]")
+    == "[]{}[1,2]" : String}
+
+# a one-character string of code point n, in quotes
+def quoted_cp(n: U32) -> String:
+  "\"" ++ String.from_list([Char.from_u32(n)]) ++ "\""
+
+# brackets around the character of code point n
+def bracket_cp(n: U32) -> String:
+  "[" ++ String.from_list([Char.from_u32(n)]) ++ "]"
+
+# s, left times
+def repeat(left: Nat, +s: String) -> String:
+  match left:
+    case 0n:
+      ""
+    case 1n+p:
+      s ++ repeat(p, s)
+
+# parse of a string holding each code point from n, for left points
+def scan_raw(left: Nat, +n: U32) -> String:
+  match left:
+    case 0n:
+      ""
+    case 1n+p:
+      again(quoted_cp(n)) ++ scan_raw(p, U32.add(n, 1))
+
+# LAW: RFC 8259 §7 — a raw U+0000 through U+001F in a string is rejected
+law rfc_raw_controls:
+  {scan_raw(32n, 0) == repeat(32n, "<bad>") : String}
+
+# tab, line feed, or carriage return
+def is_ws_ctl(+n: U32) -> Bool:
+  Bool.or(U32.is_eq(n, 9), Bool.or(U32.is_eq(n, 10), U32.is_eq(n, 13)))
+
+# parse of brackets around each code point from n, for left points
+def scan_ws(left: Nat, +n: U32) -> String:
+  match left:
+    case 0n:
+      ""
+    case 1n+p:
+      again(bracket_cp(n)) ++ scan_ws(p, U32.add(n, 1))
+
+# "[]" where n is tab, line feed, or carriage return, else "<bad>"
+def expect_ws(left: Nat, +n: U32) -> String:
+  match left:
+    case 0n:
+      ""
+    case 1n+p:
+      Bool.pick(String, is_ws_ctl(n), "[]", "<bad>") ++ expect_ws(p, U32.add(n, 1))
+
+# LAW: RFC 8259 §2 — among U+0000 through U+001F, only tab, line feed, and
+# carriage return are whitespace. U+000B and U+000C are not.
+law rfc_ws_ctl:
+  {scan_ws(32n, 0) == expect_ws(32n, 0) : String}
+
+# LAW: RFC 8259 §2 — a text is one value, with whitespace only around that value
+law rfc_one:
+  {again(" \t\r\ntrue\r\n\t ") ++ again("true false") ++ again("[][]")
+    ++ again("null,")
+    == "true<bad><bad><bad>" : String}
+
+# one hex nibble, lowercase
+def nib.go(+n: U32, digit: Bool) -> Char:
+  match digit:
+    case True{}:
+      Char.from_u32(U32.add(48, n))
+    case False{}:
+      Char.from_u32(U32.add(87, n))
+
+# one hex nibble, lowercase
+def nib(+n: U32) -> Char:
+  nib.go(n, U32.is_lt(n, 10))
+
+# the JSON text of a \\u00XX escape of n, in quotes
+def u_text(+n: U32) -> String:
+  "\"\\u00" ++ String.from_list([nib(U32.div(n, 16)), nib(U32.mod(n, 16))]) ++ "\""
+
+# the code point of a parsed string, or 65535 when the text is not one
+def u_point.go(m: Maybe<&2, V.Json>) -> U32:
+  match m:
+    case Some{V.JStr{s}}:
+      code(s)
+    case other:
+      65535
+
+# the code point a \\u escape parses as, or 65535 when it is not a string
+def u_point(n: U32) -> U32:
+  u_point.go(Parse.parse(u_text(n)))
+
+# each \\u escape from n, for left points, is that code point
+def scan_u(left: Nat, +n: U32) -> Bool:
+  match left:
+    case 0n:
+      True{}
+    case 1n+p:
+      Lazy.stop(Bool, U32.is_eq(u_point(n), n), scan_u(p, U32.add(n, 1)), _u => False{})
+
+# LAW: RFC 8259 §7 — \\u0000 through \\u001F are those code points
+law rfc_u_controls:
+  {scan_u(32n, 0) == True{} : Bool}
+
+# LAW: RFC 8259 §7 — quote, reverse solidus, solidus, and the short controls
+# escape, and \\u reprints the decoded character
+law rfc_escapes:
+  {again("\"\\\"\\\\\\/\\b\\f\\n\\r\\t\\u0000\\u001F\"")
+    == "\"\\\"\\\\/\\b\\f\\n\\r\\t\\u0000\\u001f\"" : String}
+
+# a quoted code point, as print writes it
+def qcp(n: U32) -> String:
+  Print.quote(String.from_list([Char.from_u32(n)]))
+
+# LAW: RFC 8259 §7 and §10 — print escapes U+0000 through U+001F
+law rfc_gen_ctrl:
+  {qcp(0) ++ qcp(8) ++ qcp(9) ++ qcp(10) ++ qcp(12) ++ qcp(13) ++ qcp(31)
+    == "\"\\u0000\"\"\\b\"\"\\t\"\"\\n\"\"\\f\"\"\\r\"\"\\u001f\"" : String}
+
+# the characters of a parsed string, or empty when it is not one
+def str_of(s: String) -> String:
+  Maybe.default(&2, String, V.as_str(parsed(Parse.parse(s))), "")
+
+# LAW: RFC 8259 §8.3 — escaped and unescaped spellings of one string compare equal
+law rfc_cmp:
+  {str_of("\"a\\\\b\"") ++ str_of("\"a\\u005Cb\"") ++ str_of("\"a\\u005cb\"")
+    ++ str_of("\"\\u0041\"") ++ str_of("\"A\"")
+    == "a\\ba\\ba\\bAA" : String}
+
+# LAW: RFC 8259 §8.3 — an object name compares as its decoded characters
+law rfc_name:
+  {V.as_u32(V.get(parsed(Parse.parse("{\"a\\u0042\":3}")), "aB"))
+    == Some{3} : Maybe<&2, U32>}
+
+# LAW: RFC 8259 §6 — a JSON number keeps its spelling. NaN, Infinity, a leading
+# plus, and a leading zero are not numbers.
+law rfc_numbers:
+  {again("[0,-0,0.0,0e1,0E+1,1E-2,1e+2,3.50]")
+    ++ again("NaN") ++ again("Infinity") ++ again("+Infinity") ++ again("-Infinity")
+    ++ again("01") ++ again("-01") ++ again("00") ++ again("+1") ++ again("+0")
+    ++ again("1.") ++ again(".1") ++ again("-.1") ++ again("1e") ++ again("1e+")
+    ++ again("1e-") ++ again("0x1") ++ again("--1") ++ again("01.2")
+    ++ Print.print(Ezjson.num("NaN")) ++ Print.print(Ezjson.num("Infinity"))
+    ++ Print.print(Ezjson.num("+Infinity")) ++ Print.print(Ezjson.num("-Infinity"))
+    ++ Print.print(Ezjson.num("01")) ++ Print.print(Ezjson.num("-01"))
+    ++ Print.print(Ezjson.num("+1")) ++ Print.print(Ezjson.num("0"))
+    ++ Print.print(Ezjson.num("-0"))
+    == "[0,-0,0.0,0e1,0E+1,1E-2,1e+2,3.50]<bad><bad><bad><bad><bad><bad><bad><bad><bad><bad><bad><bad><bad><bad><bad><bad><bad><bad>nullnullnullnullnullnullnull0-0" : String}
+
+# LAW: RFC 8259 §4 and §5 — an empty object and an empty array are values, a
+# name is a string, and a trailing comma is rejected
+law rfc_struct:
+  {again("[]") ++ again("{}") ++ again("[1,2]") ++ again("{\"a\":1,\"\":0}")
+    ++ again("[null,true,1,\"a\",[],{}]")
+    ++ again("[1,]") ++ again("{\"a\":1,}") ++ again("{a:1}") ++ again("{1:2}")
+    ++ again("[1,,2]") ++ again("[,]") ++ again("{,}")
+    == "[]{}[1,2]{\"a\":1,\"\":0}[null,true,1,\"a\",[],{}]<bad><bad><bad><bad><bad><bad><bad>" : String}
+
+# LAW: RFC 8259 §7 — U+2028 and U+2029 may occur unescaped in a string
+law rfc_line_sep:
+  {again("\"" ++ String.from_list([Char.from_u32(8232), Char.from_u32(8233)]) ++ "\"")
+    == "\"" ++ String.from_list([Char.from_u32(8232), Char.from_u32(8233)]) ++ "\"" : String}
+
+# LAW: RFC 8259 §8.1 — a leading U+FEFF is not whitespace, and print does not
+# emit one
+law rfc_bom:
+  {again(String.from_list([Char.from_u32(65279)]) ++ "null") ++ Print.print(V.JNull{})
+    == "<bad>null" : String}
