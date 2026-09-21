@@ -1,13 +1,14 @@
 # ezjson
 
+JSON for [Bend 2](https://github.com/bendlang/bend).
+
 ## Install
 
-```
-curl -fsSL https://bend-lang.com/install.sh | sh
-```
+Use with [Bend](https://github.com/bendlang/bend) or install easily with [ez](https://github.com/Emerging-Patterns/ez):
 
 ```
-import 0xa3c2445eb44c5d8406e6229be518fccb/main.bend as Ezjson
+ez init
+ez add Emerging-Patterns/ezjson
 ```
 
 ## Usage
