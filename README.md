@@ -1,14 +1,19 @@
 # ezjson
 
+JSON for [Bend 2](https://github.com/bendlang/bend). `parse` reads text into
+`Maybe Json` (null, booleans, numbers, strings, arrays, objects). `print`
+writes compact text. Build with `null`, `bool`, `str`, `num`, `arr`, and
+`obj`; read with `get`, `at`, and `as_*`. Laws and proofs live in
+`ezjson/LAWS.bend` and `ezjson/PROOF.bend`.
+
 ## Install
 
-Install with [ez](https://github.com/Emerging-Patterns/ez):
+Use with [Bend](https://github.com/bendlang/bend) or install easily with [ez](https://github.com/Emerging-Patterns/ez):
+
 ```
 ez init
 ez add Emerging-Patterns/ezjson
 ```
-
-Requires [Bend](https://github.com/bendlang/bend).
 
 ## Usage
 
