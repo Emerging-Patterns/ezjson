@@ -196,3 +196,48 @@ def Laws.public_as_u32():
 
 def Laws.public_as_f32():
   {==}
+
+def Laws.rfc_values():
+  {==}
+
+def Laws.rfc_literals():
+  {==}
+
+def Laws.rfc_ws():
+  {==}
+
+def Laws.rfc_raw_controls():
+  {==}
+
+def Laws.rfc_ws_ctl():
+  {==}
+
+def Laws.rfc_one():
+  {==}
+
+def Laws.rfc_u_controls():
+  {==}
+
+def Laws.rfc_escapes():
+  {==}
+
+def Laws.rfc_gen_ctrl():
+  {==}
+
+def Laws.rfc_cmp():
+  {==}
+
+def Laws.rfc_name():
+  {==}
+
+def Laws.rfc_numbers():
+  {==}
+
+def Laws.rfc_struct():
+  {==}
+
+def Laws.rfc_line_sep():
+  {==}
+
+def Laws.rfc_bom():
+  {==}
