@@ -1,10 +1,6 @@
 # ezjson
 
-JSON for [Bend 2](https://github.com/bendlang/bend). `parse` reads text into
-`Maybe Json` (null, booleans, numbers, strings, arrays, objects). `print`
-writes compact text. Build with `null`, `bool`, `str`, `num`, `arr`, and
-`obj`; read with `get`, `at`, and `as_*`. Laws and proofs live in
-`ezjson/LAWS.bend` and `ezjson/PROOF.bend`.
+JSON for [Bend 2](https://github.com/bendlang/bend).
 
 ## Install
 
