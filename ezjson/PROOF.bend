@@ -161,12 +161,6 @@ def Laws.public_num():
 def Laws.public_get():
   {==}
 
-def Laws.public_str_or():
-  {==}
-
-def Laws.public_u32_or():
-  {==}
-
 def Laws.parse_seps():
   {==}
 
@@ -188,20 +182,17 @@ def Laws.public_bool():
 def Laws.public_str():
   {==}
 
-def Laws.public_neg():
-  {==}
-
-def Laws.public_f32():
-  {==}
-
-def Laws.public_number():
-  {==}
-
 def Laws.public_at():
   {==}
 
-def Laws.public_bool_or():
+def Laws.public_as_bool():
   {==}
 
-def Laws.public_f32_or():
+def Laws.public_as_num():
+  {==}
+
+def Laws.public_as_u32():
+  {==}
+
+def Laws.public_as_f32():
   {==}

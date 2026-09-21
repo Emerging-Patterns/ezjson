@@ -1,6 +1,6 @@
 # ezjson: JSON for Bend 2. `parse` reads text into Maybe Json. `print` writes
 # compact text. Build null, booleans, numbers, strings, arrays, and objects;
-# read them with get, at, and the typed readers.
+# read them with get, at, and as_bool, as_str, as_num, as_u32, as_f32.
 import Base
 import ./value.bend as Value
 import ./parse.bend as Parse
@@ -26,6 +26,10 @@ def bool(b: Bool) -> Value.Json:
 def str(s: String) -> Value.Json:
   Value.str(s)
 
+# a JSON number from its text, or null when that text is not one
+def num(raw: String) -> Value.Json:
+  Value.num(raw)
+
 # an object from pairs
 def obj(pairs: List<&1, String & Value.Json>) -> Value.Json:
   Value.obj(pairs)
@@ -33,22 +37,6 @@ def obj(pairs: List<&1, String & Value.Json>) -> Value.Json:
 # an array from a list
 def arr(items: List<&2, Value.Json>) -> Value.Json:
   Value.arr(items)
-
-# a non-negative integer
-def num(n: U32) -> Value.Json:
-  Value.num(n)
-
-# a negative integer; zero stays zero
-def neg(n: U32) -> Value.Json:
-  Value.neg(n)
-
-# a finite float, in Bend's spelling; infinity and NaN are null
-def f32(x: F32) -> Value.Json:
-  Value.f32(x)
-
-# a JSON number written as text, or null when the text is not one
-def number(raw: String) -> Value.Json:
-  Value.number(raw)
 
 # an object's value at a key; JNull when it is not an object or has no such
 # key
@@ -59,18 +47,22 @@ def get(j: Value.Json, key: String) -> Value.Json:
 def at(j: Value.Json, i: U32) -> Value.Json:
   Value.at(j, i)
 
-# a string's text, else the default
-def str_or(j: Value.Json, default: String) -> String:
-  Value.str_or(j, default)
+# a boolean, or none when the value is not one
+def as_bool(j: Value.Json) -> Maybe<&2, Bool>:
+  Value.as_bool(j)
 
-# a boolean, else the default
-def bool_or(j: Value.Json, default: Bool) -> Bool:
-  Value.bool_or(j, default)
+# a string, or none when the value is not one
+def as_str(j: Value.Json) -> Maybe<&2, String>:
+  Value.as_str(j)
 
-# a number as a U32, else the default
-def u32_or(j: Value.Json, default: U32) -> U32:
-  Value.u32_or(j, default)
+# a number's text, or none when the value is not a number
+def as_num(j: Value.Json) -> Maybe<&2, String>:
+  Value.as_num(j)
 
-# a number as an F32, else the default
-def f32_or(j: Value.Json, default: F32) -> F32:
-  Value.f32_or(j, default)
+# a number as a U32, or none when it is not one or does not fit
+def as_u32(j: Value.Json) -> Maybe<&2, U32>:
+  Value.as_u32(j)
+
+# a number as an F32, or none when it is not one or does not fit
+def as_f32(j: Value.Json) -> Maybe<&2, F32>:
+  Value.as_f32(j)

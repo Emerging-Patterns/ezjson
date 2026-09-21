@@ -24,7 +24,7 @@ type P is Data:
 def word.ok(+raw: String) -> Bool:
   Bool.or(String.eq(raw, "null"),
     Bool.or(String.eq(raw, "true"),
-      Bool.or(String.eq(raw, "false"), V.number.ok(raw))))
+      Bool.or(String.eq(raw, "false"), V.num.ok(raw))))
 
 # a bare word as a value: null, true, false, else a number kept as text
 def word(+raw: String) -> V.Json:
