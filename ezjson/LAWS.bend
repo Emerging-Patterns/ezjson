@@ -328,6 +328,8 @@ def kind.go(m: Maybe<&2, V.Json>) -> String:
       "num:" ++ raw
     case Some{V.JStr{text}}:
       "str:" ++ text
+    case Some{V.JSpan{src, +n}}:
+      "str:" ++ V.span.str(src, n, U32.is_zero(n))
     case Some{V.JArr{items}}:
       "arr:" ++ Print.print(V.JArr{items})
     case Some{V.JObj{pairs}}:
@@ -439,6 +441,8 @@ def u_point.go(m: Maybe<&2, V.Json>) -> U32:
   match m:
     case Some{V.JStr{s}}:
       code(s)
+    case Some{V.JSpan{src, +n}}:
+      code(V.span.str(src, n, U32.is_zero(n)))
     case other:
       65535
 

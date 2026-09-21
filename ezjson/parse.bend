@@ -11,11 +11,16 @@ type Slot is Data:
   SKey{}
   SColon{}
 
+# an object key: owned text, or the first `n` chars of a source suffix
+type Key is Data:
+  KOwn{s: String}
+  KCut{src: String, n: U32}
+
 # an open array (its items, reversed) or an open object (its pairs, reversed,
 # and the key awaiting its value)
 type Frame is Data:
   FArr{items: V.Json, slot: Slot}
-  FObj{pairs: V.Json, key: String, slot: Slot}
+  FObj{pairs: V.Json, key: Key, slot: Slot}
 
 # the parser's state: an error was seen, the finished root, the open frames
 type P is Data:
@@ -43,6 +48,20 @@ def step.ready(stack: List<&2, Frame>, root: Maybe<&2, V.Json>) -> Bool:
     case s r:
       False{}
 
+def put.pair(key: Key, val: V.Json, pairs: V.Json) -> V.Json:
+  match key:
+    case KOwn{s}:
+      V.JPair{s, val, pairs}
+    case KCut{src, n}:
+      V.JBind{src, n, val, pairs}
+
+def put.text(key: Key) -> V.Json:
+  match key:
+    case KOwn{s}:
+      V.JStr{s}
+    case KCut{src, n}:
+      V.JSpan{src, n}
+
 # a finished value lands in the innermost open frame, or becomes the root
 def put(stack: List<&2, Frame>, root: Maybe<&2, V.Json>, v: V.Json, bad: Bool) -> P:
   match stack root v:
@@ -53,16 +72,16 @@ def put(stack: List<&2, Frame>, root: Maybe<&2, V.Json>, v: V.Json, bad: Bool) -
     case Con{FArr{items, SValue{}}, rest} r val:
       P{bad, r, FArr{V.JCons{val, items}, SComma{}} <> rest}
     case Con{FObj{pairs, k, SValue{}}, rest} r val:
-      P{bad, r, FObj{V.JPair{k, val, pairs}, "", SComma{}} <> rest}
+      P{bad, r, FObj{put.pair(k, val, pairs), KOwn{""}, SComma{}} <> rest}
     case s r val:
       P{True{}, r, Nil{}}
 
-def put.str(stack: List<&2, Frame>, root: Maybe<&2, V.Json>, s: String, bad: Bool) -> P:
+def put.str(stack: List<&2, Frame>, root: Maybe<&2, V.Json>, key: Key, bad: Bool) -> P:
   match stack:
     case Con{FObj{pairs, k, SKey{}}, rest}:
-      P{bad, root, FObj{pairs, s, SColon{}} <> rest}
+      P{bad, root, FObj{pairs, key, SColon{}} <> rest}
     case other:
-      put(stack, root, V.JStr{s}, bad)
+      put(stack, root, put.text(key), bad)
 
 def step.open_arr.go(bad: Bool, root: Maybe<&2, V.Json>, stack: List<&2, Frame>, ok: Bool) -> P:
   match ok:
@@ -78,7 +97,7 @@ def step.open_arr(st: P) -> P:
 def step.open_obj.go(bad: Bool, root: Maybe<&2, V.Json>, stack: List<&2, Frame>, ok: Bool) -> P:
   match ok:
     case True{}:
-      P{bad, root, FObj{V.JNil{}, "", SKey{}} <> stack}
+      P{bad, root, FObj{V.JNil{}, KOwn{""}, SKey{}} <> stack}
     case False{}:
       P{True{}, root, Nil{}}
 
@@ -91,7 +110,7 @@ def step.comma(stack: List<&2, Frame>, root: Maybe<&2, V.Json>, bad: Bool) -> P:
     case Con{FArr{items, SComma{}}, rest}:
       P{bad, root, FArr{items, SValue{}} <> rest}
     case Con{FObj{pairs, k, SComma{}}, rest}:
-      P{bad, root, FObj{pairs, "", SKey{}} <> rest}
+      P{bad, root, FObj{pairs, KOwn{""}, SKey{}} <> rest}
     case other:
       P{True{}, root, Nil{}}
 
@@ -133,6 +152,46 @@ def close_obj(stack: List<&2, Frame>, root: Maybe<&2, V.Json>, bad: Bool) -> P:
     case other:
       P{True{}, root, Nil{}}
 
+def step.span.ok(+raw: String, ok: Bool) -> (V.Json & Bool):
+  match ok:
+    case True{}:
+      (V.JNum{raw}, True{})
+    case False{}:
+      (V.JNull{}, False{})
+
+def step.span.use(+raw: String) -> (V.Json & Bool):
+  step.span.ok(raw, V.num.ok(raw))
+
+def step.span.chk(src: String, +n: U32) -> (V.Json & Bool):
+  step.span.use(V.span.str(src, n, U32.is_zero(n)))
+
+def step.span.go(src: String, n: U32, a: Bool, b: Bool, c: Bool) -> (V.Json & Bool):
+  match a b c:
+    case True{} x y:
+      (V.JNull{}, True{})
+    case False{} True{} y:
+      (V.JBool{True{}}, True{})
+    case False{} False{} True{}:
+      (V.JBool{False{}}, True{})
+    case False{} False{} False{}:
+      step.span.chk(src, n)
+
+def step.span.use2(st: P, v: V.Json, ok: Bool) -> P:
+  P{bad, root, stack} = st
+  match ok:
+    case True{}:
+      put(stack, root, v, bad)
+    case False{}:
+      P{True{}, root, stack}
+
+def step.span.open(st: P, got: (V.Json & Bool)) -> P:
+  (v, ok) = got
+  step.span.use2(st, v, ok)
+
+def step.span(+src: String, +n: U32, st: P) -> P:
+  step.span.open(st, step.span.go(src, n, V.span.eq(src, n, "null"),
+    V.span.eq(src, n, "true"), V.span.eq(src, n, "false")))
+
 # one token
 def step(tok: Lex.Tok, st: P) -> P:
   match tok:
@@ -154,9 +213,14 @@ def step(tok: Lex.Tok, st: P) -> P:
       step.comma(stack, root, bad)
     case Lex.TStr{s}:
       P{bad, root, stack} = st
-      put.str(stack, root, s, bad)
+      put.str(stack, root, KOwn{s}, bad)
     case Lex.TWord{raw}:
       step.word(raw, st)
+    case Lex.TStrS{src, n}:
+      P{bad, root, stack} = st
+      put.str(stack, root, KCut{src, n}, bad)
+    case Lex.TWordS{src, n}:
+      step.span(src, n, st)
     case Lex.TBad{}:
       P{bad, root, stack} = st
       P{True{}, root, stack}

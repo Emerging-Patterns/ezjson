@@ -4,7 +4,9 @@
 import Base
 import ./lazy.bend as Lazy
 
-# a JSON value; JNil, JCons and JPair are the cells of arrays and objects
+# a JSON value; JNil, JCons and JPair are the cells of arrays and objects.
+# JSpan and JBind are the same string and key, as the first `n` chars of a
+# source suffix, so a parse does not copy that text.
 type Json is Data:
   JNull{}
   JBool{b: Bool}
@@ -15,6 +17,8 @@ type Json is Data:
   JNil{}
   JCons{head: Json, tail: Json}
   JPair{key: String, val: Json, rest: Json}
+  JSpan{src: String, n: U32}
+  JBind{src: String, n: U32, val: Json, rest: Json}
 
 # where a scan of a JSON number is
 type Num is Data:
@@ -29,6 +33,34 @@ type Num is Data:
   NExpD{}
   NBad{}
 
+# the first `n` chars of `src` as their own string
+def span.str(src: String, +n: U32, z: Bool) -> String:
+  match src z:
+    case s True{}:
+      ""
+    case SNil{} False{}:
+      ""
+    case SCon{h, t} False{}:
+      SCon{h, span.str(t, U32.sub(n, 1), U32.is_zero(U32.sub(n, 1)))}
+
+# whether the first `n` chars of `src` equal `key`, stopping at the first miss
+def span.eq.go(src: String, same: Bool, z: Bool, key: String, +n: U32) -> Bool:
+  match src same z key:
+    case s False{} z k:
+      False{}
+    case s True{} True{} SNil{}:
+      True{}
+    case s True{} True{} k:
+      False{}
+    case SCon{+a, as} True{} False{} SCon{+b, bs}:
+      span.eq.go(as, Char.is_eq(a, b), U32.is_zero(U32.sub(n, 1)), bs, U32.sub(n, 1))
+    case s True{} False{} k:
+      False{}
+
+# whether the first `n` chars of `src` are `key`
+def span.eq(+src: String, +n: U32, +key: String) -> Bool:
+  span.eq.go(src, True{}, U32.is_zero(n), key, n)
+
 # reverses a chain of JCons or JPair cells onto acc
 def reverse(cells: Json, acc: Json) -> Json:
   match cells:
@@ -36,6 +68,8 @@ def reverse(cells: Json, acc: Json) -> Json:
       reverse(t, JCons{h, acc})
     case JPair{k, v, r}:
       reverse(r, JPair{k, v, acc})
+    case JBind{src, n, v, r}:
+      reverse(r, JBind{src, n, v, acc})
     case _:
       acc
 
@@ -272,6 +306,8 @@ def find.at(rest: Json, +key: String, eq: Bool, v: Json) -> Json:
       val
     case JPair{k2, v2, r2} k False{} val:
       find.at(r2, k, find.eq(k2, k), v2)
+    case JBind{src, n, v2, r2} k False{} val:
+      find.at(r2, k, span.eq(src, n, k), v2)
     case r k s val:
       JNull{}
 
@@ -280,6 +316,8 @@ def find(cells: Json, +key: String) -> Json:
   match cells:
     case JPair{k, v, r}:
       find.at(r, key, find.eq(k, key), v)
+    case JBind{src, n, v, r}:
+      find.at(r, key, span.eq(src, n, key), v)
     case other:
       JNull{}
 
@@ -312,6 +350,8 @@ def as_str(j: Json) -> Maybe<&2, String>:
   match j:
     case JStr{s}:
       Some{s}
+    case JSpan{src, +n}:
+      Some{span.str(src, n, U32.is_zero(n))}
     case other:
       None{}
 
