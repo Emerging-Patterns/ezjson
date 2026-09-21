@@ -61,6 +61,8 @@ def print(j: V.Json) -> String:
       raw
     case V.JStr{s}:
       quote(s)
+    case V.JSpan{src, +n}:
+      quote(V.span.str(src, n, U32.is_zero(n)))
     case V.JArr{items}:
       "[" ++ print(items) ++ "]"
     case V.JObj{pairs}:
@@ -75,6 +77,10 @@ def print(j: V.Json) -> String:
       quote(k) ++ ":" ++ print(v)
     case V.JPair{k, v, r}:
       quote(k) ++ ":" ++ print(v) ++ "," ++ print(r)
+    case V.JBind{src, +n, v, V.JNil{}}:
+      quote(V.span.str(src, n, U32.is_zero(n))) ++ ":" ++ print(v)
+    case V.JBind{src, +n, v, r}:
+      quote(V.span.str(src, n, U32.is_zero(n))) ++ ":" ++ print(v) ++ "," ++ print(r)
 
 # a parse result: the value, or "<bad>"
 def maybe(m: Maybe<&2, V.Json>) -> String:
