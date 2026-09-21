@@ -69,9 +69,17 @@ def classify.go(+x: U32) -> Class:
 def classify(c: Char) -> Class:
   classify.go(Char.to_u32(c))
 
+# the buffer is reversed, so consing each head onto the front yields the text
+def text.go(buf: List<&2, Char>, acc: String) -> String:
+  match buf:
+    case Nil{}:
+      acc
+    case Con{h, t}:
+      text.go(t, SCon{h, acc})
+
 # the buffered chars (reversed) as a string
 def text(buf: List<&2, Char>) -> String:
-  String.from_list(List.reverse(&2, Char, buf))
+  text.go(buf, "")
 
 def unescape.go(+x: U32) -> Maybe<&2, Char>:
   Bool.pick(Maybe<&2, Char>, U32.is_eq(x, 34), Some{'"'},
@@ -286,6 +294,14 @@ def finish(st: Lex) -> List<&2, Tok>:
     case other:
       List.reverse(&2, Tok, TBad{} <> toks)
 
+# every char of the text, in order
+def tokens.go(s: String, st: Lex) -> Lex:
+  match s:
+    case SNil{}:
+      st
+    case SCon{+c, t}:
+      tokens.go(t, feed(c, st))
+
 # a text as tokens
 def tokens(s: String) -> List<&2, Tok>:
-  finish(run(String.to_list(s), Lex{Idle{}, [], []}))
+  finish(tokens.go(s, Lex{Idle{}, [], []}))
