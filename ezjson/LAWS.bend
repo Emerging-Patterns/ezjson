@@ -313,9 +313,9 @@ law public_as_u32:
 law public_as_f32:
   {Ezjson.as_f32(Ezjson.num("1.5")) == V.as_f32(V.num("1.5")) : Maybe<&2, F32>}
 
-# the kind of one JSON text: null, true, false, num, str, arr, obj, or bad
-def kind(s: String) -> String:
-  match Parse.parse(s):
+# the kind of a parse result: null, true, false, num, str, arr, obj, or bad
+def kind.go(m: Maybe<&2, V.Json>) -> String:
+  match m:
     case None{}:
       "bad"
     case Some{V.JNull{}}:
@@ -334,6 +334,10 @@ def kind(s: String) -> String:
       "obj:" ++ Print.print(V.JObj{pairs})
     case Some{other}:
       "bad"
+
+# the kind of one JSON text
+def kind(s: String) -> String:
+  kind.go(Parse.parse(s))
 
 # LAW: RFC 8259 §3 — null, true, false, a number, a string, an array, and an
 # object parse as those kinds
@@ -430,13 +434,17 @@ def nib(+n: U32) -> Char:
 def u_text(+n: U32) -> String:
   "\"\\u00" ++ String.from_list([nib(U32.div(n, 16)), nib(U32.mod(n, 16))]) ++ "\""
 
-# the code point a \\u escape parses as, or 65535 when it is not a string
-def u_point(n: U32) -> U32:
-  match Parse.parse(u_text(n)):
+# the code point of a parsed string, or 65535 when the text is not one
+def u_point.go(m: Maybe<&2, V.Json>) -> U32:
+  match m:
     case Some{V.JStr{s}}:
       code(s)
     case other:
       65535
+
+# the code point a \\u escape parses as, or 65535 when it is not a string
+def u_point(n: U32) -> U32:
+  u_point.go(Parse.parse(u_text(n)))
 
 # each \\u escape from n, for left points, is that code point
 def scan_u(left: Nat, +n: U32) -> Bool:
