@@ -8,10 +8,7 @@ ez init
 ez add Emerging-Patterns/ezjson
 ```
 
-Use with [Bend](https://github.com/bendlang/bend):
-```
-import 0xa3c2445eb44c5d8406e6229be518fccb/main.bend as Ezjson
-```
+Requires [Bend](https://github.com/bendlang/bend).
 
 ## Usage
 
