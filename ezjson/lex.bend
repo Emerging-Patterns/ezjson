@@ -261,10 +261,35 @@ def step(mode: Mode, cls: Class, c: Char, buf: List<&2, Char>, toks: List<&2, To
     case Bad{} other:
       Lex{Bad{}, [], toks}
 
-# one char into the machine
+# '\\' starts an escape. A control is rejected. Any other char joins the buffer.
+def feed.str.slash(slash: Bool, +c: Char, buf: List<&2, Char>, toks: List<&2, Tok>, +x: U32) -> Lex:
+  match slash:
+    case True{}:
+      Lex{Esc{}, buf, toks}
+    case False{}:
+      step.str.go(c, buf, toks, U32.is_lt(x, 32))
+
+# '"' closes the string
+def feed.str.quote(quote: Bool, +c: Char, buf: List<&2, Char>, toks: List<&2, Tok>, +x: U32) -> Lex:
+  match quote:
+    case True{}:
+      Lex{Idle{}, [], TStr{text(buf)} <> toks}
+    case False{}:
+      feed.str.slash(U32.is_eq(x, 92), c, buf, toks, x) # '\\'
+
+# one char of a string
+def feed.str(+c: Char, buf: List<&2, Char>, toks: List<&2, Tok>) -> Lex:
+  +x = Char.to_u32(c)
+  feed.str.quote(U32.is_eq(x, 34), c, buf, toks, x) # '"'
+
+# one char into the machine. Inside a string, only quote and backslash are special.
 def feed(+c: Char, st: Lex) -> Lex:
   Lex{mode, buf, toks} = st
-  step(mode, classify(c), c, buf, toks)
+  match mode:
+    case Str{}:
+      feed.str(c, buf, toks)
+    case other:
+      step(other, classify(c), c, buf, toks)
 
 # every char, in order
 def run(cs: List<&2, Char>, st: Lex) -> Lex:
