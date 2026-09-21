@@ -12,14 +12,8 @@ Numbers keep their source text. `ezjson/LAWS.bend` states the library;
 curl -fsSL https://bend-lang.com/install.sh | sh
 ```
 
-Import the entry from a clone, or by package hash after `ez publish`:
-
 ```
-import ./ezjson/main.bend as Ezjson
-```
-
-```
-import 0x/main.bend as Ezjson
+import 0xa3c2445eb44c5d8406e6229be518fccb/main.bend as Ezjson
 ```
 
 ## Usage
