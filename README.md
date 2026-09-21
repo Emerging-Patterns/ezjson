@@ -2,10 +2,13 @@
 
 ## Install
 
+Install with [ez](https://github.com/Emerging-Patterns/ez):
 ```
-curl -fsSL https://bend-lang.com/install.sh | sh
+ez init
+ez add Emerging-Patterns/ezjson
 ```
 
+Use with [Bend](https://github.com/bendlang/bend):
 ```
 import 0xa3c2445eb44c5d8406e6229be518fccb/main.bend as Ezjson
 ```
