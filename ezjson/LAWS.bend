@@ -13,7 +13,7 @@ def again(text: String) -> String:
 
 # a built JSON message
 def msg() -> V.Json:
-  V.obj([("id", V.num(7)), ("method", V.JStr{"open"}),
+  V.obj([("id", V.num("7")), ("method", V.JStr{"open"}),
     ("params", V.obj([("uri", V.JStr{"file:///a.bend"}),
       ("tags", V.arr([V.JNull{}, V.JBool{True{}}]))]))])
 
@@ -39,7 +39,8 @@ law roundtrip_space:
 
 # LAW: escapes print decoded
 law roundtrip_escapes:
-  {again("\"q\\\" b\\\\ n\\n t\\t u\\u0041\"") == "\"q\\\" b\\\\ n\\n t\\t uA\"" : String}
+  {again("\"q\\\" b\\\\ n\\n t\\t u\\u0041\"") ++ again("\"\\b\\f\\/\\u0001\"")
+    == "\"q\\\" b\\\\ n\\n t\\t uA\"" ++ "\"\\b\\f/\\u0001\"" : String}
 
 # LAW: nesting round-trips
 law roundtrip_nest:
@@ -76,36 +77,36 @@ law print_msg:
 
 # LAW: a path reads a string
 law get_uri:
-  {V.str_or(V.get(V.get(msg(), "params"), "uri"), "?") == "file:///a.bend" : String}
+  {V.as_str(V.get(V.get(msg(), "params"), "uri")) == Some{"file:///a.bend"} : Maybe<&2, String>}
 
 # LAW: a number reads
 law get_id:
-  {V.u32_or(V.get(msg(), "id"), 0) == 7 : U32}
+  {V.as_u32(V.get(msg(), "id")) == Some{7} : Maybe<&2, U32>}
 
-# LAW: a missing key reads the default
+# LAW: a missing key reads as none
 law get_missing:
-  {V.str_or(V.get(V.get(msg(), "nope"), "uri"), "?") == "?" : String}
+  {V.as_str(V.get(V.get(msg(), "nope"), "uri")) == None{} : Maybe<&2, String>}
 
 # LAW: a string is not a number
 law get_not_num:
-  {V.u32_or(V.get(msg(), "method"), 99) == 99 : U32}
+  {V.as_u32(V.get(msg(), "method")) == None{} : Maybe<&2, U32>}
 
 # LAW: parsed text at a is an object, not a string
 law parse_obj_not_str:
-  {V.str_or(V.get(parsed(Parse.parse("{\"a\":{\"b\":\"deep\"}}")), "a"), "?") == "?" : String}
+  {V.as_str(V.get(parsed(Parse.parse("{\"a\":{\"b\":\"deep\"}}")), "a")) == None{} : Maybe<&2, String>}
 
 # LAW: parsed paths chain
 law parse_path_chain:
-  {V.str_or(V.get(V.get(parsed(Parse.parse("{\"a\":{\"b\":\"deep\"}}")), "a"), "b"), "?")
-    == "deep" : String}
+  {V.as_str(V.get(V.get(parsed(Parse.parse("{\"a\":{\"b\":\"deep\"}}")), "a"), "b"))
+    == Some{"deep"} : Maybe<&2, String>}
 
 # LAW: an array's first item
 law arr_first:
-  {Print.print(V.first(V.arr([V.JNull{}, V.num(1)]))) == "null" : String}
+  {Print.print(V.at(V.arr([V.null(), V.num("1")]), 0)) == "null" : String}
 
 # LAW: find on a missing key is JNull
 law find_missing:
-  {V.str_or(V.find(V.JNil{}, "k"), "?") == "?" : String}
+  {V.as_str(V.find(V.JNil{}, "k")) == None{} : Maybe<&2, String>}
 
 # LAW: reverse of no cells is the acc
 law reverse_nil:
@@ -167,7 +168,7 @@ law lex_text:
 
 # LAW: n unescapes to newline
 law lex_unescape_n:
-  {Char.to_u32(Lex.unescape('n')) == 10 : U32}
+  {Char.to_u32(Maybe.default(&2, Char, Lex.unescape('n'), '?')) == 10 : U32}
 
 # LAW: hex of A is 10
 law lex_hex_A:
@@ -231,18 +232,81 @@ law public_obj:
 law public_arr:
   {Ezjson.print(Ezjson.arr([])) == "[]" : String}
 
-# LAW: the public num
+# LAW: the public num keeps a JSON number and drops any other text
 law public_num:
-  {Ezjson.print(Ezjson.num(7)) == "7" : String}
+  {Ezjson.print(Ezjson.num("3.50")) ++ Print.print(V.num("01")) == "3.50null" : String}
 
 # LAW: the public get
 law public_get:
-  {V.str_or(Ezjson.get(Ezjson.obj([("k", V.JStr{"v"})]), "k"), "?") == "v" : String}
+  {Ezjson.as_str(Ezjson.get(Ezjson.obj([("k", Ezjson.str("v"))]), "k"))
+    == Some{"v"} : Maybe<&2, String>}
 
-# LAW: the public str_or
-law public_str_or:
-  {Ezjson.str_or(V.JStr{"a"}, "?") == "a" : String}
+# LAW: a missing comma, a trailing comma, a missing colon, and a trailing root
+# comma are not JSON
+law parse_seps:
+  {again("[1,2]") ++ again("[1 2]") ++ again("[1,]") ++ again("{\"a\":1}")
+    ++ again("{\"a\" 1}") ++ again("{\"a\":1,}") ++ again("1,")
+    == "[1,2]<bad><bad>{\"a\":1}<bad><bad><bad>" : String}
 
-# LAW: the public u32_or
-law public_u32_or:
-  {Ezjson.u32_or(V.JNum{"7"}, 0) == 7 : U32}
+# LAW: a number keeps its spelling, and a non-number word is bad
+law parse_number:
+  {again("[-0,1e+2,3.50]") ++ again("01") ++ again("-") ++ again("1.") ++ again("+1")
+    == "[-0,1e+2,3.50]<bad><bad><bad><bad>" : String}
+
+# LAW: a bad escape, a short \\u, and a raw control are bad
+law parse_bad_text:
+  {again("\"\\a\"") ++ again("\"\\u12\"") ++ again("\"\\uXXXX\"") ++ again("\"\n\"")
+    ++ again("\"\\uDEAD\"") ++ again("\"\\uD800\"")
+    == "<bad><bad><bad><bad><bad><bad>" : String}
+
+def code.go(m: Maybe<&2, Char>) -> U32:
+  match m:
+    case None{}:
+      0
+    case Some{c}:
+      Char.to_u32(c)
+
+# the code point of a string's first char, or 0
+def code(s: String) -> U32:
+  code.go(String.get(s, 0n))
+
+# LAW: a surrogate pair is one code point
+law parse_surrogate:
+  {code(Maybe.default(&2, String, V.as_str(parsed(Parse.parse("\"\\uD800\\uDC00\""))), ""))
+    == 65536 : U32}
+
+# LAW: the public null
+law public_null:
+  {Ezjson.print(Ezjson.null()) == Print.print(V.null()) : String}
+
+# LAW: the public bool
+law public_bool:
+  {Ezjson.print(Ezjson.bool(False{})) ++ Print.print(V.bool(True{})) == "falsetrue" : String}
+
+# LAW: the public str
+law public_str:
+  {Maybe.default(&2, String, Ezjson.as_str(Ezjson.str("a")), "")
+    ++ Maybe.default(&2, String, V.as_str(V.str("b")), "") == "ab" : String}
+
+# LAW: the public at
+law public_at:
+  {Ezjson.as_str(Ezjson.at(Ezjson.arr([Ezjson.str("z")]), 0))
+    == V.as_str(V.at(V.arr([V.str("z")]), 0)) : Maybe<&2, String>}
+
+# LAW: the public as_bool
+law public_as_bool:
+  {Ezjson.as_bool(Ezjson.bool(True{})) == V.as_bool(V.bool(True{})) : Maybe<&2, Bool>}
+
+# LAW: the public as_num
+law public_as_num:
+  {Maybe.default(&2, String, Ezjson.as_num(Ezjson.num("-2")), "")
+    ++ Maybe.default(&2, String, V.as_num(V.null()), "x") == "-2x" : String}
+
+# LAW: the public as_u32
+law public_as_u32:
+  {U32.add(Maybe.default(&2, U32, Ezjson.as_u32(Ezjson.num("7")), 0),
+    Maybe.default(&2, U32, V.as_u32(V.num("-2")), 3)) == 10 : U32}
+
+# LAW: the public as_f32
+law public_as_f32:
+  {Ezjson.as_f32(Ezjson.num("1.5")) == V.as_f32(V.num("1.5")) : Maybe<&2, F32>}

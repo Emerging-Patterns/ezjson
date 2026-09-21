@@ -1,5 +1,4 @@
-# ezjson/lazy: a branch that does not run both ways. `stop` takes `a` when
-# c, else what rest gives, so a search can return without walking the rest.
+# ezjson/lazy: `stop` returns `a` when c holds, and otherwise calls rest.
 import Base
 
 # `a` when c, else what rest gives: the early exit of a search
