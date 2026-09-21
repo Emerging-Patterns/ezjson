@@ -296,16 +296,6 @@ def finish(st: Lex) -> List<&2, Tok>:
     case other:
       List.reverse(&2, Tok, TBad{} <> toks)
 
-# the suffix of src after n chars. n = 0 is src itself
-def tokens.drop(src: String, +n: U32, z: Bool) -> String:
-  match src z:
-    case s True{}:
-      s
-    case SNil{} False{}:
-      ""
-    case SCon{+h, t} False{}:
-      tokens.drop(t, U32.sub(n, 1), U32.is_zero(U32.sub(n, 1)))
-
 # the first n chars of src, reversed, for the escape fallback's buffer
 def tokens.rev(src: String, +n: U32, z: Bool, acc: List<&2, Char>) -> List<&2, Char>:
   match src z:
@@ -316,88 +306,84 @@ def tokens.rev(src: String, +n: U32, z: Bool, acc: List<&2, Char>) -> List<&2, C
     case SCon{h, t} False{}:
       tokens.rev(t, U32.sub(n, 1), U32.is_zero(U32.sub(n, 1)), h <> acc)
 
-def tokens.push(+orig: String, +start: U32, n: U32, word: Bool, toks: List<&2, Tok>) ->
-    List<&2, Tok>:
+def tokens.push(cut: String, n: U32, word: Bool, toks: List<&2, Tok>) -> List<&2, Tok>:
   match word:
     case True{}:
-      TWordS{tokens.drop(orig, start, U32.is_zero(start)), n} <> toks
+      TWordS{cut, n} <> toks
     case False{}:
-      TStrS{tokens.drop(orig, start, U32.is_zero(start)), n} <> toks
+      TStrS{cut, n} <> toks
 
-# the fast scanner. Go is still reading; Old means a backslash handed the
-# tail to the copying machine
+# `cut` is the suffix where the open word or string began, so closing it does
+# not walk the text again. Old means a backslash handed the tail to the copier
 type Scan is Data:
-  Go{i: U32, start: U32, mode: U32, toks: List<&2, Tok>}
+  Go{cut: String, n: U32, mode: U32, toks: List<&2, Tok>}
   Old{st: Lex}
 
-def tokens.hit(+orig: String, +i: U32, +start: U32, mode: U32, toks: List<&2, Tok>,
-    cls: Class, ctrl: Bool) -> Scan:
+def tokens.hit(+c: Char, tail: String, cut: String, +n: U32, mode: U32,
+    toks: List<&2, Tok>, cls: Class, ctrl: Bool) -> Scan:
   match mode cls ctrl:
     case 0 CSpace{} b:
-      Go{U32.add(i, 1), start, 0, toks}
+      Go{cut, n, 0, toks}
     case 0 CPunct{p} b:
-      Go{U32.add(i, 1), start, 0, p <> toks}
+      Go{cut, n, 0, p <> toks}
     case 0 CQuote{} b:
-      Go{U32.add(i, 1), U32.add(i, 1), 2, toks}
+      Go{tail, 0, 2, toks}
     case 0 CBack{} b:
-      Go{U32.add(i, 1), start, 3, toks}
+      Go{cut, n, 3, toks}
     case 0 COther{} b:
-      Go{U32.add(i, 1), i, 1, toks}
+      Go{SCon{c, tail}, 1, 1, toks}
     case 1 COther{} b:
-      Go{U32.add(i, 1), start, 1, toks}
+      Go{cut, U32.add(n, 1), 1, toks}
     case 1 CPunct{p} b:
-      Go{U32.add(i, 1), 0, 0, p <> tokens.push(orig, start, U32.sub(i, start), True{}, toks)}
+      Go{"", 0, 0, p <> tokens.push(cut, n, True{}, toks)}
     case 1 CQuote{} b:
-      Go{U32.add(i, 1), U32.add(i, 1), 2,
-        tokens.push(orig, start, U32.sub(i, start), True{}, toks)}
+      Go{tail, 0, 2, tokens.push(cut, n, True{}, toks)}
     case 1 CBack{} b:
-      Go{U32.add(i, 1), start, 3, toks}
+      Go{cut, n, 3, toks}
     case 1 k b:
-      Go{U32.add(i, 1), 0, 0, tokens.push(orig, start, U32.sub(i, start), True{}, toks)}
+      Go{"", 0, 0, tokens.push(cut, n, True{}, toks)}
     case 2 k True{}:
-      Go{U32.add(i, 1), start, 3, toks}
+      Go{cut, n, 3, toks}
     case 2 CQuote{} False{}:
-      Go{U32.add(i, 1), 0, 0, tokens.push(orig, start, U32.sub(i, start), False{}, toks)}
+      Go{"", 0, 0, tokens.push(cut, n, False{}, toks)}
     case 2 CBack{} False{}:
-      Old{feed('\\', Lex{Str{}, tokens.rev(tokens.drop(orig, start, U32.is_zero(start)),
-        U32.sub(i, start), U32.is_zero(U32.sub(i, start)), []), toks})}
+      Old{feed('\\', Lex{Str{}, tokens.rev(cut, n, U32.is_zero(n), []), toks})}
     case 2 k False{}:
-      Go{U32.add(i, 1), start, 2, toks}
+      Go{cut, U32.add(n, 1), 2, toks}
     case m k b:
-      Go{U32.add(i, 1), start, 3, toks}
+      Go{cut, n, 3, toks}
 
-def tokens.done(+orig: String, i: U32, +start: U32, mode: U32, toks: List<&2, Tok>) ->
-    List<&2, Tok>:
+def tokens.done(cut: String, n: U32, mode: U32, toks: List<&2, Tok>) -> List<&2, Tok>:
   match mode:
     case 0:
       List.reverse(&2, Tok, toks)
     case 1:
-      List.reverse(&2, Tok, tokens.push(orig, start, U32.sub(i, start), True{}, toks))
+      List.reverse(&2, Tok, tokens.push(cut, n, True{}, toks))
     case m:
       List.reverse(&2, Tok, TBad{} <> toks)
 
-def tokens.end(st: Scan, +orig: String) -> List<&2, Tok>:
+def tokens.end(st: Scan) -> List<&2, Tok>:
   match st:
     case Old{lex}:
       finish(lex)
-    case Go{i, start, mode, toks}:
-      tokens.done(orig, i, start, mode, toks)
+    case Go{cut, n, mode, toks}:
+      tokens.done(cut, n, mode, toks)
 
-def tokens.feed(+c: Char, st: Scan, +orig: String) -> Scan:
+def tokens.feed(+c: Char, tail: String, st: Scan) -> Scan:
   match st:
     case Old{lex}:
       Old{feed(c, lex)}
-    case Go{i, start, mode, toks}:
-      tokens.hit(orig, i, start, mode, toks, classify(c), U32.is_lt(Char.to_u32(c), 32))
+    case Go{cut, n, mode, toks}:
+      tokens.hit(c, tail, cut, n, mode, toks, classify(c), U32.is_lt(Char.to_u32(c), 32))
 
-# match only the text, as the old lexer does, so a literal unrolls
-def tokens.go(s: String, st: Scan, +orig: String) -> List<&2, Tok>:
+# match only the text, so a literal unrolls. The tail is where the next span starts
+def tokens.go(s: String, st: Scan) -> List<&2, Tok>:
   match s:
     case SNil{}:
-      tokens.end(st, orig)
-    case SCon{+c, t}:
-      tokens.go(t, tokens.feed(c, st, orig), orig)
+      tokens.end(st)
+    case SCon{+c, +t}:
+      tokens.go(t, tokens.feed(c, t, st))
 
 # a text as tokens. Clean words and strings are spans of the text
-def tokens(+s: String) -> List<&2, Tok>:
-  tokens.go(s, Go{0, 0, 0, []}, s)
+def tokens(s: String) -> List<&2, Tok>:
+  tokens.go(s, Go{"", 0, 0, []})
