@@ -7,8 +7,4 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v23
-      - run: nix flake check -L
+    uses: Emerging-Patterns/actions/.github/workflows/nix-flake-check.yml@main
