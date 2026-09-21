@@ -251,11 +251,35 @@ def num.ok(s: String) -> Bool:
 def num(+raw: String) -> Json:
   num.go(raw, num.ok(raw))
 
+# character-for-character equality. `String.eq` rebuilds both strings and
+# discards the copies; a search only needs the bool. A mismatch stops.
+def find.eq.go(left: String, right: String, same: Bool) -> Bool:
+  match left right same:
+    case SNil{} SNil{} True{}:
+      True{}
+    case SCon{+x, xs} SCon{+y, ys} True{}:
+      find.eq.go(xs, ys, Char.is_eq(x, y))
+    case l r s:
+      False{}
+
+def find.eq(a: String, b: String) -> Bool:
+  find.eq.go(a, b, True{})
+
+# the matched value, or the next pair when the key differs
+def find.at(rest: Json, +key: String, eq: Bool, v: Json) -> Json:
+  match rest key eq v:
+    case r k True{} val:
+      val
+    case JPair{k2, v2, r2} k False{} val:
+      find.at(r2, k, find.eq(k2, k), v2)
+    case r k s val:
+      JNull{}
+
 # the value of a key in a chain of pairs; JNull when the key is absent
 def find(cells: Json, +key: String) -> Json:
   match cells:
-    case JPair{+k, v, r}:
-      Lazy.stop(Json, String.eq(k, key), v, _u => find(r, key))
+    case JPair{k, v, r}:
+      find.at(r, key, find.eq(k, key), v)
     case other:
       JNull{}
 
