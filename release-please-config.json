@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "9b1fc967a13d0a0038d33ce04841a9f722f67f0a",
+  "packages": {
+    ".": {
+      "release-type": "go",
+      "include-component-in-tag": false,
+      "extra-files": [
+        { "type": "generic", "path": "flake.nix" }
+      ]
+    }
+  }
+}
