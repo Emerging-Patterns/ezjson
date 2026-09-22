@@ -852,6 +852,34 @@ law pull_steps:
 law pull_copy:
   {pull.none("3.50") ++ pull.none("null") == "3.50none" : String}
 
+# the unread suffix after an event
+def pull.rest(cur: Pull.Cur) -> String:
+  Pull.Cur{rest, stack, done, bad} = cur
+  rest
+
+# the number event and the suffix it left, which still holds the delimiter
+def pull.hold.at(got: (Pull.Ev & Pull.Cur)) -> String:
+  (ev, cur) = got
+  pull.tag(ev) ++ pull.rest(cur)
+
+# past the begin, the first number
+def pull.hold.go(got: (Pull.Ev & Pull.Cur)) -> String:
+  (ev, cur) = got
+  pull.hold.at(Pull.next(cur))
+
+# the first number of an array, and the suffix still starting at its delimiter
+def pull.hold(src: String) -> String:
+  pull.hold.go(Pull.next(Pull.cursor(src)))
+
+# LAW: a number in an array leaves the comma unread, including a longer spelling
+law pull_hold:
+  {pull.hold("[1,2]") ++ pull.hold("[12,3]") == "#1,2]#12,3]" : String}
+
+# LAW: nested arrays and objects are events from the outside in
+law pull_nest:
+  {pull.run("[[[1]]]") ++ pull.run("{\"a\":{\"b\":1}}")
+    == "[[[#1]]].{k:a{k:b#1}}." : String}
+
 # LAW: the public cursor and next agree with the pull cursor
 law public_cursor:
   {pull.pub("null") == pull.run("null") : String}

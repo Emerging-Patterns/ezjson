@@ -46,11 +46,13 @@ inside it) without building that value. `text` copies the spelling of a
 string, a key, or a number. Commas and colons are not events. Import
 `pull.bend` to match the event constructors.
 
-`cursor` holds the unread suffix of the source. A span (`Pull.EStrS`,
-`Pull.EKeyS`, `Pull.ENum`) is the first `nn` characters of a suffix, not a
-copy. The event holds that suffix, so the span stays readable after `next`
-advances, and it is gone when the event is dropped. Dropping the caller's
-own string variable does not drop the cursor.
+`cursor` holds the unread suffix of the source. A string or key span
+(`Pull.EStrS`, `Pull.EKeyS`) is the first `nn` characters of a suffix, not
+a copy. The event holds that suffix, so the span stays readable after
+`next` advances, and it is gone when the event is dropped. A number
+(`Pull.ENum`) keeps its own spelling, so one number in a big array does
+not hold the rest of the array. Dropping the caller's own string variable
+does not drop the cursor.
 
 Walk a large object or array one event at a time. `skip` drops a subtree
 you do not need. `text` copies an owned string when you need one.
