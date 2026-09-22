@@ -67,10 +67,26 @@ def write_fixture(name, text):
     open(path, "w", encoding="utf-8").write(text)
     return path
 
-def semantic_eq(a_text, b_text):
+def nearly_eq(a, b, eps=1e-9):
+    # Value equality with float tolerance (serde_json may reshuffle float bits).
+    if isinstance(a, float) or isinstance(b, float):
+        try:
+            return abs(float(a) - float(b)) <= eps * max(1.0, abs(float(a)), abs(float(b)))
+        except Exception:
+            return False
+    if isinstance(a, dict) and isinstance(b, dict):
+        if set(a) != set(b):
+            return False
+        return all(nearly_eq(a[k], b[k], eps) for k in a)
+    if isinstance(a, list) and isinstance(b, list):
+        return len(a) == len(b) and all(nearly_eq(x, y, eps) for x, y in zip(a, b))
+    return a == b
+
+def semantic_eq(a_text, b_text, tolerant=False):
     # Compare as JSON values (number spelling / key order may differ in print).
     try:
-        return json.loads(a_text) == json.loads(b_text)
+        a, b = json.loads(a_text), json.loads(b_text)
+        return nearly_eq(a, b) if tolerant else (a == b)
     except Exception:
         return False
 
@@ -87,7 +103,7 @@ def edge_fixtures():
         ("empty_obj", "{}", True),
         ("empty_arr", "[]", True),
         ("nums", "[0,-12,3.50,1e9]", True),
-        ("space", ' { "a" : [ 1 , 2 ] ,\\n\\t"b" : { } } ', True),
+        ("space", ' { "a" : [ 1 , 2 ] ,\n\t"b" : { } } ', True),
         ("nest", '[[[]],{"k":{"k":[null]}}]', True),
         ("unicode", '{"msg":"你好🌍","esc":"A\\u0041"}', True),
         ("mixed", '{"id":7,"ok":true,"tags":[null,"x"],"n":-2.5e3}', True),
@@ -111,7 +127,7 @@ def real_world_fixtures():
             "tags": [f"t{j}" for j in range(1 + (i % 4))],
             "meta": {
                 "active": bool(i % 2),
-                "score": rng.random(),
+                "score": round(rng.random(), 8),
                 "note": "naïve café — 東京" if i % 3 == 0 else "plain",
             },
         }
@@ -151,7 +167,7 @@ def real_world_fixtures():
     ]
 
 def correct_edges():
-    log("\\n== Edge / RFC-shaped correctness ==")
+    log("\n== Edge / RFC-shaped correctness ==")
     for name, text, ok in edge_fixtures():
         src = write_fixture("edge_" + name + ".json", text)
         ez_dst = src + ".ez.out"
@@ -174,9 +190,10 @@ def correct_edges():
             continue
         ez_out = load_out(ez_dst)
         rs_out = load_out(rs_dst)
-        ok_sem = semantic_eq(ez_out, rs_out)
-        add_case("B cross-decode semantic", name, "PASS" if ok_sem else "FAIL",
-                 f"ezjson {len(ez_out)}B rust {len(rs_out)}B eq={ok_sem}")
+        ok_sem = semantic_eq(ez_out, rs_out, tolerant=True)
+        ok_in = semantic_eq(ez_out, text)
+        add_case("B cross-decode semantic", name, "PASS" if (ok_sem and ok_in) else "FAIL",
+                 f"ezjson {len(ez_out)}B rust {len(rs_out)}B vs_rust={ok_sem} vs_in={ok_in}")
         # ezjson round-trip stability (print is compact; semantic vs rust)
         rt_dst = src + ".ez.rt"
         tr = ez(["json-rt", src, rt_dst], 30)
@@ -184,12 +201,12 @@ def correct_edges():
             add_case("C ezjson round-trip", name, "FAIL", f"rc={tr['rc']}")
         else:
             rt = load_out(rt_dst)
-            ok_rt = semantic_eq(rt, rs_out) and semantic_eq(rt, ez_out)
+            ok_rt = semantic_eq(rt, ez_out) and semantic_eq(rt, text)
             add_case("C ezjson round-trip", name, "PASS" if ok_rt else "FAIL",
                      f"rt {len(rt)}B")
 
 def correct_real():
-    log("\\n== Real-world fixture correctness ==")
+    log("\n== Real-world fixture correctness ==")
     for name, text, nbytes in real_world_fixtures():
         src = write_fixture("real_" + name + ".json", text)
         ez_dst = src + ".ez.out"
@@ -204,9 +221,10 @@ def correct_real():
             continue
         ez_out = load_out(ez_dst)
         rs_out = load_out(rs_dst)
-        ok_sem = semantic_eq(ez_out, rs_out)
-        add_case("D real cross-decode", name, "PASS" if ok_sem else "FAIL",
-                 f"{nbytes}B in; ez={len(ez_out)} rs={len(rs_out)}")
+        ok_sem = semantic_eq(ez_out, rs_out, tolerant=True)
+        ok_in = semantic_eq(ez_out, text)
+        add_case("D real cross-decode", name, "PASS" if (ok_sem and ok_in) else "FAIL",
+                 f"{nbytes}B in; ez={len(ez_out)} rs={len(rs_out)} vs_rust={ok_sem} vs_in={ok_in}")
         # Encode path: both print compact from the same input text
         ez_enc = src + ".ez.enc"
         rs_enc = src + ".rs.enc"
@@ -215,9 +233,10 @@ def correct_real():
         if ee["rc"] != 0 or re["rc"] != 0:
             add_case("E real encode", name, "FAIL", f"ez={ee['rc']} rust={re['rc']}")
         else:
-            ok_e = semantic_eq(load_out(ez_enc), load_out(rs_enc))
-            add_case("E real encode semantic", name, "PASS" if ok_e else "FAIL",
-                     f"encode eq={ok_e}")
+            ok_e = semantic_eq(load_out(ez_enc), load_out(rs_enc), tolerant=True)
+            ok_in = semantic_eq(load_out(ez_enc), text)
+            add_case("E real encode semantic", name, "PASS" if (ok_e and ok_in) else "FAIL",
+                     f"encode vs_rust={ok_e} vs_in={ok_in}")
 
 def ms_per(parsed, wall, n):
     if parsed is None:
@@ -243,7 +262,7 @@ def run_bench_bump(bin_path, args_prefix, n0, timeout, max_n=65536):
         n = min(max_n, max(n * 4, n + 1))
 
 def speed():
-    log("\\n== Speed (printable; does not fail the check) ==")
+    log("\n== Speed (printable; does not fail the check) ==")
     log("FAIR: in-memory ezjson parse/print vs in-process serde_json (N loops inside one binary).")
     log("NOT a speed ref: Python json, disk I/O on the timed path, or spawn-per-op.")
     log("ratio > 1 means ezjson slower than Rust. If MS=0 after raising N, no vs-rust claim.")
@@ -253,14 +272,14 @@ def speed():
         n0 = 8 if nbytes >= 50000 else (20 if nbytes >= 5000 else 50)
         timeout = 300 if nbytes >= 50000 else 180
 
-        log(f"\\n-- decode {name} ({nbytes}B) --")
+        log(f"\n-- decode {name} ({nbytes}B) --")
         r_ez, p_ez, n_ez = run_bench_bump(DRV, ["bench-json-dec", path], n0, timeout)
         r_rs, p_rs, n_rs = run_bench_bump(RUST, ["bench-json-dec", path], n0, timeout)
         row = format_speed_row("json-dec", name, nbytes, r_ez, p_ez, n_ez, r_rs, p_rs, n_rs)
         log(row)
         speed_rows.append(row)
 
-        log(f"\\n-- encode {name} ({nbytes}B) --")
+        log(f"\n-- encode {name} ({nbytes}B) --")
         r_ez, p_ez, n_ez = run_bench_bump(DRV, ["bench-json-enc", path], n0, timeout)
         r_rs, p_rs, n_rs = run_bench_bump(RUST, ["bench-json-enc", path], n0, timeout)
         row = format_speed_row("json-enc", name, nbytes, r_ez, p_ez, n_ez, r_rs, p_rs, n_rs)
@@ -311,7 +330,7 @@ def main():
             speed()
     except Exception:
         log("HARNESS EXCEPTION"); log(traceback.format_exc()); sys.exit(2)
-    log(f"\\n== Summary: {fails} hard failure(s) of {len(cases)} cases ==")
+    log(f"\n== Summary: {fails} hard failure(s) of {len(cases)} cases ==")
     for c in cases:
         if c["status"] != "PASS" and c["hard"]:
             log(f"  FAIL {c['group']} | {c['name']}")

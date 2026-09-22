@@ -164,16 +164,21 @@ def show.ms(t0: Nat, t1: Nat, +sum: U32, +bytes: U32, +n: U32) -> String:
   "MS " ++ Nat.show(Nat.sub(t1, t0)) ++ " SUM " ++ U32.show(sum) ++ " BY "
     ++ U32.show(bytes) ++ " N " ++ U32.show(n)
 
+# timed decode body once the text is loaded
+def bench.json.dec.go(+s: String, n: Nat, +iters: U32) -> IO(Unit):
+  +bytes = U32.from_nat(String.length(s))
+  do IO<Unit>:
+    t0 : Nat <- IO.now()
+    sum : U32 = loop.dec(s, n, 0)
+    t1 : Nat <- IO.now()
+    IO.print(show.ms(t0, t1, sum, bytes, iters))
+
 # timed decode: load text outside IO.now, parse N times inside
 def bench.json.dec(path: String, +n: U32) -> IO(Unit):
   +k = U32.to_nat(n)
   do IO<Unit>:
     s : String <- read.text(path)
-    +bytes = U32.from_nat(String.length(s))
-    t0 : Nat <- IO.now()
-    sum : U32 = loop.dec(s, k, 0)
-    t1 : Nat <- IO.now()
-    IO.print(show.ms(t0, t1, sum, bytes, n))
+    bench.json.dec.go(s, k, n)
 
 # timed encode from a parsed fixture (load+parse outside the timer)
 def bench.json.enc.go(m: Maybe<&2, V.Json>, +n: U32, +bytes: U32) -> IO(Unit):
@@ -188,11 +193,15 @@ def bench.json.enc.go(m: Maybe<&2, V.Json>, +n: U32, +bytes: U32) -> IO(Unit):
         t1 : Nat <- IO.now()
         IO.print(show.ms(t0, t1, sum, bytes, n))
 
+# after loading text, parse once then time print
+def bench.json.enc.after(+s: String, +n: U32) -> IO(Unit):
+  bench.json.enc.go(Ezjson.parse(s), n, U32.from_nat(String.length(s)))
+
 # load JSON text, parse once, then time print only
 def bench.json.enc(path: String, +n: U32) -> IO(Unit):
   do IO<Unit>:
     s : String <- read.text(path)
-    bench.json.enc.go(Ezjson.parse(s), n, U32.from_nat(String.length(s)))
+    bench.json.enc.after(s, n)
 
 # fallthrough for unknown commands
 def run.f.at(z: Bool, +cmd: String, _a: String, _b: String, _c: String) -> IO(Unit):
