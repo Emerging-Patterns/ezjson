@@ -6,10 +6,18 @@
 #   serde_json binary that loops N times in-process. Disk open is outside both
 #   timers; never spawn rustc or a new process per op as a “reference.”
 # - Ratio = ezjson/rust (>1 ⇒ ezjson slower). Absolute ms/op for both.
-# - Fixtures are product-shaped: nested objects/arrays, unicode, numbers,
-#   mixed sizes ~1KB–100KB+. Tiny edge cases stay in correctness only.
+# - Fixtures are product-shaped: nested objects/arrays, unicode, numbers.
+#   One-shot parse/print keeps the 1KB/10KB/100KB rows and adds ~320KB nested
+#   and string-row docs. Those stay under 400KB so one-shot parse stays
+#   inside Bend's stack and heap limits.
+# - Pull rows are 1MB and 4MB. They time `next` until end, `skip` of each
+#   `rows` array, and `text` on every 8th direct string in those arrays.
+#   The Rust side is an in-process token walk (deserialize_any). Skip borrows
+#   RawValue. It is not from_str::<Value> and not StreamDeserializer of one
+#   Value.
 # - IO.now / Instant are 1 ms. If MS is 0, N is raised; if still unresolved,
 #   wall/n is reported honestly without claiming a vs-rust win.
+#   Ratios never fail the flake check.
 { drvBin ? "ezjson-bench", rustBin ? "ezjson-rust-ref" }:
 ''
 import json, os, random, string, subprocess, sys, time, traceback
@@ -160,10 +168,108 @@ def real_world_fixtures():
         "blob": "".join(rng.choice(string.ascii_letters + "αβγδεζη東京") for _ in range(2000)),
         "nested": {"layers": [{"n": n, "kids": [{"m": m} for m in range(5)]} for n in range(20)]},
     }
+    # One-shot parse stays in the band under Bend's stack/OOM knee.
+    one_want = 320 * 1024
+    one_cap = 400 * 1024
+
+    def sized(name, text):
+        n = len(text.encode("utf-8"))
+        if n > one_cap:
+            raise SystemExit(f"one-shot fixture {name} is {n}B, over the {one_cap}B parse cap")
+        if n < 250 * 1024:
+            raise SystemExit(f"one-shot fixture {name} is {n}B, under the 250KB band")
+        return (name, text, n)
+
+    def nested_text():
+        data = {
+            "batch": [obj_row(i) for i in range(20)],
+            "index": {f"k{i}": {"sq": i * i, "on": bool(i % 2)} for i in range(30)},
+            "tree": {"layers": [
+                {"n": n, "kids": [{"m": m, "bag": {"t": f"x{m}", "ok": m % 2 == 0}} for m in range(6)]}
+                for n in range(12)
+            ]},
+            "blob": "α" * 48,
+        }
+        text = dumps(data)
+        while len(text.encode("utf-8")) < one_want:
+            data["batch"].append(obj_row(len(data["batch"])))
+            text = dumps(data)
+        return sized("nested_320kb", text)
+
+    def rows_text():
+        # One array of unescaped string rows.
+        row = "r" * 192
+        one = dumps({"fmt": "string-rows-v1", "rows": [row], "n": 1})
+        two = dumps({"fmt": "string-rows-v1", "rows": [row, row], "n": 2})
+        marginal = len(two.encode("utf-8")) - len(one.encode("utf-8"))
+        base_n = len(dumps({"fmt": "string-rows-v1", "rows": [], "n": 0}).encode("utf-8"))
+        n = max(1, (one_want - base_n) // max(marginal, 1))
+        rows = [row] * n
+        def pack():
+            return dumps({"fmt": "string-rows-v1", "rows": rows, "n": len(rows)})
+        text = pack()
+        while len(text.encode("utf-8")) < one_want:
+            rows.append(row)
+            text = pack()
+        while len(text.encode("utf-8")) > one_cap and rows:
+            rows.pop()
+            text = pack()
+        return sized("rows_320kb", text)
+
     return [
         grow("cfg_1kb", small, 1000, lambda d: d.__setitem__("pad", d.get("pad", "") + ("あ" * 40))),
         grow("catalog_10kb", medium, 10000, lambda d: d["catalog"].append(obj_row(len(d["catalog"])))),
         grow("batch_100kb", large, 100000, lambda d: d["batch"].append(obj_row(len(d["batch"])))),
+        nested_text(),
+        rows_text(),
+    ]
+
+def pull_fixtures():
+    # Product catalog with a heavy `rows` array on each item. 1MB and 4MB.
+    # Row text is ASCII and unescaped so ezjson keeps a span and `text` copies.
+    def dumps(data):
+        return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+
+    rng = random.Random(42)
+    row = "W" * 480
+
+    def product(i):
+        return {
+            "id": i,
+            "sku": f"SKU-{i:05d}",
+            "name": f"品目-{i}-αβγ",
+            "price": round(rng.uniform(1.0, 999.99), 2),
+            "qty": i % 500,
+            "tags": [f"t{j}" for j in range(1 + (i % 4))],
+            "meta": {
+                "active": bool(i % 2),
+                "score": round(rng.random(), 6),
+                "note": "naïve café — 東京" if i % 5 == 0 else "plain",
+            },
+            "rows": [row for _ in range(16)],
+            "blob": "B" * 48,
+        }
+
+    def pack(n):
+        return dumps({"api": "v1", "catalog": [product(i) for i in range(n)]})
+
+    def at_least(name, want):
+        unit = len(dumps(product(0)).encode("utf-8"))
+        n = max(1, want // max(unit, 1))
+        text = pack(n)
+        guard = 0
+        while len(text.encode("utf-8")) < want and guard < 8:
+            n += max(1, (want - len(text.encode("utf-8"))) // max(unit, 1))
+            text = pack(n)
+            guard += 1
+        got = len(text.encode("utf-8"))
+        if got < want:
+            raise SystemExit(f"pull fixture {name} is {got}B, wanted {want}B")
+        return (name, text, got)
+
+    return [
+        at_least("catalog_1mb", 1 << 20),
+        at_least("catalog_4mb", 4 << 20),
     ]
 
 def correct_edges():
@@ -238,6 +344,39 @@ def correct_real():
             add_case("E real encode semantic", name, "PASS" if (ok_e and ok_in) else "FAIL",
                      f"encode vs_rust={ok_e} vs_in={ok_in}")
 
+def correct_pull():
+    # Tiny docs with hand-counted tags. Same checksum on both sides, including
+    # the final end event (10). Not a timing check.
+    log("\n== Pull cursor vs token walk (checksum; not a ratio) ==")
+    docs = [
+        ('{"rows":["ab","cd"],"n":1}', {
+            "bench-pull-walk": 61,
+            "bench-pull-skip": 52,
+            "bench-pull-text": 63,
+        }),
+        ('{"a":[{"rows":["xy"],"z":0}]}', {
+            "bench-pull-walk": 92,
+            "bench-pull-skip": 87,
+            "bench-pull-text": 94,
+        }),
+    ]
+    for i, (text, expect) in enumerate(docs):
+        path = write_fixture(f"pull_tiny_{i}.json", text)
+        for cmd, want in expect.items():
+            er = ez([cmd, path, "1"], 60)
+            rr = rust([cmd, path, "1"], 60)
+            pe = parse_bench(er["out"]) if not er["timeout"] else None
+            pr = parse_bench(rr["out"]) if not rr["timeout"] else None
+            if er["rc"] != 0 or rr["rc"] != 0 or pe is None or pr is None:
+                add_case("F pull cmd", f"{cmd}#{i}", "FAIL",
+                         f"ez_rc={er['rc']} rust_rc={rr['rc']} "
+                         f"ez_out={er['out']!r} rust_out={rr['out']!r} "
+                         f"ez_err={er['err'][:240]} rust_err={rr['err'][:240]}")
+                continue
+            ok = pe["SUM"] == want and pr["SUM"] == want
+            add_case("F pull checksum", f"{cmd}#{i}", "PASS" if ok else "FAIL",
+                     f"ez={pe['SUM']} rust={pr['SUM']} want={want}")
+
 def ms_per(parsed, wall, n):
     if parsed is None:
         return None, "no-parse"
@@ -261,30 +400,49 @@ def run_bench_bump(bin_path, args_prefix, n0, timeout, max_n=65536):
             return last
         n = min(max_n, max(n * 4, n + 1))
 
+def bench_plan(nbytes):
+    # Large docs start at N=1. The bump cap stops a stuck MS=0 from repeating
+    # a multi-megabyte walk tens of thousands of times.
+    if nbytes >= 1000000:
+        return 1, 900, 32
+    if nbytes >= 200000:
+        return 1, 600, 128
+    if nbytes >= 50000:
+        return 8, 300, 65536
+    if nbytes >= 5000:
+        return 20, 180, 65536
+    return 50, 120, 65536
+
+def speed_one(op, cmd, name, nbytes, path):
+    n0, timeout, max_n = bench_plan(nbytes)
+    log(f"\n-- {op} {name} ({nbytes}B) --")
+    r_ez, p_ez, n_ez = run_bench_bump(DRV, [cmd, path], n0, timeout, max_n)
+    r_rs, p_rs, n_rs = run_bench_bump(RUST, [cmd, path], n0, timeout, max_n)
+    row = format_speed_row(op, name, nbytes, r_ez, p_ez, n_ez, r_rs, p_rs, n_rs)
+    log(row)
+    speed_rows.append(row)
+
 def speed():
     log("\n== Speed (printable; does not fail the check) ==")
     log("FAIR: in-memory ezjson parse/print vs in-process serde_json (N loops inside one binary).")
     log("NOT a speed ref: Python json, disk I/O on the timed path, or spawn-per-op.")
     log("ratio > 1 means ezjson slower than Rust. If MS=0 after raising N, no vs-rust claim.")
-    fixtures = real_world_fixtures()
-    for name, text, nbytes in fixtures:
+    log("One-shot rows above 100KB stay under 400KB so parse does not blow the Bend stack.")
+    for name, text, nbytes in real_world_fixtures():
         path = write_fixture("spd_" + name + ".json", text)
-        n0 = 8 if nbytes >= 50000 else (20 if nbytes >= 5000 else 50)
-        timeout = 300 if nbytes >= 50000 else 180
+        speed_one("json-dec", "bench-json-dec", name, nbytes, path)
+        speed_one("json-enc", "bench-json-enc", name, nbytes, path)
 
-        log(f"\n-- decode {name} ({nbytes}B) --")
-        r_ez, p_ez, n_ez = run_bench_bump(DRV, ["bench-json-dec", path], n0, timeout)
-        r_rs, p_rs, n_rs = run_bench_bump(RUST, ["bench-json-dec", path], n0, timeout)
-        row = format_speed_row("json-dec", name, nbytes, r_ez, p_ez, n_ez, r_rs, p_rs, n_rs)
-        log(row)
-        speed_rows.append(row)
-
-        log(f"\n-- encode {name} ({nbytes}B) --")
-        r_ez, p_ez, n_ez = run_bench_bump(DRV, ["bench-json-enc", path], n0, timeout)
-        r_rs, p_rs, n_rs = run_bench_bump(RUST, ["bench-json-enc", path], n0, timeout)
-        row = format_speed_row("json-enc", name, nbytes, r_ez, p_ez, n_ez, r_rs, p_rs, n_rs)
-        log(row)
-        speed_rows.append(row)
+    log("\n== Pull cursor vs serde_json token walk (printable; does not fail the check) ==")
+    log("FAIR: ezjson next / skip / text vs an in-process deserialize_any visitor.")
+    log("pull-walk: next until end. pull-skip: skip each rows array (RawValue, no DOM).")
+    log("pull-text: walk, and copy every 8th direct string of each rows array.")
+    log("NOT a pull ref: from_str::<Value>, or StreamDeserializer of that one value.")
+    for name, text, nbytes in pull_fixtures():
+        path = write_fixture("spd_" + name + ".json", text)
+        speed_one("pull-walk", "bench-pull-walk", name, nbytes, path)
+        speed_one("pull-skip", "bench-pull-skip", name, nbytes, path)
+        speed_one("pull-text", "bench-pull-text", name, nbytes, path)
 
 def format_speed_row(op, name, nbytes, r_ez, p_ez, n_ez, r_rs, p_rs, n_rs):
     if r_ez["timeout"] or r_rs["timeout"]:
@@ -326,6 +484,7 @@ def main():
         if MODE in ("correctness", "all"):
             correct_edges()
             correct_real()
+            correct_pull()
         if MODE in ("speed", "all"):
             speed()
     except Exception:

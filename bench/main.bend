@@ -1,8 +1,9 @@
 # serde_json vs ezjson bench driver. JSON text fixtures on disk feed the CLI;
-# speed paths load once then time parse/print only (IO.now). Native ELF via
-# `bend bench/main.bend -o …` (CC=clang -O3 in the flake derivation).
+# speed paths load once then time parse/print, or a pull walk, only (IO.now).
+# Native ELF via `bend bench/main.bend -o …` (CC=clang -O3 in the flake).
 import ../ezjson/main.bend as Ezjson
 import ../ezjson/value.bend as V
+import ../ezjson/pull.bend as Pull
 
 # unwrap a parsed U32, or zero when parse fails
 def u32.arg.go(m: Maybe<&2, U32>) -> U32:
@@ -203,6 +204,405 @@ def bench.json.enc(path: String, +n: U32) -> IO(Unit):
     s : String <- read.text(path)
     bench.json.enc.after(s, n)
 
+# checksum tag of one pull event. Same numbers as the Rust token walk:
+# null 1, bool 2, number 3, string 4, key 5, begin-array 6, end-array 7,
+# begin-object 8, end-object 9, end 10, error 11. A skipped value is 12.
+# Spans are not copied here.
+def ev.tag(ev: Pull.Ev) -> U32:
+  match ev:
+    case Pull.ENull{}:
+      1
+    case Pull.EBool{_b}:
+      2
+    case Pull.ENum{_src, _nn}:
+      3
+    case Pull.EStr{_body}:
+      4
+    case Pull.EStrS{_src, _nn}:
+      4
+    case Pull.EKey{_body}:
+      5
+    case Pull.EKeyS{_src, _nn}:
+      5
+    case Pull.EBeginArr{}:
+      6
+    case Pull.EEndArr{}:
+      7
+    case Pull.EBeginObj{}:
+      8
+    case Pull.EEndObj{}:
+      9
+    case Pull.EEnd{}:
+      10
+    case Pull.EErr{}:
+      11
+
+# whether this key is the name `rows`
+def key.rows(body: String) -> Bool:
+  String.eq(body, "rows")
+
+# whether this key span is `rows`, without copying it
+def key.rows.span(+src: String, +nn: U32) -> Bool:
+  V.span.eq(src, nn, "rows")
+
+# add one walk's checksum into the running total
+def step.pull(+sum: U32, part: U32) -> U32:
+  (sum + part : U32)
+
+# char length of a copied string, or zero when `text` has none
+def text.n(m: Maybe<&2, String>) -> U32:
+  match m:
+    case None{}:
+      0
+    case Some{s}:
+      U32.from_nat(String.length(s))
+
+# a direct `rows` element is due: depth 1 and the countdown is 1
+def row.sample(+depth: U32, +every: U32) -> Bool:
+  Bool.and(U32.is_eq(depth, 1), U32.is_eq(every, 1))
+
+# decrement only while a string is a direct `rows` element
+def countdown.go(inside: Bool, +every: U32) -> U32:
+  match inside:
+    case True{}:
+      U32.sub(every, 1)
+    case False{}:
+      every
+
+# steps until the next copied row; unchanged outside `rows`
+def countdown(+depth: U32, +every: U32) -> U32:
+  countdown.go(U32.is_eq(depth, 1), every)
+
+# full `next` walk. Fuel is the Nat; `AGo` already counted its event
+type All is Data:
+  ANeed{cur: Pull.Cur, acc: U32}
+  AGo{cur: Pull.Cur, acc: U32}
+  AStop{acc: U32}
+
+# the next read
+def all.need(cur: Pull.Cur, +acc: U32) -> All:
+  ANeed{cur, acc}
+
+# end of a walk. The cursor is dropped
+def all.stop(_cur: Pull.Cur, +acc: U32) -> All:
+  AStop{acc}
+
+# classify one event. End and error stop; anything else keeps walking
+def all.have.ev(ev: Pull.Ev, cur: Pull.Cur, +acc: U32) -> All:
+  match ev:
+    case Pull.EEnd{}:
+      all.stop(cur, (acc + 10 : U32))
+    case Pull.EErr{}:
+      all.stop(cur, (acc + 11 : U32))
+    case other:
+      AGo{cur, (acc + ev.tag(other) : U32)}
+
+# the event `next` just returned
+def all.have(+acc: U32, got: (Pull.Ev & Pull.Cur)) -> All:
+  (ev, cur) = got
+  all.have.ev(ev, cur, acc)
+
+# one full event walk. `left` shrinks on every self-call
+def walk.all(left: Nat, ph: All) -> U32:
+  match left ph:
+    case 0n AStop{+acc}:
+      acc
+    case 0n ANeed{_cur, +acc}:
+      acc
+    case 0n AGo{_cur, +acc}:
+      acc
+    case 1n+p AStop{+acc}:
+      acc
+    case 1n+p ANeed{cur, +acc}:
+      walk.all(p, all.have(acc, Ezjson.next(cur)))
+    case 1n+p AGo{cur, +acc}:
+      walk.all(p, all.need(cur, acc))
+
+# `next` until end, `n` times
+def loop.pull.walk(+s: String, n: Nat, +sum: U32, +fuel: Nat) -> U32:
+  match n:
+    case 0n:
+      sum
+    case 1n+p:
+      loop.pull.walk(s, p, step.pull(sum, walk.all(fuel, all.need(Ezjson.cursor(s), 0))), fuel)
+
+# skip-walk. `KKey` is the bool "this key is rows"
+type Sk is Data:
+  KNeed{cur: Pull.Cur, acc: U32}
+  KGo{cur: Pull.Cur, acc: U32}
+  KStop{acc: U32}
+  KKey{rows: Bool, cur: Pull.Cur, acc: U32}
+
+# the next read
+def skip.need(cur: Pull.Cur, +acc: U32) -> Sk:
+  KNeed{cur, acc}
+
+# end of a skip-walk
+def skip.stop(_cur: Pull.Cur, +acc: U32) -> Sk:
+  KStop{acc}
+
+# a key, with whether it names `rows`
+def skip.key(rows: Bool, cur: Pull.Cur, +acc: U32) -> Sk:
+  KKey{rows, cur, acc}
+
+# classify one event. A `rows` key becomes KKey; other events keep walking
+def skip.have.ev(ev: Pull.Ev, cur: Pull.Cur, +acc: U32) -> Sk:
+  match ev:
+    case Pull.EEnd{}:
+      skip.stop(cur, (acc + 10 : U32))
+    case Pull.EErr{}:
+      skip.stop(cur, (acc + 11 : U32))
+    case Pull.EKey{body}:
+      skip.key(key.rows(body), cur, (acc + 5 : U32))
+    case Pull.EKeyS{src, nn}:
+      skip.key(key.rows.span(src, nn), cur, (acc + 5 : U32))
+    case other:
+      KGo{cur, (acc + ev.tag(other) : U32)}
+
+# the event `next` just returned
+def skip.have(+acc: U32, got: (Pull.Ev & Pull.Cur)) -> Sk:
+  (ev, cur) = got
+  skip.have.ev(ev, cur, acc)
+
+# walk, but `skip` the value named `rows`. `left` shrinks on every self-call
+def walk.skip(left: Nat, ph: Sk) -> U32:
+  match left ph:
+    case 0n KStop{+acc}:
+      acc
+    case 0n KNeed{_cur, +acc}:
+      acc
+    case 0n KGo{_cur, +acc}:
+      acc
+    case 0n KKey{_rows, _cur, +acc}:
+      acc
+    case 1n+p KStop{+acc}:
+      acc
+    case 1n+p KNeed{cur, +acc}:
+      walk.skip(p, skip.have(acc, Ezjson.next(cur)))
+    case 1n+p KGo{cur, +acc}:
+      walk.skip(p, skip.need(cur, acc))
+    case 1n+p KKey{True{}, cur, +acc}:
+      walk.skip(p, skip.need(Ezjson.skip(cur), (acc + 12 : U32)))
+    case 1n+p KKey{False{}, cur, +acc}:
+      walk.skip(p, skip.need(cur, acc))
+
+# skip-walk, `n` times
+def loop.pull.skip(+s: String, n: Nat, +sum: U32, +fuel: Nat) -> U32:
+  match n:
+    case 0n:
+      sum
+    case 1n+p:
+      loop.pull.skip(s, p, step.pull(sum, walk.skip(fuel, skip.need(Ezjson.cursor(s), 0))), fuel)
+
+# text-walk. `arm` means the next value is the `rows` array.
+# `depth` 1 is a direct element of that array. `every` counts down to a copy
+type Txt is Data:
+  TNeed{cur: Pull.Cur, acc: U32, depth: U32, every: U32, arm: Bool}
+  TStop{acc: U32}
+
+# the next read, carrying the row state
+def txt.need(cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32, arm: Bool) -> Txt:
+  TNeed{cur, acc, depth, every, arm}
+
+# end of a text-walk
+def txt.stop(_cur: Pull.Cur, +acc: U32) -> Txt:
+  TStop{acc}
+
+# inside `rows`, go one level deeper; otherwise stay outside
+def txt.nest.go(z: Bool, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  match z:
+    case True{}:
+      txt.need(cur, acc, 0, every, False{})
+    case False{}:
+      txt.need(cur, acc, (depth + 1 : U32), every, False{})
+
+# open a container that is not the `rows` array itself
+def txt.nest(cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  txt.nest.go(U32.is_zero(depth), cur, acc, depth, every)
+
+# step out of a container. Depth 0 stays 0
+def txt.close.go(z: Bool, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  match z:
+    case True{}:
+      txt.need(cur, acc, 0, every, False{})
+    case False{}:
+      txt.need(cur, acc, U32.sub(depth, 1), every, False{})
+
+# close one array or object
+def txt.close(cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  txt.close.go(U32.is_zero(depth), cur, acc, depth, every)
+
+# `rows` array: its elements are depth 1 and the first is copied
+def txt.arr.go(arm: Bool, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  match arm:
+    case True{}:
+      txt.need(cur, acc, 1, 1, False{})
+    case False{}:
+      txt.nest(cur, acc, depth, every)
+
+# begin-array. `arm` is set when the key was `rows`
+def txt.arr(arm: Bool, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  txt.arr.go(arm, cur, acc, depth, every)
+
+# copy this owned string and restart the countdown at 8
+def txt.own.yes(body: String, cur: Pull.Cur, +acc: U32, +depth: U32, _every: U32) -> Txt:
+  txt.need(cur, (acc + 4 + text.n(Ezjson.text(Pull.EStr{body})) : U32), depth, 8, False{})
+
+# count an owned string without copying it
+def txt.own.no(_body: String, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  txt.need(cur, (acc + 4 : U32), depth, countdown(depth, every), False{})
+
+# owned string: copy it only when it is a sampled row
+def txt.own.at(sample: Bool, body: String, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  match sample:
+    case True{}:
+      txt.own.yes(body, cur, acc, depth, every)
+    case False{}:
+      txt.own.no(body, cur, acc, depth, every)
+
+# an owned string event
+def txt.own(body: String, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  txt.own.at(row.sample(depth, every), body, cur, acc, depth, every)
+
+# copy this span with `text` and restart the countdown at 8
+def txt.spn.yes(src: String, +nn: U32, cur: Pull.Cur, +acc: U32, +depth: U32, _every: U32) -> Txt:
+  txt.need(cur, (acc + 4 + text.n(Ezjson.text(Pull.EStrS{src, nn})) : U32), depth, 8, False{})
+
+# count a span without copying it
+def txt.spn.no(_src: String, _nn: U32, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  txt.need(cur, (acc + 4 : U32), depth, countdown(depth, every), False{})
+
+# span string: `text` copies it only when it is a sampled row
+def txt.spn.at(sample: Bool, src: String, +nn: U32, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  match sample:
+    case True{}:
+      txt.spn.yes(src, nn, cur, acc, depth, every)
+    case False{}:
+      txt.spn.no(src, nn, cur, acc, depth, every)
+
+# a span string event
+def txt.spn(src: String, +nn: U32, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  txt.spn.at(row.sample(depth, every), src, nn, cur, acc, depth, every)
+
+# one event, as the next text-walk state
+def txt.classify(ev: Pull.Ev, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32, arm: Bool) -> Txt:
+  match ev:
+    case Pull.EEnd{}:
+      txt.stop(cur, (acc + 10 : U32))
+    case Pull.EErr{}:
+      txt.stop(cur, (acc + 11 : U32))
+    case Pull.ENull{}:
+      txt.need(cur, (acc + 1 : U32), depth, every, False{})
+    case Pull.EBool{_b}:
+      txt.need(cur, (acc + 2 : U32), depth, every, False{})
+    case Pull.ENum{_src, _nn}:
+      txt.need(cur, (acc + 3 : U32), depth, every, False{})
+    case Pull.EBeginObj{}:
+      txt.nest(cur, (acc + 8 : U32), depth, every)
+    case Pull.EEndObj{}:
+      txt.close(cur, (acc + 9 : U32), depth, every)
+    case Pull.EBeginArr{}:
+      txt.arr(arm, cur, (acc + 6 : U32), depth, every)
+    case Pull.EEndArr{}:
+      txt.close(cur, (acc + 7 : U32), depth, every)
+    case Pull.EKey{body}:
+      txt.need(cur, (acc + 5 : U32), depth, every, key.rows(body))
+    case Pull.EKeyS{src, nn}:
+      txt.need(cur, (acc + 5 : U32), depth, every, key.rows.span(src, nn))
+    case Pull.EStr{body}:
+      txt.own(body, cur, acc, depth, every)
+    case Pull.EStrS{src, nn}:
+      txt.spn(src, nn, cur, acc, depth, every)
+
+# unpack one `next`
+def txt.got(+acc: U32, +depth: U32, +every: U32, arm: Bool, got: (Pull.Ev & Pull.Cur)) -> Txt:
+  (ev, cur) = got
+  txt.classify(ev, cur, acc, depth, every, arm)
+
+# read one event and classify it
+def txt.read(cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32, arm: Bool) -> Txt:
+  txt.got(acc, depth, every, arm, Ezjson.next(cur))
+
+# full walk, plus `text` on every 8th direct string of each `rows` array.
+# `left` shrinks once per event
+def walk.text(left: Nat, ph: Txt) -> U32:
+  match left ph:
+    case 0n TStop{+acc}:
+      acc
+    case 0n TNeed{_cur, +acc, _depth, _every, _arm}:
+      acc
+    case 1n+p TStop{+acc}:
+      acc
+    case 1n+p TNeed{cur, +acc, +depth, +every, arm}:
+      walk.text(p, txt.read(cur, acc, depth, every, arm))
+
+# text-walk, `n` times
+def loop.pull.text(+s: String, n: Nat, +sum: U32, +fuel: Nat) -> U32:
+  match n:
+    case 0n:
+      sum
+    case 1n+p:
+      loop.pull.text(s, p, step.pull(sum, walk.text(fuel, txt.need(Ezjson.cursor(s), 0, 0, 0, False{}))), fuel)
+
+# two events of fuel per character, plus the end event. Built once, outside the timer
+def fuel.nat(+bytes: U32) -> Nat:
+  16n+Nat.add(U32.to_nat(bytes), U32.to_nat(bytes))
+
+# print one timed pull loop. The text is already loaded
+def bench.pull.show(+bytes: U32, +iters: U32, t0: Nat, t1: Nat, +sum: U32) -> IO(Unit):
+  IO.print(show.ms(t0, t1, sum, bytes, iters))
+
+# time a full `next` walk. Load stays outside IO.now
+def bench.pull.walk.go(+s: String, n: Nat, +iters: U32) -> IO(Unit):
+  +bytes = U32.from_nat(String.length(s))
+  +fuel = fuel.nat(bytes)
+  do IO<Unit>:
+    t0 : Nat <- IO.now()
+    sum : U32 = loop.pull.walk(s, n, 0, fuel)
+    t1 : Nat <- IO.now()
+    bench.pull.show(bytes, iters, t0, t1, sum)
+
+# load the text, then time the full event walk
+def bench.pull.walk(path: String, +n: U32) -> IO(Unit):
+  +k = U32.to_nat(n)
+  do IO<Unit>:
+    s : String <- read.text(path)
+    bench.pull.walk.go(s, k, n)
+
+# time a walk that skips each `rows` array
+def bench.pull.skip.go(+s: String, n: Nat, +iters: U32) -> IO(Unit):
+  +bytes = U32.from_nat(String.length(s))
+  +fuel = fuel.nat(bytes)
+  do IO<Unit>:
+    t0 : Nat <- IO.now()
+    sum : U32 = loop.pull.skip(s, n, 0, fuel)
+    t1 : Nat <- IO.now()
+    bench.pull.show(bytes, iters, t0, t1, sum)
+
+# load the text, then time skip of each heavy `rows` array
+def bench.pull.skip(path: String, +n: U32) -> IO(Unit):
+  +k = U32.to_nat(n)
+  do IO<Unit>:
+    s : String <- read.text(path)
+    bench.pull.skip.go(s, k, n)
+
+# time a walk that copies every 8th `rows` string with `text`
+def bench.pull.text.go(+s: String, n: Nat, +iters: U32) -> IO(Unit):
+  +bytes = U32.from_nat(String.length(s))
+  +fuel = fuel.nat(bytes)
+  do IO<Unit>:
+    t0 : Nat <- IO.now()
+    sum : U32 = loop.pull.text(s, n, 0, fuel)
+    t1 : Nat <- IO.now()
+    bench.pull.show(bytes, iters, t0, t1, sum)
+
+# load the text, then time `text` on a subset of string rows
+def bench.pull.text(path: String, +n: U32) -> IO(Unit):
+  +k = U32.to_nat(n)
+  do IO<Unit>:
+    s : String <- read.text(path)
+    bench.pull.text.go(s, k, n)
+
 # fallthrough for unknown commands
 def run.f.at(z: Bool, +cmd: String, _a: String, _b: String, _c: String) -> IO(Unit):
   match z:
@@ -215,13 +615,49 @@ def run.f.at(z: Bool, +cmd: String, _a: String, _b: String, _c: String) -> IO(Un
 def run.f(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
   run.f.at(String.eq(cmd, "ping"), cmd, a, b, c)
 
+# dispatch bench-pull-text
+def run.i.at(z: Bool, +cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
+  match z:
+    case True{}:
+      bench.pull.text(a, u32.arg(b))
+    case False{}:
+      run.f(cmd, a, b, c)
+
+# try bench-pull-text then fall through
+def run.i(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
+  run.i.at(String.eq(cmd, "bench-pull-text"), cmd, a, b, c)
+
+# dispatch bench-pull-skip
+def run.h.at(z: Bool, +cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
+  match z:
+    case True{}:
+      bench.pull.skip(a, u32.arg(b))
+    case False{}:
+      run.i(cmd, a, b, c)
+
+# try bench-pull-skip then fall through
+def run.h(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
+  run.h.at(String.eq(cmd, "bench-pull-skip"), cmd, a, b, c)
+
+# dispatch bench-pull-walk
+def run.g.at(z: Bool, +cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
+  match z:
+    case True{}:
+      bench.pull.walk(a, u32.arg(b))
+    case False{}:
+      run.h(cmd, a, b, c)
+
+# try bench-pull-walk then fall through
+def run.g(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
+  run.g.at(String.eq(cmd, "bench-pull-walk"), cmd, a, b, c)
+
 # dispatch bench-json-enc
 def run.e.at(z: Bool, +cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
   match z:
     case True{}:
       bench.json.enc(a, u32.arg(b))
     case False{}:
-      run.f(cmd, a, b, c)
+      run.g(cmd, a, b, c)
 
 # try bench-json-enc then fall through
 def run.e(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
