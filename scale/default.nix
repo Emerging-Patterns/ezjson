@@ -12,7 +12,7 @@ let
 
   drv = pkgs.stdenv.mkDerivation {
     pname = "ezjson-scale";
-    version = "0.2.0";
+    version = "0.3.0";
     dontUnpack = true;
     nativeBuildInputs = [ bend llvm.clang ];
     buildPhase = ''
