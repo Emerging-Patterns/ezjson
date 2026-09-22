@@ -3,7 +3,9 @@
 # with pkgs.writeText at eval time.
 #
 # Fairness: encode/decode speed is in-memory ezjson vs in-process serde_json
-# (N loops inside one Rust binary). Timing is not part of the flake check.
+# (N loops inside one Rust binary). Pull speed is next/skip/text vs a
+# serde_json token walk over the same bytes. Timing is not part of the flake
+# check. One-shot fixtures stay under the Bend parse stack limit.
 {
   pkgs,
   lib,
