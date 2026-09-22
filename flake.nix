@@ -19,6 +19,7 @@
 
   outputs = { self, nixpkgs, ... }@inputs:
     let
+      version = "0.1.0"; # x-release-please-version
       system = "x86_64-linux";
       ez = inputs.ez.lib.${system};
       ezBin = inputs.ez.packages.${system}.default;
