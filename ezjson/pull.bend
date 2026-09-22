@@ -101,8 +101,9 @@ type Mode is Data:
   MRest{stop: Stop}
   # the quote is consumed; the next character is the first of the string
   MQuote{}
-  # a word ended on `ch`, and that character is still unread
-  MBack{ch: Char, stop: Stop, stack: List<&2, Frame>, root: Bool}
+  # resume `mode` on `rest` after a plain word, which the stepper did not
+  # walk byte by byte
+  MJump{rest: String, mode: Mode}
 
 # the scanner's state, apart from the unread suffix it is walking
 type St is Data:
@@ -575,57 +576,8 @@ def word.eof.place(
     case ANum{}:
       place.val(ENum{cut, nn}, "", stack, goal)
 
-# a step that stopped, as the pair `next` returns
-def stop.of(st: St) -> (Stop & Cur):
-  match st:
-    case S{MDone{stop, saved}, stack, goal, done, bad}:
-      (stop, Cur{saved, stack, done, bad})
-    case other:
-      bad.cur()
-
-# a word that ended because the text did, once its spelling is in hand
-def word.eof.raw(
-  +raw: String,
-  +nn: U32,
-  num: V.Num,
-  stack: List<&2, Frame>,
-  goal: Goal
-) -> (Stop & Cur):
-  match goal:
-    case GSkip{1n+left}:
-      bad.cur()
-    case GNext{}:
-      stop.of(word.eof.place(word.kind(raw, nn, num), raw, nn, stack, goal))
-    case GSkip{0n}:
-      stop.of(word.eof.place(word.kind(raw, nn, num), raw, nn, stack, goal))
-
-# a word that ended because the text did, on a live cursor
-def word.eof.go(
-  buf: List<&2, Char>,
-  nn: U32,
-  num: V.Num,
-  stack: List<&2, Frame>,
-  goal: Goal
-) -> (Stop & Cur):
-  word.eof.raw(Lex.text(buf), nn, num, stack, goal)
-
-# a word that ended because the text did
-def word.eof(
-  buf: List<&2, Char>,
-  nn: U32,
-  num: V.Num,
-  stack: List<&2, Frame>,
-  goal: Goal,
-  bad: Bool
-) -> (Stop & Cur):
-  match bad:
-    case True{}:
-      bad.cur()
-    case False{}:
-      word.eof.go(buf, nn, num, stack, goal)
-
 # the delimiter of a skipped word, once the value is inside the container.
-# The delimiter is consumed; the suffix after it stays with the stepper
+# The delimiter is consumed. The caller resumes on the suffix after it
 def lay.plan(stack: List<&2, Frame>, goal: Goal, cls: Lex.Class) -> St:
   match cls:
     case Lex.CSpace{}:
@@ -647,104 +599,255 @@ def see.more.on(goal: Goal, cls: Lex.Class, spot: Spot) -> St:
 def see.more(stack: List<&2, Frame>, goal: Goal, cls: Lex.Class) -> St:
   see.more.on(goal, cls, place.spot(stack))
 
-# a word ended on `ch`, which is still unread. The stepper puts it back
-def see.back.on(stop: Stop, ch: Char, goal: Goal, spot: Spot) -> St:
-  match spot:
-    case SpotBad{}:
+# a code point that ends a bare word: the same bytes `classify` calls
+# punctuation, a quote, a backslash, or whitespace. A form feed stays in the word
+def word.special(+x: U32) -> Bool:
+  Bool.or(U32.is_eq(x, 9),
+    Bool.or(U32.is_eq(x, 10),
+      Bool.or(U32.is_eq(x, 13),
+        Bool.or(U32.is_eq(x, 32),
+          Bool.or(U32.is_eq(x, 34),
+            Bool.or(U32.is_eq(x, 44),
+              Bool.or(U32.is_eq(x, 58),
+                Bool.or(U32.is_eq(x, 91),
+                  Bool.or(U32.is_eq(x, 92),
+                    Bool.or(U32.is_eq(x, 93),
+                      Bool.or(U32.is_eq(x, 123), U32.is_eq(x, 125))))))))))))
+
+# where a plain word run stopped. A stop keeps the delimiter, already consumed
+type Wst is Data:
+  WMore{buf: List<&2, Char>, nn: U32, num: V.Num}
+  WStop{buf: List<&2, Char>, nn: U32, num: V.Num, ch: Char}
+  WEof{buf: List<&2, Char>, nn: U32, num: V.Num}
+
+# one more plain byte of a word. The buffer grows by that character
+def word.step(c: Char, +x: U32, buf: List<&2, Char>, nn: U32, num: V.Num) -> Wst:
+  WMore{c <> buf, U32.add(nn, 1), V.num.ok.step(num, x)}
+
+# keep the byte when it is not a delimiter
+def word.keep.go(
+  c: Char,
+  x: U32,
+  buf: List<&2, Char>,
+  nn: U32,
+  num: V.Num,
+  keep: Bool
+) -> Wst:
+  match keep:
+    case True{}:
+      word.step(c, x, buf, nn, num)
+    case False{}:
+      WStop{buf, nn, num, c}
+
+# a digit is never a delimiter, so a long number does not walk `classify`
+def word.digit.go(
+  c: Char,
+  +x: U32,
+  buf: List<&2, Char>,
+  nn: U32,
+  num: V.Num,
+  dig: Bool
+) -> Wst:
+  match dig:
+    case True{}:
+      word.step(c, x, buf, nn, num)
+    case False{}:
+      word.keep.go(c, x, buf, nn, num, Bool.not(word.special(x)))
+
+# one byte of a word: another plain byte, or the delimiter that ends it
+def word.decide(c: Char, +x: U32, buf: List<&2, Char>, nn: U32, num: V.Num) -> Wst:
+  word.digit.go(c, x, buf, nn, num, V.num.ok.digit(x))
+
+# the suffix after a plain word. Tail call, so a long number is one loop
+def word.run(s: String, st: Wst) -> (String & Wst):
+  match s st:
+    case rest WStop{buf, nn, num, ch}:
+      (rest, WStop{buf, nn, num, ch})
+    case rest WEof{buf, nn, num}:
+      (rest, WEof{buf, nn, num})
+    case SNil{} WMore{buf, nn, num}:
+      ("", WEof{buf, nn, num})
+    case SCon{+c, t} WMore{buf, nn, num}:
+      word.run(t, word.decide(c, Char.to_u32(c), buf, nn, num))
+
+# drop an unread suffix. Tail call, so a failed long value does not stack
+def word.drop(s: String) -> Bool:
+  match s:
+    case SNil{}:
+      True{}
+    case SCon{c, t}:
+      word.drop(t)
+
+# drop a word's characters. Tail call, so a long spelling does not stack
+def word.forget(buf: List<&2, Char>) -> Bool:
+  match buf:
+    case Nil{}:
+      True{}
+    case Con{c, t}:
+      word.forget(t)
+
+# a failed word, once its buffer and the unread suffix are gone
+def word.burst.err(goal: Goal, dropped: Bool) -> St:
+  match dropped:
+    case d:
       err.st(goal)
-    case Spot{stack, root}:
-      S{MBack{ch, stop, stack, root}, Nil{}, goal, False{}, False{}}
 
-# a word ended on `ch`, which is still unread
-def see.back(stop: Stop, ch: Char, stack: List<&2, Frame>, goal: Goal) -> St:
-  see.back.on(stop, ch, goal, place.spot(stack))
+# a failed word drops the buffer after the unread suffix
+def word.burst.dead(goal: Goal, dropped: Bool, buf: List<&2, Char>) -> St:
+  match dropped:
+    case d:
+      word.burst.err(goal, word.forget(buf))
 
-# a word ended on a delimiter that still belongs to the suffix
-def see.land(ev: Ev, ch: Char, stack: List<&2, Frame>, goal: Goal, cls: Lex.Class) -> St:
+# a finished event already carries its suffix. Anything else continues on `rest`
+def jump.keep(dropped: Bool, st: St) -> St:
+  match dropped st:
+    case d S{mode, stack, goal, done, bad}:
+      S{mode, stack, goal, done, bad}
+
+# a state that already stopped drops `rest`. Anything else resumes on it
+def jump.unless.done(+rest: String, st: St) -> St:
+  match st:
+    case S{MDone{stop, saved}, stack, goal, done, bad}:
+      jump.keep(word.drop(rest), S{MDone{stop, saved}, stack, goal, done, bad})
+    case S{mode, stack, goal, done, bad}:
+      S{MJump{rest, mode}, stack, goal, done, bad}
+
+# a word that ended because the text did, once its spelling is in hand
+def word.burst.eof.raw(
+  +raw: String,
+  +nn: U32,
+  num: V.Num,
+  stack: List<&2, Frame>,
+  goal: Goal
+) -> St:
+  match goal:
+    case GSkip{1n+left}:
+      word.burst.err(goal, word.drop(raw))
+    case GNext{}:
+      word.eof.place(word.kind(raw, nn, num), raw, nn, stack, goal)
+    case GSkip{0n}:
+      word.eof.place(word.kind(raw, nn, num), raw, nn, stack, goal)
+
+# the empty suffix of an eof is dropped, then the word is placed
+def word.burst.eof.at(
+  dropped: Bool,
+  buf: List<&2, Char>,
+  nn: U32,
+  num: V.Num,
+  stack: List<&2, Frame>,
+  goal: Goal
+) -> St:
+  match dropped:
+    case d:
+      word.burst.eof.raw(Lex.text(buf), nn, num, stack, goal)
+
+# the skip is still inside a container, so the delimiter is taken and the
+# stepper continues. Only this path classifies that byte
+def word.burst.skip(rest: String, +ch: Char, stack: List<&2, Frame>, goal: Goal) -> St:
+  jump.unless.done(rest, see.more(stack, goal, Lex.classify(ch)))
+
+# a value landed on the delimiter. The suffix is consed back once, not copied.
+# The number keeps its own spelling, so it does not hold the rest of the array
+def word.burst.goal(
+  ev: Ev,
+  ch: Char,
+  rest: String,
+  stack: List<&2, Frame>,
+  goal: Goal
+) -> St:
   match goal:
     case GNext{}:
-      see.back(SEv{ev}, ch, stack, goal)
+      place.val(ev, SCon{ch, rest}, stack, goal)
     case GSkip{0n}:
-      see.back(SSkip{}, ch, stack, goal)
+      place.val(ev, SCon{ch, rest}, stack, goal)
     case GSkip{1n+left}:
-      see.more(stack, goal, cls)
+      word.burst.skip(rest, ch, stack, goal)
 
-# a word ended on a delimiter
-def see.end.go(
+# both the spelling and the unread suffix are dropped when the word is not one
+def word.burst.junk(goal: Goal, dropped: Bool, rest: String) -> St:
+  match dropped:
+    case d:
+      word.burst.err(goal, word.drop(rest))
+
+# place the word. A number keeps its own spelling; the delimiter stays unread
+def word.burst.atom(
+  rest: String,
   ch: Char,
+  raw: String,
+  nn: U32,
   stack: List<&2, Frame>,
   goal: Goal,
-  cls: Lex.Class,
-  atom: Atom,
-  cut: String,
-  nn: U32
+  atom: Atom
 ) -> St:
   match atom:
     case ABad{}:
-      err.st(goal)
+      word.burst.junk(goal, word.drop(raw), SCon{ch, rest})
     case ANull{}:
-      see.land(ENull{}, ch, stack, goal, cls)
+      word.burst.goal(ENull{}, ch, rest, stack, goal)
     case ATrue{}:
-      see.land(EBool{True{}}, ch, stack, goal, cls)
+      word.burst.goal(EBool{True{}}, ch, rest, stack, goal)
     case AFalse{}:
-      see.land(EBool{False{}}, ch, stack, goal, cls)
+      word.burst.goal(EBool{False{}}, ch, rest, stack, goal)
     case ANum{}:
-      see.land(ENum{cut, nn}, ch, stack, goal, cls)
+      word.burst.goal(ENum{raw, nn}, ch, rest, stack, goal)
 
-# a word ended on a delimiter. Its spelling is its own text
-def see.end.raw(
+# the delimiter is classified once, and only when a skip must consume it.
+# The plain bytes never were
+def word.burst.raw(
+  rest: String,
   ch: Char,
   +raw: String,
   +nn: U32,
   num: V.Num,
   stack: List<&2, Frame>,
-  goal: Goal,
-  cls: Lex.Class
+  goal: Goal
 ) -> St:
-  see.end.go(ch, stack, goal, cls, word.kind(raw, nn, num), raw, nn)
+  word.burst.atom(rest, ch, raw, nn, stack, goal, word.kind(raw, nn, num))
 
-# a word ended on a delimiter. The unread suffix is not an argument
-def see.end(
+# a word ended on a delimiter. Its spelling is its own text
+def word.burst.stop(
+  rest: String,
   ch: Char,
   buf: List<&2, Char>,
   nn: U32,
   num: V.Num,
   stack: List<&2, Frame>,
-  goal: Goal,
-  cls: Lex.Class
+  goal: Goal
 ) -> St:
-  see.end.raw(ch, Lex.text(buf), nn, num, stack, goal, cls)
+  word.burst.raw(rest, ch, Lex.text(buf), nn, num, stack, goal)
 
-# one more digit of a word. The buffer grows by that character
-def see.digit(
-  +ch: Char,
+# both the unread suffix and the buffer are dropped when the word cannot finish
+def word.burst.fail(goal: Goal, dropped: Bool, buf: List<&2, Char>) -> St:
+  match dropped:
+    case d:
+      word.burst.dead(goal, True{}, buf)
+
+# `got` is the suffix after the run, and why it stopped
+def word.burst.at(got: (String & Wst), stack: List<&2, Frame>, goal: Goal) -> St:
+  (rest, wst) = got
+  match wst:
+    case WEof{buf, nn, num}:
+      word.burst.eof.at(word.drop(rest), buf, nn, num, stack, goal)
+    case WStop{buf, nn, num, ch}:
+      word.burst.stop(rest, ch, buf, nn, num, stack, goal)
+    case WMore{buf, nn, num}:
+      word.burst.fail(goal, word.drop(rest), buf)
+
+# plain digits and letters in one loop. The delimiter is consed back once
+def word.burst(
+  s: String,
   buf: List<&2, Char>,
   nn: U32,
   num: V.Num,
   stack: List<&2, Frame>,
   goal: Goal,
-  done: Bool
+  bad: Bool
 ) -> St:
-  S{MWord{ch <> buf, U32.add(nn, 1), V.num.ok.step(num, Char.to_u32(ch))},
-    stack, goal, done, False{}}
-
-# one more character of a word, or the character that ends it. The suffix
-# stays with the stepper, so a long run of digits does not keep it
-def see.plan(
-  ch: Char,
-  buf: List<&2, Char>,
-  nn: U32,
-  num: V.Num,
-  stack: List<&2, Frame>,
-  goal: Goal,
-  done: Bool,
-  cls: Lex.Class
-) -> St:
-  match cls:
-    case Lex.COther{}:
-      see.digit(ch, buf, nn, num, stack, goal, done)
-    case other:
-      see.end(ch, buf, nn, num, stack, goal, cls)
+  match bad:
+    case True{}:
+      word.burst.dead(goal, word.drop(s), buf)
+    case False{}:
+      word.burst.at(word.run(s, WMore{buf, nn, num}), stack, goal)
 
 # a backslash in a span: copy the prefix, or drop it when skipping
 def span.esc(
@@ -1321,93 +1424,97 @@ def sk.lo.go(
     case False{}:
       err.st(goal)
 
-# one character, between events. A finished event returns; everything else
-# tail-calls on the shorter suffix. A string character, a word character,
-# and a bracket are not handed to the step twice, so a long row or a long
-# array moves the suffix instead of keeping it
-def next.go(s: String, st: St) -> (Stop & Cur):
-  match s st:
-    case any S{MDone{stop, saved}, stack, goal, done, bad}:
+# jumps back from a plain word still available to this step. A byte step
+# keeps the count and shrinks the suffix instead, so a long string does not
+# burn it. Built at run time: a Nat literal of this size is unary
+def next.fuel() -> Nat:
+  U32.to_nat(4294967295)
+
+# one character, between events. A plain word is one tail loop. A finished
+# event returns; everything else tail-calls on the shorter suffix. A string
+# character and a bracket are not handed to the step twice, so a long row or
+# a long array moves the suffix instead of keeping it
+def next.go(fuel: Nat, s: String, st: St) -> (Stop & Cur):
+  match fuel s st:
+    case n any S{MDone{stop, saved}, stack, goal, done, bad}:
       (stop, Cur{saved, stack, done, bad})
-    case s S{MRest{stop}, stack, goal, done, bad}:
+    case n s S{MRest{stop}, stack, goal, done, bad}:
       (stop, Cur{s, stack, done, bad})
-    case s S{MBack{ch, stop, stack2, root}, stack, goal, done, bad}:
-      (stop, Cur{SCon{ch, s}, stack2, root, False{}})
-    case SNil{} S{MQuote{}, stack, goal, done, bad}:
+    case 0n any S{mode, stack, goal, done, bad}:
       bad.cur()
-    case SCon{ch, tl} S{MQuote{}, stack, goal, done, True{}}:
-      next.go(tl, err.st(goal))
-    case SCon{ch, +tl} S{MQuote{}, stack, goal, done, False{}}:
-      next.go(tl, quote.first(ch, tl, stack, goal, done))
-    case SNil{} S{MIdle{}, stack, goal, done, bad}:
+    case 1n+left any S{MJump{rest, mode}, stack, goal, done, bad}:
+      next.go(left, rest, S{mode, stack, goal, done, bad})
+    case 1n+left SNil{} S{MQuote{}, stack, goal, done, bad}:
+      bad.cur()
+    case 1n+left SCon{ch, tl} S{MQuote{}, stack, goal, done, True{}}:
+      next.go(1n+left, tl, err.st(goal))
+    case 1n+left SCon{ch, +tl} S{MQuote{}, stack, goal, done, False{}}:
+      next.go(1n+left, tl, quote.first(ch, tl, stack, goal, done))
+    case 1n+left SNil{} S{MIdle{}, stack, goal, done, bad}:
       idle.eof(stack, goal, done, bad)
-    case SCon{ch, tl} S{MIdle{}, stack, goal, done, True{}}:
-      next.go(tl, err.st(goal))
-    case SCon{ch, tl} S{MIdle{}, stack, goal, done, False{}}:
-      next.go(tl, look.plan(ch, stack, goal, done, Lex.classify(ch)))
-    case SNil{} S{MWord{buf, nn, num}, stack, goal, done, bad}:
-      word.eof(buf, nn, num, stack, goal, bad)
-    case SCon{ch, tl} S{MWord{buf, nn, num}, stack, goal, done, True{}}:
-      next.go(tl, err.st(goal))
-    case SCon{ch, tl} S{MWord{buf, nn, num}, stack, goal, done, False{}}:
-      next.go(tl, see.plan(ch, buf, nn, num, stack, goal, done, Lex.classify(ch)))
-    case SNil{} S{MSpan{cut, nn}, stack, goal, done, bad}:
+    case 1n+left SCon{ch, tl} S{MIdle{}, stack, goal, done, True{}}:
+      next.go(1n+left, tl, err.st(goal))
+    case 1n+left SCon{ch, tl} S{MIdle{}, stack, goal, done, False{}}:
+      next.go(1n+left, tl, look.plan(ch, stack, goal, done, Lex.classify(ch)))
+    case 1n+left s S{MWord{buf, nn, num}, stack, goal, done, bad}:
+      next.go(left, "", word.burst(s, buf, nn, num, stack, goal, bad))
+    case 1n+left SNil{} S{MSpan{cut, nn}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{ch, tl} S{MSpan{cut, nn}, stack, goal, done, True{}}:
-      next.go(tl, err.st(goal))
-    case SCon{ch, tl} S{MSpan{cut, nn}, stack, goal, done, False{}}:
-      next.go(tl, span.advance(span.kind.of(ch), cut, nn, stack, goal, done))
-    case SNil{} S{MCopy{buf}, stack, goal, done, bad}:
+    case 1n+left SCon{ch, tl} S{MSpan{cut, nn}, stack, goal, done, True{}}:
+      next.go(1n+left, tl, err.st(goal))
+    case 1n+left SCon{ch, tl} S{MSpan{cut, nn}, stack, goal, done, False{}}:
+      next.go(1n+left, tl, span.advance(span.kind.of(ch), cut, nn, stack, goal, done))
+    case 1n+left SNil{} S{MCopy{buf}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{+ch, +tl} S{MCopy{buf}, stack, goal, done, bad}:
-      next.go(tl, copy.hit(ch, tl, buf, stack, goal, done, bad, Lex.classify(ch),
+    case 1n+left SCon{+ch, +tl} S{MCopy{buf}, stack, goal, done, bad}:
+      next.go(1n+left, tl, copy.hit(ch, tl, buf, stack, goal, done, bad, Lex.classify(ch),
         U32.is_lt(Char.to_u32(ch), 32)))
-    case SNil{} S{MEsc{buf}, stack, goal, done, bad}:
+    case 1n+left SNil{} S{MEsc{buf}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{+ch, +tl} S{MEsc{buf}, stack, goal, done, bad}:
-      next.go(tl, esc.hit(ch, tl, buf, stack, goal, done, bad))
-    case SNil{} S{MUni{left, acc, buf}, stack, goal, done, bad}:
+    case 1n+left SCon{+ch, +tl} S{MEsc{buf}, stack, goal, done, bad}:
+      next.go(1n+left, tl, esc.hit(ch, tl, buf, stack, goal, done, bad))
+    case 1n+left SNil{} S{MUni{left2, acc, buf}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{+ch, +tl} S{MUni{left, acc, buf}, stack, goal, done, bad}:
-      next.go(tl, uni.hit(ch, tl, left, acc, buf, stack, goal, done, bad))
-    case SNil{} S{MHi{hi, buf}, stack, goal, done, bad}:
+    case 1n+left SCon{+ch, +tl} S{MUni{left2, acc, buf}, stack, goal, done, bad}:
+      next.go(1n+left, tl, uni.hit(ch, tl, left2, acc, buf, stack, goal, done, bad))
+    case 1n+left SNil{} S{MHi{hi, buf}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{ch, tl} S{MHi{hi, buf}, stack, goal, done, bad}:
-      next.go(tl, hi.hit(tl, hi, buf, stack, goal, done, bad, Lex.classify(ch)))
-    case SNil{} S{MHiEsc{hi, buf}, stack, goal, done, bad}:
+    case 1n+left SCon{ch, tl} S{MHi{hi, buf}, stack, goal, done, bad}:
+      next.go(1n+left, tl, hi.hit(tl, hi, buf, stack, goal, done, bad, Lex.classify(ch)))
+    case 1n+left SNil{} S{MHiEsc{hi, buf}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{+ch, tl} S{MHiEsc{hi, buf}, stack, goal, done, bad}:
-      next.go(tl, hiesc.hit(ch, tl, hi, buf, stack, goal, done, bad))
-    case SNil{} S{MLo{left, acc, hi, buf}, stack, goal, done, bad}:
+    case 1n+left SCon{+ch, tl} S{MHiEsc{hi, buf}, stack, goal, done, bad}:
+      next.go(1n+left, tl, hiesc.hit(ch, tl, hi, buf, stack, goal, done, bad))
+    case 1n+left SNil{} S{MLo{left2, acc, hi, buf}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{+ch, +tl} S{MLo{left, acc, hi, buf}, stack, goal, done, bad}:
-      next.go(tl, lo.hit(ch, tl, left, acc, hi, buf, stack, goal, done, bad))
-    case SNil{} S{MSkStr{}, stack, goal, done, bad}:
+    case 1n+left SCon{+ch, +tl} S{MLo{left2, acc, hi, buf}, stack, goal, done, bad}:
+      next.go(1n+left, tl, lo.hit(ch, tl, left2, acc, hi, buf, stack, goal, done, bad))
+    case 1n+left SNil{} S{MSkStr{}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{ch, tl} S{MSkStr{}, stack, goal, done, True{}}:
-      next.go(tl, err.st(goal))
-    case SCon{ch, tl} S{MSkStr{}, stack, goal, done, False{}}:
-      next.go(tl, sk.advance(span.kind.of(ch), stack, goal, done))
-    case SNil{} S{MSkEsc{}, stack, goal, done, bad}:
+    case 1n+left SCon{ch, tl} S{MSkStr{}, stack, goal, done, True{}}:
+      next.go(1n+left, tl, err.st(goal))
+    case 1n+left SCon{ch, tl} S{MSkStr{}, stack, goal, done, False{}}:
+      next.go(1n+left, tl, sk.advance(span.kind.of(ch), stack, goal, done))
+    case 1n+left SNil{} S{MSkEsc{}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{+ch, tl} S{MSkEsc{}, stack, goal, done, bad}:
-      next.go(tl, sk.esc(ch, tl, stack, goal, done, bad))
-    case SNil{} S{MSkUni{left, acc}, stack, goal, done, bad}:
+    case 1n+left SCon{+ch, tl} S{MSkEsc{}, stack, goal, done, bad}:
+      next.go(1n+left, tl, sk.esc(ch, tl, stack, goal, done, bad))
+    case 1n+left SNil{} S{MSkUni{left2, acc}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{+ch, tl} S{MSkUni{left, acc}, stack, goal, done, bad}:
-      next.go(tl, sk.uni(ch, tl, left, acc, stack, goal, done, bad))
-    case SNil{} S{MSkHi{hi}, stack, goal, done, bad}:
+    case 1n+left SCon{+ch, tl} S{MSkUni{left2, acc}, stack, goal, done, bad}:
+      next.go(1n+left, tl, sk.uni(ch, tl, left2, acc, stack, goal, done, bad))
+    case 1n+left SNil{} S{MSkHi{hi}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{ch, tl} S{MSkHi{hi}, stack, goal, done, bad}:
-      next.go(tl, sk.hi(stack, goal, done, hi, Lex.classify(ch)))
-    case SNil{} S{MSkHiEsc{hi}, stack, goal, done, bad}:
+    case 1n+left SCon{ch, tl} S{MSkHi{hi}, stack, goal, done, bad}:
+      next.go(1n+left, tl, sk.hi(stack, goal, done, hi, Lex.classify(ch)))
+    case 1n+left SNil{} S{MSkHiEsc{hi}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{+ch, tl} S{MSkHiEsc{hi}, stack, goal, done, bad}:
-      next.go(tl, sk.hiesc(stack, goal, done, hi, U32.is_eq(Char.to_u32(ch), 117)))
-    case SNil{} S{MSkLo{left, acc, hi}, stack, goal, done, bad}:
+    case 1n+left SCon{+ch, tl} S{MSkHiEsc{hi}, stack, goal, done, bad}:
+      next.go(1n+left, tl, sk.hiesc(stack, goal, done, hi, U32.is_eq(Char.to_u32(ch), 117)))
+    case 1n+left SNil{} S{MSkLo{left2, acc, hi}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{+ch, tl} S{MSkLo{left, acc, hi}, stack, goal, done, bad}:
-      next.go(tl, sk.lo.go(ch, tl, left, acc, hi, stack, goal, done,
+    case 1n+left SCon{+ch, tl} S{MSkLo{left2, acc, hi}, stack, goal, done, bad}:
+      next.go(1n+left, tl, sk.lo.go(ch, tl, left2, acc, hi, stack, goal, done,
         Lex.hex.ok(Char.to_u32(ch))))
 
 # an event from a step. A skip that surfaces here is a broken reader
@@ -1425,7 +1532,7 @@ def next.open(rest: String, stack: List<&2, Frame>, done: Bool, bad: Bool) -> (E
     case True{}:
       (EErr{}, Cur{"", Nil{}, False{}, True{}})
     case False{}:
-      next.use(next.go(rest, S{MIdle{}, stack, GNext{}, done, False{}}))
+      next.use(next.go(next.fuel(), rest, S{MIdle{}, stack, GNext{}, done, False{}}))
 
 # the cursor after a skip. An event other than a failure means the skip
 # stopped on something that was not one value
@@ -1447,7 +1554,7 @@ def skip.open(rest: String, stack: List<&2, Frame>, done: Bool, bad: Bool) -> Cu
     case True{} False{}:
       Cur{"", Nil{}, False{}, True{}}
     case False{} False{}:
-      skip.use(next.go(rest, S{MIdle{}, stack, GSkip{0n}, False{}, False{}}))
+      skip.use(next.go(next.fuel(), rest, S{MIdle{}, stack, GSkip{0n}, False{}, False{}}))
 
 # a cursor at the start of `src`. It holds that string as its unread suffix,
 # so dropping the caller's own variable does not drop the cursor, and
