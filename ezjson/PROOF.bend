@@ -281,6 +281,12 @@ def Laws.pull_steps():
 def Laws.pull_copy():
   {==}
 
+def Laws.pull_hold():
+  {==}
+
+def Laws.pull_nest():
+  {==}
+
 def Laws.public_cursor():
   {==}
 
