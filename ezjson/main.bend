@@ -1,10 +1,12 @@
 # ezjson: JSON for Bend 2. `parse` reads text into Maybe Json. `print` writes
-# compact text. Build null, booleans, numbers, strings, arrays, and objects;
-# read them with get, at, and as_bool, as_str, as_num, as_u32, as_f32.
+# compact text. `cursor` reads one event at a time. Build null, booleans,
+# numbers, strings, arrays, and objects; read them with get, at, and as_bool,
+# as_str, as_num, as_u32, as_f32.
 import Base
 import ./value.bend as Value
 import ./parse.bend as Parse
 import ./print.bend as Print
+import ./pull.bend as Pull
 
 # a text as a value, or None when it is not JSON
 def parse(s: String) -> Maybe<&2, Value.Json>:
@@ -66,3 +68,22 @@ def as_u32(j: Value.Json) -> Maybe<&2, U32>:
 # a number as an F32, or none when it is not one or does not fit
 def as_f32(j: Value.Json) -> Maybe<&2, F32>:
   Value.as_f32(j)
+
+# a cursor at the start of a JSON text. It holds the unread suffix of that
+# text. A span event keeps its own suffix, so it stays valid after `next`
+# moves the cursor, and it is gone when the event is dropped
+def cursor(src: String) -> Pull.Cur:
+  Pull.cursor(src)
+
+# the next event. Commas and colons are not events. After the root value,
+# the next call is the end, or an error if another value follows
+def next(cur: Pull.Cur) -> (Pull.Ev & Pull.Cur):
+  Pull.next(cur)
+
+# drop the next value, scalar or container, without building it
+def skip(cur: Pull.Cur) -> Pull.Cur:
+  Pull.skip(cur)
+
+# the text of a string, key, or number event, copying a span. None otherwise
+def text(ev: Pull.Ev) -> Maybe<&2, String>:
+  Pull.text(ev)

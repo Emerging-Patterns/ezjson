@@ -241,3 +241,54 @@ def Laws.rfc_line_sep():
 
 def Laws.rfc_bom():
   {==}
+
+def Laws.pull_atoms():
+  {==}
+
+def Laws.pull_nums():
+  {==}
+
+def Laws.pull_text():
+  {==}
+
+def Laws.pull_ws():
+  {==}
+
+def Laws.pull_one():
+  {==}
+
+def Laws.pull_bad():
+  {==}
+
+def Laws.pull_struct():
+  {==}
+
+def Laws.pull_skip():
+  {==}
+
+def Laws.pull_span():
+  {==}
+
+def Laws.pull_rows():
+  {==}
+
+def Laws.pull_rows_skip():
+  {==}
+
+def Laws.pull_steps():
+  {==}
+
+def Laws.pull_copy():
+  {==}
+
+def Laws.public_cursor():
+  {==}
+
+def Laws.public_next():
+  {==}
+
+def Laws.public_skip():
+  {==}
+
+def Laws.public_text():
+  {==}

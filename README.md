@@ -39,6 +39,37 @@ object key and returns the first value when a key is repeated. `at` reads an
 array index. `as_bool`, `as_str`, `as_num`, `as_u32`, and `as_f32` read a
 value of that kind, or none when the kind differs or the number does not fit.
 
+A multi-gigabyte text is read with a cursor. `parse` builds one tree;
+`cursor` does not. `next` returns one event and the cursor after it. `skip`
+drops the next value (one scalar, or one array or object and everything
+inside it) without building that value. `text` copies the spelling of a
+string, a key, or a number. Commas and colons are not events. Import
+`pull.bend` to match the event constructors.
+
+`cursor` holds the unread suffix of the source. A span (`Pull.EStrS`,
+`Pull.EKeyS`, `Pull.ENum`) is the first `nn` characters of a suffix, not a
+copy. The event holds that suffix, so the span stays readable after `next`
+advances, and it is gone when the event is dropped. Dropping the caller's
+own string variable does not drop the cursor.
+
+A `laya-weights-json-v2` pack is one object whose matrices are arrays of
+string rows. Walk it like this: `next` yields the object, then a key, then
+the array; each following `next` is one row (`EStrS` when the row has no
+escapes, `EStr` when it does). `text` copies a row only when an owned
+`String` is needed. `skip`, called after a key and before the value, drops
+a matrix the loader does not want. After `skip` of one array element the
+comma stays, so the next `next` reads the following element. After `skip`
+of a whole array the cursor sits just past `]`.
+
+```
+import 0xa3c2445eb44c5d8406e6229be518fccb/main.bend as Ezjson
+import 0xa3c2445eb44c5d8406e6229be518fccb/pull.bend as Pull
+
+def row(cur: Pull.Cur) -> String:
+  (ev, _rest) = Ezjson.next(cur)
+  Maybe.default(&2, String, Ezjson.text(ev), "")
+```
+
 ## Compliance
 
 Closed equalities in `ezjson/LAWS.bend`, proved in `ezjson/PROOF.bend`
@@ -60,3 +91,12 @@ Closed equalities in `ezjson/LAWS.bend`, proved in `ezjson/PROOF.bend`
 - §8.3: an escape and the same character unescaped compare equal, including
   an object name.
 - §10: `print` escapes U+0000–U+001F.
+
+The same sections hold for the cursor. `pull_atoms`, `pull_nums`,
+`pull_text`, `pull_ws`, `pull_one`, `pull_bad`, and `pull_struct` read
+those values one event at a time. `pull_skip` drops a value.
+`pull_span`, `pull_rows`, and `pull_rows_skip` walk a weight-pack object
+of 64 string rows as events, not as one `parse` tree. `pull_steps` counts
+the events of a 24-number array (begin, each number, end, and done).
+`public_cursor`, `public_next`, `public_skip`, and `public_text` are the
+wrappers in `main.bend`.
