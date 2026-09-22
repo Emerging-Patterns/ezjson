@@ -100,3 +100,11 @@ of 64 string rows as events, not as one `parse` tree. `pull_steps` counts
 the events of a 24-number array (begin, each number, end, and done).
 `public_cursor`, `public_next`, `public_skip`, and `public_text` are the
 wrappers in `main.bend`.
+
+`scale/main.bend` is the size check. After ezjson 0.2.0, `parse` of a
+string-row embed loads at 24k rows (~447 KiB) and overflows the stack at
+28k (~523 KiB). A nested embed loads at 16k (~295 KiB) and is killed at
+32k (~599 KiB). The scale program does not call `parse`. It builds a
+string-row pack of 32000 rows (~563 KiB) and a nested pack of 35000 rows
+of `[0.100,0.200,0.3]` (~615 KiB), counts them with `next`, and `skip`s
+each row array. Both sit past those failure points.
