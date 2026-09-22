@@ -1,8 +1,7 @@
-# Past the laya v0.2.0 parse failures: a string-row object of 32000 rows
-# (~563 KiB; parse overflows at 28k / ~523 KiB) and a nested object of 35000
-# rows of `[0.100,0.200,0.3]` (~615 KiB; parse is OOM-killed at 32k / ~599 KiB).
-# `main` counts those events with the public cursor and skips each row array.
-# It does not call `parse`.
+# Large fixtures for the pull walker: an object of 32000 string rows
+# (~563 KiB) and an object of 35000 nested arrays of `[0.100,0.200,0.3]`
+# (~615 KiB). `main` counts those events with the public cursor and skips
+# each array. It does not call `parse`.
 import Base
 import ../ezjson/main.bend as Ezjson
 import ../ezjson/pull.bend as Pull
@@ -41,11 +40,11 @@ def rows.of(n: Nat, one: String, more: String) -> String:
 def pack(body: String) -> String:
   "{\"rows\":[" ++ body ++ "],\"n\":1}"
 
-# 32000 string rows, past the 28k stack overflow
+# 32000 string rows
 def wide.doc() -> String:
   pack(rows.of(Nat.mul(320n, 100n), "\"0.100,0.200,0.3\"", ",\"0.100,0.200,0.3\""))
 
-# 35000 nested rows, past the 32k OOM
+# 35000 nested rows
 def nest.doc() -> String:
   pack(rows.of(Nat.mul(350n, 100n), "[0.100,0.200,0.3]", ",[0.100,0.200,0.3]"))
 
@@ -127,11 +126,11 @@ def skip.mem(got: (Pull.Ev & Pull.Cur)) -> String:
   (ev, cur) = got
   skip.val(Ezjson.next(cur))
 
-# skip the row array of a pack and read the next member
+# skip the array and read the next member
 def skipped(src: String) -> String:
   skip.mem(Ezjson.next(Ezjson.cursor(src)))
 
-# the count and the member after the skipped row array
+# the count and the member after the skipped array
 def report(+src: String, strs: Bool, label: String) -> String:
   U32.show(count(src, strs)) ++ " " ++ label ++ skipped(src)
 

@@ -1,6 +1,5 @@
-# Compiled walk of the two embeds that overflow ezjson 0.2.0's parse.
-# String rows: 32000, past the 28k stack overflow. Nested rows: 35000, past
-# the 32k OOM. The program counts with next and skip; it does not parse.
+# Compiled size check. Pull-walks a large string-row document and a large
+# nested-array document with next and skip. It does not call parse.
 {
   pkgs,
   bend,
@@ -29,7 +28,7 @@ let
       cp ezjson-scale $out/bin/ezjson-scale
     '';
     meta = {
-      description = "Pull-cursor walk past the 28k string-row and 32k nested parse failures";
+      description = "Compiled size check that pull-walks large string-row and nested-array documents without calling parse";
       mainProgram = "ezjson-scale";
     };
   };
