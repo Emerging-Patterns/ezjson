@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/Emerging-Patterns/ezjson/compare/v0.4.0...v0.4.1) (2026-09-22)
+
+
+### Performance Improvements
+
+* walk big JSON arrays without keeping the unread suffix ([#28](https://github.com/Emerging-Patterns/ezjson/issues/28)) ([c22d7e1](https://github.com/Emerging-Patterns/ezjson/commit/c22d7e1843f2bf29e904a2c466185586f91c792f))
+
 ## [0.4.0](https://github.com/Emerging-Patterns/ezjson/compare/v0.3.1...v0.4.0) (2026-09-22)
 
 
