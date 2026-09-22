@@ -52,22 +52,16 @@ copy. The event holds that suffix, so the span stays readable after `next`
 advances, and it is gone when the event is dropped. Dropping the caller's
 own string variable does not drop the cursor.
 
-A `laya-weights-json-v2` pack is one object whose matrices are arrays of
-string rows. Walk it like this: `next` yields the object, then a key, then
-the array; each following `next` is one row (`EStrS` when the row has no
-escapes, `EStr` when it does). `text` copies a row only when an owned
-`String` is needed. `skip`, called after a key and before the value, drops
-a matrix the loader does not want. After `skip` of one array element the
-comma stays, so the next `next` reads the following element. After `skip`
-of a whole array the cursor sits just past `]`.
+Walk a large object or array one event at a time. `skip` drops a subtree
+you do not need. `text` copies an owned string when you need one.
 
 ```
 import 0xa3c2445eb44c5d8406e6229be518fccb/main.bend as Ezjson
 import 0xa3c2445eb44c5d8406e6229be518fccb/pull.bend as Pull
 
-def row(cur: Pull.Cur) -> String:
-  (ev, _rest) = Ezjson.next(cur)
-  Maybe.default(&2, String, Ezjson.text(ev), "")
+def owned(cur: Pull.Cur) -> (String & Pull.Cur):
+  (ev, rest) = Ezjson.next(cur)
+  (Maybe.default(&2, String, Ezjson.text(ev), ""), Ezjson.skip(rest))
 ```
 
 ## Compliance
@@ -95,16 +89,12 @@ Closed equalities in `ezjson/LAWS.bend`, proved in `ezjson/PROOF.bend`
 The same sections hold for the cursor. `pull_atoms`, `pull_nums`,
 `pull_text`, `pull_ws`, `pull_one`, `pull_bad`, and `pull_struct` read
 those values one event at a time. `pull_skip` drops a value.
-`pull_span`, `pull_rows`, and `pull_rows_skip` walk a weight-pack object
-of 64 string rows as events, not as one `parse` tree. `pull_steps` counts
-the events of a 24-number array (begin, each number, end, and done).
-`public_cursor`, `public_next`, `public_skip`, and `public_text` are the
-wrappers in `main.bend`.
+`pull_span`, `pull_rows`, and `pull_rows_skip` walk a large object with
+many string array elements as events, not as one `parse` tree.
+`pull_steps` counts the events of a 24-number array (begin, each number,
+end, and done). `public_cursor`, `public_next`, `public_skip`, and
+`public_text` are the wrappers in `main.bend`.
 
-`scale/main.bend` is the size check. After ezjson 0.2.0, `parse` of a
-string-row embed loads at 24k rows (~447 KiB) and overflows the stack at
-28k (~523 KiB). A nested embed loads at 16k (~295 KiB) and is killed at
-32k (~599 KiB). The scale program does not call `parse`. It builds a
-string-row pack of 32000 rows (~563 KiB) and a nested pack of 35000 rows
-of `[0.100,0.200,0.3]` (~615 KiB), counts them with `next`, and `skip`s
-each row array. Both sit past those failure points.
+`scale/` is a compiled size check that pull-walks large string-row and
+nested-array documents without calling `parse`: 32000 string rows
+(~563 KiB) and 35000 nested rows of `[0.100,0.200,0.3]` (~615 KiB).

@@ -631,7 +631,7 @@ def pull.tail.mem(got: (Pull.Ev & Pull.Cur)) -> String:
 def pull.tail(src: String) -> String:
   pull.tail.mem(Pull.next(Pull.cursor(src)))
 
-# whether the first string row is a span of the source or an owned copy
+# whether the first string array element is a span of the source or an owned copy
 def pull.row.ev(ev: Pull.Ev) -> String:
   match ev:
     case Pull.EStrS{src, nn}:
@@ -688,7 +688,7 @@ def pull.rows(left: Nat) -> String:
     case 1n+p:
       "\"r\"," ++ pull.rows(p)
 
-# a weight-pack shaped object: a string-row array, then a small number
+# a large object with many string array elements, then a small number
 def pull.doc(left: Nat) -> String:
   "{\"rows\":[" ++ pull.rows(left) ++ "],\"n\":1}"
 
@@ -832,15 +832,15 @@ law pull_skip:
     ++ pull.tail("{\"a\":\"x\\ny\",\"b\":true}")
     == "..#8k:btrue" : String}
 
-# LAW: a string row of a weight-pack object is a span, read one event at a time
+# LAW: a string element of a large object is a span, read one event at a time
 law pull_span:
   {pull.row(pull.doc(4n)) == "span:r" : String}
 
-# LAW: sixty-four string rows are sixty-four string events, not one parse tree
+# LAW: sixty-four string array elements are sixty-four string events, not one parse tree
 law pull_rows:
   {pull.count(pull.doc(64n)) == 64 : U32}
 
-# LAW: skipping the row array still reaches the next key and its number
+# LAW: skipping the string array still reaches the next key and its number
 law pull_rows_skip:
   {pull.tail(pull.doc(64n)) == "k:n#1" : String}
 
