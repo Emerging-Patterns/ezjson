@@ -63,6 +63,14 @@ type Piece is Data:
   PSpan{cut: String, nn: U32}
   POwn{body: String}
 
+# what one character of a string does. The usual one is KGo: stay in the
+# string. The others leave it
+type Skind is Data:
+  KGo{}
+  KEnd{}
+  KEsc{}
+  KBad{}
+
 # where a finished value lands, or that the slot cannot take one
 type Spot is Data:
   Spot{stack: List<&2, Frame>, root: Bool}
@@ -87,6 +95,9 @@ type Mode is Data:
   MSkHiEsc{hi: U32}
   MSkLo{left: Nat, acc: U32, hi: U32}
   MDone{stop: Stop, saved: String}
+  # the cursor rest is the suffix the stepper is already on, so closing a
+  # long string does not keep that suffix a second time
+  MRest{stop: Stop}
 
 # the scanner's state, apart from the unread suffix it is walking
 type St is Data:
@@ -245,6 +256,80 @@ def str.skip(rest: String, stack: List<&2, Frame>, goal: Goal) -> St:
       err.st(goal)
     case GSkip{depth}:
       str.place(POwn{""}, rest, stack, goal)
+
+# a value has landed, and the cursor rest is the suffix already in hand
+def place.val.ok.here(ev: Ev, goal: Goal, stack: List<&2, Frame>, root: Bool) -> St:
+  match goal:
+    case GNext{}:
+      S{MRest{SEv{ev}}, stack, GNext{}, root, False{}}
+    case GSkip{0n}:
+      S{MRest{SSkip{}}, stack, GSkip{0n}, root, False{}}
+    case GSkip{1n+left}:
+      S{MIdle{}, stack, GSkip{1n+left}, False{}, False{}}
+
+# a value has landed on the suffix in hand, once the slot is known
+def place.val.on.here(ev: Ev, goal: Goal, spot: Spot) -> St:
+  match spot:
+    case SpotBad{}:
+      err.st(goal)
+    case Spot{stack, root}:
+      place.val.ok.here(ev, goal, stack, root)
+
+# a value has landed on the suffix in hand
+def place.val.here(ev: Ev, stack: List<&2, Frame>, goal: Goal) -> St:
+  place.val.on.here(ev, goal, place.spot(stack))
+
+# an object key has landed on the suffix in hand
+def place.key.here(ev: Ev, frames: List<&2, Frame>, goal: Goal) -> St:
+  match goal:
+    case GNext{}:
+      S{MRest{SEv{ev}}, FObj{SCol{}, False{}} <> frames, goal, False{}, False{}}
+    case GSkip{0n}:
+      err.st(goal)
+    case GSkip{1n+left}:
+      S{MIdle{}, FObj{SCol{}, False{}} <> frames, goal, False{}, False{}}
+
+# a string value on the suffix in hand. A skip inside a container keeps scanning
+def str.val.here(ev: Ev, stack: List<&2, Frame>, goal: Goal) -> St:
+  match goal:
+    case GSkip{1n+left}:
+      str.cont(stack, goal)
+    case GNext{}:
+      place.val.here(ev, stack, goal)
+    case GSkip{0n}:
+      place.val.here(ev, stack, goal)
+
+# a finished string whose rest is the suffix the stepper is on
+def str.place.here(piece: Piece, stack: List<&2, Frame>, goal: Goal) -> St:
+  match stack:
+    case Con{FObj{SKey{}, fresh}, frames}:
+      place.key.here(str.ev(piece, True{}), frames, goal)
+    case other:
+      str.val.here(str.ev(piece, False{}), stack, goal)
+
+# a skipped string closed on the suffix in hand
+def str.skip.here(stack: List<&2, Frame>, goal: Goal) -> St:
+  match goal:
+    case GNext{}:
+      err.st(goal)
+    case GSkip{depth}:
+      str.place.here(POwn{""}, stack, goal)
+
+# one character of a string: stay in it, close it, start an escape, or fail
+def span.kind(cls: Lex.Class, ctrl: Bool) -> Skind:
+  match cls ctrl:
+    case Lex.CQuote{} c:
+      KEnd{}
+    case Lex.CBack{} False{}:
+      KEsc{}
+    case k True{}:
+      KBad{}
+    case k False{}:
+      KGo{}
+
+# classify one string character. `ch` is a code point, so the keep is a word
+def span.kind.of(+ch: Char) -> Skind:
+  span.kind(Lex.classify(ch), U32.is_lt(Char.to_u32(ch), 32))
 
 # `]` or `}` of a skip: depth 1 finishes the value, deeper keeps going
 def close.skip.go(rest: String, stack: List<&2, Frame>, left: Nat, root: Bool) -> St:
@@ -698,45 +783,37 @@ def span.esc(
     case GSkip{depth}:
       S{MSkEsc{}, stack, goal, done, False{}}
 
-# a `"` closed a span. A `\` hands the prefix to the copier, unless the
-# string is being skipped
-def span.hit.go(
-  +tl: String,
-  +cut: String,
-  +nn: U32,
+# the next state after one character of a span. The unread tail stays with
+# the stepper, so the usual character does not keep it
+def span.advance(
+  k: Skind,
+  cut: String,
+  nn: U32,
   stack: List<&2, Frame>,
   goal: Goal,
-  done: Bool,
-  cls: Lex.Class,
-  ctrl: Bool
+  done: Bool
 ) -> St:
-  match cls ctrl:
-    case Lex.CQuote{} c:
-      str.place(PSpan{cut, nn}, tl, stack, goal)
-    case Lex.CBack{} False{}:
-      span.esc(cut, nn, stack, goal, done)
-    case k True{}:
-      err.st(goal)
-    case k False{}:
+  match k:
+    case KGo{}:
       S{MSpan{cut, U32.add(nn, 1)}, stack, goal, done, False{}}
-
-# one character of an unescaped string
-def span.hit(
-  +tl: String,
-  +cut: String,
-  +nn: U32,
-  stack: List<&2, Frame>,
-  goal: Goal,
-  done: Bool,
-  bad: Bool,
-  cls: Lex.Class,
-  ctrl: Bool
-) -> St:
-  match bad:
-    case True{}:
+    case KEnd{}:
+      str.place.here(PSpan{cut, nn}, stack, goal)
+    case KEsc{}:
+      span.esc(cut, nn, stack, goal, done)
+    case KBad{}:
       err.st(goal)
-    case False{}:
-      span.hit.go(tl, cut, nn, stack, goal, done, cls, ctrl)
+
+# the next state after one character of a string being skipped
+def sk.advance(k: Skind, stack: List<&2, Frame>, goal: Goal, done: Bool) -> St:
+  match k:
+    case KGo{}:
+      S{MSkStr{}, stack, goal, done, False{}}
+    case KEnd{}:
+      str.skip.here(stack, goal)
+    case KEsc{}:
+      S{MSkEsc{}, stack, goal, done, False{}}
+    case KBad{}:
+      err.st(goal)
 
 # one character of a string that is being decoded
 def copy.hit.go(
@@ -1057,41 +1134,6 @@ def lo.hit(
     case False{}:
       lo.hit.go(ch, tl, left, acc, hi, buf, stack, goal, done, Lex.hex.ok(Char.to_u32(ch)))
 
-# one character of a string a skip is dropping
-def sk.str.go(
-  tl: String,
-  stack: List<&2, Frame>,
-  goal: Goal,
-  done: Bool,
-  cls: Lex.Class,
-  ctrl: Bool
-) -> St:
-  match cls ctrl:
-    case Lex.CQuote{} c:
-      str.skip(tl, stack, goal)
-    case Lex.CBack{} False{}:
-      S{MSkEsc{}, stack, goal, done, False{}}
-    case k True{}:
-      err.st(goal)
-    case k False{}:
-      S{MSkStr{}, stack, goal, done, False{}}
-
-# one character of a string a skip is dropping
-def sk.str(
-  tl: String,
-  stack: List<&2, Frame>,
-  goal: Goal,
-  done: Bool,
-  bad: Bool,
-  cls: Lex.Class,
-  ctrl: Bool
-) -> St:
-  match bad:
-    case True{}:
-      err.st(goal)
-    case False{}:
-      sk.str.go(tl, stack, goal, done, cls, ctrl)
-
 # a decoded short escape puts the skip back in the string
 def sk.esc.put(
   _tl: String,
@@ -1273,11 +1315,14 @@ def sk.lo.go(
       err.st(goal)
 
 # one character, between events. A finished event returns; everything else
-# tail-calls on the shorter suffix
+# tail-calls on the shorter suffix. A string character is not handed to the
+# step twice, so a long row moves the suffix instead of keeping it
 def next.go(s: String, st: St) -> (Stop & Cur):
   match s st:
     case any S{MDone{stop, saved}, stack, goal, done, bad}:
       (stop, Cur{saved, stack, done, bad})
+    case s S{MRest{stop}, stack, goal, done, bad}:
+      (stop, Cur{s, stack, done, bad})
     case SNil{} S{MIdle{}, stack, goal, done, bad}:
       idle.eof(stack, goal, done, bad)
     case SCon{+ch, +tl} S{MIdle{}, stack, goal, done, bad}:
@@ -1288,9 +1333,10 @@ def next.go(s: String, st: St) -> (Stop & Cur):
       next.go(tl, word.hit(ch, tl, cut, nn, num, stack, goal, done, bad, Lex.classify(ch)))
     case SNil{} S{MSpan{cut, nn}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{+ch, +tl} S{MSpan{cut, nn}, stack, goal, done, bad}:
-      next.go(tl, span.hit(tl, cut, nn, stack, goal, done, bad, Lex.classify(ch),
-        U32.is_lt(Char.to_u32(ch), 32)))
+    case SCon{ch, tl} S{MSpan{cut, nn}, stack, goal, done, True{}}:
+      next.go(tl, err.st(goal))
+    case SCon{ch, tl} S{MSpan{cut, nn}, stack, goal, done, False{}}:
+      next.go(tl, span.advance(span.kind.of(ch), cut, nn, stack, goal, done))
     case SNil{} S{MCopy{buf}, stack, goal, done, bad}:
       bad.cur()
     case SCon{+ch, +tl} S{MCopy{buf}, stack, goal, done, bad}:
@@ -1318,9 +1364,10 @@ def next.go(s: String, st: St) -> (Stop & Cur):
       next.go(tl, lo.hit(ch, tl, left, acc, hi, buf, stack, goal, done, bad))
     case SNil{} S{MSkStr{}, stack, goal, done, bad}:
       bad.cur()
-    case SCon{+ch, +tl} S{MSkStr{}, stack, goal, done, bad}:
-      next.go(tl, sk.str(tl, stack, goal, done, bad, Lex.classify(ch),
-        U32.is_lt(Char.to_u32(ch), 32)))
+    case SCon{ch, tl} S{MSkStr{}, stack, goal, done, True{}}:
+      next.go(tl, err.st(goal))
+    case SCon{ch, tl} S{MSkStr{}, stack, goal, done, False{}}:
+      next.go(tl, sk.advance(span.kind.of(ch), stack, goal, done))
     case SNil{} S{MSkEsc{}, stack, goal, done, bad}:
       bad.cur()
     case SCon{+ch, tl} S{MSkEsc{}, stack, goal, done, bad}:
