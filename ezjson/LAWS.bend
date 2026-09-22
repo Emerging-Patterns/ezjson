@@ -6,6 +6,7 @@ import ./parse.bend as Parse
 import ./print.bend as Print
 import ./lazy.bend as Lazy
 import ./main.bend as Ezjson
+import ./pull.bend as Pull
 
 # parse then print; a failure is "<bad>"
 def again(text: String) -> String:
@@ -526,3 +527,346 @@ law rfc_line_sep:
 law rfc_bom:
   {again(String.from_list([Char.from_u32(65279)]) ++ "null") ++ Print.print(V.JNull{})
     == "<bad>null" : String}
+
+# one pull event, as a short tag. A span and an owned string tag the same
+def pull.tag(ev: Pull.Ev) -> String:
+  match ev:
+    case Pull.ENull{}:
+      "null"
+    case Pull.EBool{True{}}:
+      "true"
+    case Pull.EBool{False{}}:
+      "false"
+    case Pull.ENum{src, +nn}:
+      "#" ++ V.span.str(src, nn, U32.is_zero(nn))
+    case Pull.EStr{body}:
+      "s:" ++ body
+    case Pull.EStrS{src, +nn}:
+      "s:" ++ V.span.str(src, nn, U32.is_zero(nn))
+    case Pull.EKey{body}:
+      "k:" ++ body
+    case Pull.EKeyS{src, +nn}:
+      "k:" ++ V.span.str(src, nn, U32.is_zero(nn))
+    case Pull.EBeginArr{}:
+      "["
+    case Pull.EEndArr{}:
+      "]"
+    case Pull.EBeginObj{}:
+      "{"
+    case Pull.EEndObj{}:
+      "}"
+    case Pull.EEnd{}:
+      "."
+    case Pull.EErr{}:
+      "!"
+
+# the walk: still need an event, or holding one
+type PullPh is Data:
+  PullNeed{cur: Pull.Cur, acc: String}
+  PullHave{ev: Pull.Ev, cur: Pull.Cur, acc: String}
+
+# an event just read, kept with the text so far
+def pull.pack(acc: String, got: (Pull.Ev & Pull.Cur)) -> PullPh:
+  (ev, cur) = got
+  PullHave{ev, cur, acc}
+
+# enough steps to read one event per character, plus the end
+def pull.fuel(+src: String) -> Nat:
+  1n+Nat.add(String.length(src), String.length(src))
+
+# every event, in order, until the end or the first error
+def pull.drain(left: Nat, ph: PullPh) -> String:
+  match left ph:
+    case n PullHave{Pull.EEnd{}, cur, acc}:
+      acc ++ "."
+    case n PullHave{Pull.EErr{}, cur, acc}:
+      acc ++ "!"
+    case 0n PullHave{ev, cur, acc}:
+      acc
+    case 1n+p PullHave{ev, cur, acc}:
+      pull.drain(p, PullNeed{cur, acc ++ pull.tag(ev)})
+    case 0n PullNeed{cur, acc}:
+      acc
+    case 1n+p PullNeed{cur, acc}:
+      pull.drain(p, pull.pack(acc, Pull.next(cur)))
+
+# one JSON text as pull events
+def pull.run(+src: String) -> String:
+  pull.drain(pull.fuel(src), PullNeed{Pull.cursor(src), ""})
+
+# the tag of the event after a whole-value skip
+def pull.after.at(got: (Pull.Ev & Pull.Cur)) -> String:
+  (ev, cur) = got
+  pull.tag(ev)
+
+# the event after skipping the root value
+def pull.after(src: String) -> String:
+  pull.after.at(Pull.next(Pull.skip(Pull.cursor(src))))
+
+# the event after the begin and one skipped element
+def pull.elem.at(got: (Pull.Ev & Pull.Cur)) -> String:
+  (ev, cur) = got
+  pull.after.at(Pull.next(Pull.skip(cur)))
+
+# the second element of an array, the first having been skipped
+def pull.elem(src: String) -> String:
+  pull.elem.at(Pull.next(Pull.cursor(src)))
+
+# key, then the value after it
+def pull.tail.val(got: (Pull.Ev & Pull.Cur)) -> String:
+  (ev, cur) = got
+  pull.tag(ev) ++ pull.after.at(Pull.next(cur))
+
+# the second key, the first value having been skipped
+def pull.tail.key(got: (Pull.Ev & Pull.Cur)) -> String:
+  (ev, cur) = got
+  pull.tail.val(Pull.next(Pull.skip(cur)))
+
+# past the first key
+def pull.tail.mem(got: (Pull.Ev & Pull.Cur)) -> String:
+  (ev, cur) = got
+  pull.tail.key(Pull.next(cur))
+
+# the second key and its value, as tags. The first value is skipped
+def pull.tail(src: String) -> String:
+  pull.tail.mem(Pull.next(Pull.cursor(src)))
+
+# whether the first string row is a span of the source or an owned copy
+def pull.row.ev(ev: Pull.Ev) -> String:
+  match ev:
+    case Pull.EStrS{src, nn}:
+      "span:" ++ Maybe.default(&2, String, Pull.text(ev), "")
+    case Pull.EStr{body}:
+      "own:" ++ body
+    case other:
+      "no"
+
+# the event in hand
+def pull.row.at(got: (Pull.Ev & Pull.Cur)) -> String:
+  (ev, cur) = got
+  pull.row.ev(ev)
+
+# the first element of the array
+def pull.row3(got: (Pull.Ev & Pull.Cur)) -> String:
+  (ev, cur) = got
+  pull.row.at(Pull.next(cur))
+
+# the array after its key
+def pull.row2(got: (Pull.Ev & Pull.Cur)) -> String:
+  (ev, cur) = got
+  pull.row3(Pull.next(cur))
+
+# the first key
+def pull.row1(got: (Pull.Ev & Pull.Cur)) -> String:
+  (ev, cur) = got
+  pull.row2(Pull.next(cur))
+
+# the first string of {"rows":[...]}
+def pull.row(src: String) -> String:
+  pull.row1(Pull.next(Pull.cursor(src)))
+
+# the first event, span or owned
+def pull.own(src: String) -> String:
+  pull.row.at(Pull.next(Pull.cursor(src)))
+
+# text of the first event, or "none"
+def pull.none.at(got: (Pull.Ev & Pull.Cur)) -> String:
+  (ev, cur) = got
+  Maybe.default(&2, String, Pull.text(ev), "none")
+
+# text of the first event, or "none"
+def pull.none(src: String) -> String:
+  pull.none.at(Pull.next(Pull.cursor(src)))
+
+# "r" left times, comma-separated, with no trailing comma
+def pull.rows(left: Nat) -> String:
+  match left:
+    case 0n:
+      ""
+    case 1n:
+      "\"r\""
+    case 1n+p:
+      "\"r\"," ++ pull.rows(p)
+
+# a weight-pack shaped object: a string-row array, then a small number
+def pull.doc(left: Nat) -> String:
+  "{\"rows\":[" ++ pull.rows(left) ++ "],\"n\":1}"
+
+# 1, left times, comma-separated
+def pull.numrow(left: Nat) -> String:
+  match left:
+    case 0n:
+      ""
+    case 1n:
+      "1"
+    case 1n+p:
+      "1," ++ pull.numrow(p)
+
+# an array of `1`, left times
+def pull.nums(left: Nat) -> String:
+  "[" ++ pull.numrow(left) ++ "]"
+
+# one more for a string event when only strings count
+def pull.add.str(ev: Pull.Ev, acc: U32) -> U32:
+  match ev:
+    case Pull.EStr{body}:
+      U32.add(acc, 1)
+    case Pull.EStrS{src, nn}:
+      U32.add(acc, 1)
+    case other:
+      acc
+
+# one more event, or one more string, depending on `only`
+def pull.add(ev: Pull.Ev, acc: U32, only: Bool) -> U32:
+  match only:
+    case True{}:
+      pull.add.str(ev, acc)
+    case False{}:
+      U32.add(acc, 1)
+
+# the end event counts only when every event counts
+def pull.finish(acc: U32, only: Bool) -> U32:
+  match only:
+    case True{}:
+      acc
+    case False{}:
+      U32.add(acc, 1)
+
+# the walk for a count: still need an event, or holding one
+type PullCt is Data:
+  CtNeed{cur: Pull.Cur, acc: U32}
+  CtHave{ev: Pull.Ev, cur: Pull.Cur, acc: U32}
+
+# an event just read, kept with the count so far
+def pull.ct(acc: U32, got: (Pull.Ev & Pull.Cur)) -> PullCt:
+  (ev, cur) = got
+  CtHave{ev, cur, acc}
+
+# count events until the end. `only` counts strings and ignores the rest
+def pull.walk(left: Nat, ph: PullCt, +only: Bool) -> U32:
+  match left ph:
+    case n CtHave{Pull.EEnd{}, cur, acc}:
+      pull.finish(acc, only)
+    case n CtHave{Pull.EErr{}, cur, acc}:
+      0
+    case 0n CtHave{ev, cur, acc}:
+      0
+    case 1n+p CtHave{ev, cur, acc}:
+      pull.walk(p, CtNeed{cur, pull.add(ev, acc, only)}, only)
+    case 0n CtNeed{cur, acc}:
+      0
+    case 1n+p CtNeed{cur, acc}:
+      pull.walk(p, pull.ct(acc, Pull.next(cur)), only)
+
+# how many string values `next` yields. Not a parse tree
+def pull.count(+src: String) -> U32:
+  pull.walk(pull.fuel(src), CtNeed{Pull.cursor(src), 0}, True{})
+
+# how many events `next` yields, including the end
+def pull.events(+src: String) -> U32:
+  pull.walk(pull.fuel(src), CtNeed{Pull.cursor(src), 0}, False{})
+
+# the same walk as `pull.drain`, through the wrappers in main
+def pull.pub.drain(left: Nat, ph: PullPh) -> String:
+  match left ph:
+    case n PullHave{Pull.EEnd{}, cur, acc}:
+      acc ++ "."
+    case n PullHave{Pull.EErr{}, cur, acc}:
+      acc ++ "!"
+    case 0n PullHave{ev, cur, acc}:
+      acc
+    case 1n+p PullHave{ev, cur, acc}:
+      pull.pub.drain(p, PullNeed{cur, acc ++ pull.tag(ev)})
+    case 0n PullNeed{cur, acc}:
+      acc
+    case 1n+p PullNeed{cur, acc}:
+      pull.pub.drain(p, pull.pack(acc, Ezjson.next(cur)))
+
+# one JSON text, read with the public cursor and next
+def pull.pub(+src: String) -> String:
+  pull.pub.drain(pull.fuel(src), PullNeed{Ezjson.cursor(src), ""})
+
+# LAW: RFC 8259 §3 — pull reads null, true, and false as those events
+law pull_atoms:
+  {pull.run("null") ++ pull.run("true") ++ pull.run("false")
+    == "null.true.false." : String}
+
+# LAW: RFC 8259 §6 — pull keeps a number's spelling
+law pull_nums:
+  {pull.run("[0,-12,3.50,1e+2]") ++ pull.run("01") ++ pull.run("+1")
+    ++ pull.run("NaN")
+    == "[#0#-12#3.50#1e+2].!!!" : String}
+
+# LAW: RFC 8259 §7 — a string with no escapes is a span; an escape is decoded
+law pull_text:
+  {pull.own("\"ab\"") ++ pull.own("\"a\\nb\"") ++ pull.own("\"\\u0041\"")
+    ++ pull.run("\"\\uD800\\uDC00\"")
+    == "span:abown:a\nbown:As:" ++ String.from_list([Char.from_u32(65536)]) ++ "." : String}
+
+# LAW: RFC 8259 §2 — space, tab, line feed, and carriage return are not events
+law pull_ws:
+  {pull.run(" \t\r\n[ \t]\r\n") ++ pull.run("{ \n}") ++ pull.run("[\n1\r,\t2 ]")
+    == "[].{}.[#1#2]." : String}
+
+# LAW: RFC 8259 §2 and §4 — one value, and a trailing comma is rejected
+law pull_one:
+  {pull.run("1 2") ++ pull.run("") ++ pull.run("[1,]") ++ pull.run("{\"a\":1,}")
+    ++ pull.run("] ")
+    == "#1!![#1!{k:a#1!!" : String}
+
+# LAW: RFC 8259 §7 and §8.1 — a raw control, a lone surrogate, and a BOM fail
+law pull_bad:
+  {pull.run("\"\n\"") ++ pull.run("\"\\uDEAD\"") ++ pull.run("\"\\uD800\"")
+    ++ pull.run(String.from_list([Char.from_u32(65279)]) ++ "null")
+    == "!!!!" : String}
+
+# LAW: RFC 8259 §4 and §5 — objects and arrays, and a name is a decoded string
+law pull_struct:
+  {pull.run("[]") ++ pull.run("{}") ++ pull.run("[true,false]")
+    ++ pull.run("{\"a\":1}") ++ pull.run("{\"a\\u0042\":3}")
+    == "[].{}.[truefalse].{k:a#1}.{k:aB#3}." : String}
+
+# LAW: skip drops one value. The next event is what followed it
+law pull_skip:
+  {pull.after("1") ++ pull.after("[1,2,3]") ++ pull.elem("[9,8]")
+    ++ pull.tail("{\"a\":\"x\\ny\",\"b\":true}")
+    == "..#8k:btrue" : String}
+
+# LAW: a string row of a weight-pack object is a span, read one event at a time
+law pull_span:
+  {pull.row(pull.doc(4n)) == "span:r" : String}
+
+# LAW: sixty-four string rows are sixty-four string events, not one parse tree
+law pull_rows:
+  {pull.count(pull.doc(64n)) == 64 : U32}
+
+# LAW: skipping the row array still reaches the next key and its number
+law pull_rows_skip:
+  {pull.tail(pull.doc(64n)) == "k:n#1" : String}
+
+# LAW: twenty-four numbers are twenty-seven events: begin, each, end, and done
+law pull_steps:
+  {pull.events(pull.nums(24n)) == 27 : U32}
+
+# LAW: text copies a number and is none for null
+law pull_copy:
+  {pull.none("3.50") ++ pull.none("null") == "3.50none" : String}
+
+# LAW: the public cursor and next agree with the pull cursor
+law public_cursor:
+  {pull.pub("null") == pull.run("null") : String}
+
+# LAW: the public next reads an object the same way
+law public_next:
+  {pull.pub("{\"k\":true}") == "{k:ktrue}." : String}
+
+# LAW: the public skip drops the same value the pull skip drops
+law public_skip:
+  {pull.after.at(Ezjson.next(Ezjson.skip(Ezjson.cursor("[1,2]"))))
+    == pull.after.at(Pull.next(Pull.skip(Pull.cursor("[1,2]")))) : String}
+
+# LAW: the public text copies a span the same way
+law public_text:
+  {Maybe.default(&2, String, Ezjson.text(Pull.EStrS{"ab", 2}), "")
+    ++ Maybe.default(&2, String, Pull.text(Pull.ENum{"3.50", 4}), "")
+    == "ab3.50" : String}

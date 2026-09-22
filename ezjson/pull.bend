@@ -1,0 +1,1420 @@
+# ezjson/pull: one JSON text, one event at a time.
+# `cursor` holds the unread suffix of the source. `next` returns one event and
+# the cursor after it. `skip` drops one value. A span event keeps the suffix
+# it points at, so it stays readable while that event is held and is gone
+# when the event is dropped. Commas and colons are not events.
+import Base
+import ./value.bend as V
+import ./lex.bend as Lex
+
+# where the next token of an open array or object has to be
+type Slot is Data:
+  SVal{}
+  SCom{}
+  SKey{}
+  SCol{}
+
+# an open array or object. `fresh` is the empty container, before any value
+type Frame is Data:
+  FArr{slot: Slot, fresh: Bool}
+  FObj{slot: Slot, fresh: Bool}
+
+# one event. A span is the first `nn` chars of a source suffix, not a copy
+type Ev is Data:
+  ENull{}
+  EBool{b: Bool}
+  ENum{src: String, nn: U32}
+  EStr{body: String}
+  EStrS{src: String, nn: U32}
+  EKey{body: String}
+  EKeyS{src: String, nn: U32}
+  EBeginArr{}
+  EEndArr{}
+  EBeginObj{}
+  EEndObj{}
+  EEnd{}
+  EErr{}
+
+# the cursor. `rest` is the unread suffix. `done` is set once the root value
+# has ended. `bad` sticks after the first error
+type Cur is Data:
+  Cur{rest: String, stack: List<&2, Frame>, done: Bool, bad: Bool}
+
+# read the next event, or drop one whole value
+type Goal is Data:
+  GNext{}
+  GSkip{depth: Nat}
+
+# what a step hands back: an event, or a finished skip
+type Stop is Data:
+  SEv{ev: Ev}
+  SSkip{}
+
+# a bare word, once it has been classified
+type Atom is Data:
+  ANull{}
+  ATrue{}
+  AFalse{}
+  ANum{}
+  ABad{}
+
+# a string's text: a span of the source, or chars decoded from escapes
+type Piece is Data:
+  PSpan{cut: String, nn: U32}
+  POwn{body: String}
+
+# where a finished value lands, or that the slot cannot take one
+type Spot is Data:
+  Spot{stack: List<&2, Frame>, root: Bool}
+  SpotBad{}
+
+# what the scanner is inside. Skip-modes (`MSk*`) walk a string they will
+# not keep, so a dropped value does not build its text
+type Mode is Data:
+  MIdle{}
+  MWord{cut: String, nn: U32, num: V.Num}
+  MSpan{cut: String, nn: U32}
+  MCopy{buf: List<&2, Char>}
+  MEsc{buf: List<&2, Char>}
+  MUni{left: Nat, acc: U32, buf: List<&2, Char>}
+  MHi{hi: U32, buf: List<&2, Char>}
+  MHiEsc{hi: U32, buf: List<&2, Char>}
+  MLo{left: Nat, acc: U32, hi: U32, buf: List<&2, Char>}
+  MSkStr{}
+  MSkEsc{}
+  MSkUni{left: Nat, acc: U32}
+  MSkHi{hi: U32}
+  MSkHiEsc{hi: U32}
+  MSkLo{left: Nat, acc: U32, hi: U32}
+  MDone{stop: Stop, saved: String}
+
+# the scanner's state, apart from the unread suffix it is walking
+type St is Data:
+  S{mode: Mode, stack: List<&2, Frame>, goal: Goal, done: Bool, bad: Bool}
+
+# a failed step. The unread suffix is dropped
+def err.st(goal: Goal) -> St:
+  S{MDone{SEv{EErr{}}, ""}, Nil{}, goal, False{}, True{}}
+
+# a failed cursor
+def bad.cur() -> (Stop & Cur):
+  (SEv{EErr{}}, Cur{"", Nil{}, False{}, True{}})
+
+# the first `nn` chars of `src`, reversed, for the escape copier
+def copy.rev(src: String, +nn: U32, z: Bool, acc: List<&2, Char>) -> List<&2, Char>:
+  match src z:
+    case s True{}:
+      acc
+    case SNil{} False{}:
+      acc
+    case SCon{h, t} False{}:
+      copy.rev(t, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), h <> acc)
+
+# a value can start here
+def expect.val.go(stack: List<&2, Frame>) -> Bool:
+  match stack:
+    case Nil{}:
+      True{}
+    case Con{FArr{SVal{}, fresh}, rest}:
+      True{}
+    case Con{FObj{SVal{}, fresh}, rest}:
+      True{}
+    case other:
+      False{}
+
+# a value can start here, and the root is not already finished
+def expect.val(stack: List<&2, Frame>, done: Bool) -> Bool:
+  match done:
+    case True{}:
+      False{}
+    case False{}:
+      expect.val.go(stack)
+
+# a string can start here: a value, or an object key
+def expect.str.go(stack: List<&2, Frame>) -> Bool:
+  match stack:
+    case Nil{}:
+      True{}
+    case Con{FArr{SVal{}, fresh}, rest}:
+      True{}
+    case Con{FObj{SVal{}, fresh}, rest}:
+      True{}
+    case Con{FObj{SKey{}, fresh}, rest}:
+      True{}
+    case other:
+      False{}
+
+# a string can start here, and the root is not already finished
+def expect.str(stack: List<&2, Frame>, done: Bool) -> Bool:
+  match done:
+    case True{}:
+      False{}
+    case False{}:
+      expect.str.go(stack)
+
+# the stack after a value, and whether that value was the root
+def place.spot(stack: List<&2, Frame>) -> Spot:
+  match stack:
+    case Nil{}:
+      Spot{Nil{}, True{}}
+    case Con{FArr{SVal{}, fresh}, frames}:
+      Spot{FArr{SCom{}, False{}} <> frames, False{}}
+    case Con{FObj{SVal{}, fresh}, frames}:
+      Spot{FObj{SCom{}, False{}} <> frames, False{}}
+    case other:
+      SpotBad{}
+
+# a value has landed in a slot that can take it
+def place.val.ok(ev: Ev, rest: String, goal: Goal, stack: List<&2, Frame>, root: Bool) -> St:
+  match goal:
+    case GNext{}:
+      S{MDone{SEv{ev}, rest}, stack, GNext{}, root, False{}}
+    case GSkip{0n}:
+      S{MDone{SSkip{}, rest}, stack, GSkip{0n}, root, False{}}
+    case GSkip{1n+left}:
+      S{MIdle{}, stack, GSkip{1n+left}, False{}, False{}}
+
+# a value has landed. `rest` is the suffix the cursor keeps
+def place.val.on(ev: Ev, rest: String, goal: Goal, spot: Spot) -> St:
+  match spot:
+    case SpotBad{}:
+      err.st(goal)
+    case Spot{stack, root}:
+      place.val.ok(ev, rest, goal, stack, root)
+
+# a value has landed
+def place.val(ev: Ev, rest: String, stack: List<&2, Frame>, goal: Goal) -> St:
+  place.val.on(ev, rest, goal, place.spot(stack))
+
+# an object key has landed. The value comes after the colon
+def place.key(ev: Ev, rest: String, frames: List<&2, Frame>, goal: Goal) -> St:
+  match goal:
+    case GNext{}:
+      S{MDone{SEv{ev}, rest}, FObj{SCol{}, False{}} <> frames, goal, False{}, False{}}
+    case GSkip{0n}:
+      err.st(goal)
+    case GSkip{1n+left}:
+      S{MIdle{}, FObj{SCol{}, False{}} <> frames, goal, False{}, False{}}
+
+# a string event, span or owned, as a key or a value
+def str.ev(piece: Piece, key: Bool) -> Ev:
+  match piece key:
+    case PSpan{cut, nn} True{}:
+      EKeyS{cut, nn}
+    case PSpan{cut, nn} False{}:
+      EStrS{cut, nn}
+    case POwn{body} True{}:
+      EKey{body}
+    case POwn{body} False{}:
+      EStr{body}
+
+# a string value inside a skip, once the slot is known
+def str.cont.on(goal: Goal, spot: Spot) -> St:
+  match spot:
+    case SpotBad{}:
+      err.st(goal)
+    case Spot{stack2, root}:
+      S{MIdle{}, stack2, goal, False{}, False{}}
+
+# a string value inside a skip: keep the slot, not the text
+def str.cont(stack: List<&2, Frame>, goal: Goal) -> St:
+  str.cont.on(goal, place.spot(stack))
+
+# a string value. A skip that is still inside a container keeps scanning
+def str.val(ev: Ev, rest: String, stack: List<&2, Frame>, goal: Goal) -> St:
+  match goal:
+    case GSkip{1n+left}:
+      str.cont(stack, goal)
+    case GNext{}:
+      place.val(ev, rest, stack, goal)
+    case GSkip{0n}:
+      place.val(ev, rest, stack, goal)
+
+# a finished string. A key goes to the open object; anything else is a value
+def str.place(piece: Piece, rest: String, stack: List<&2, Frame>, goal: Goal) -> St:
+  match stack:
+    case Con{FObj{SKey{}, fresh}, frames}:
+      place.key(str.ev(piece, True{}), rest, frames, goal)
+    case other:
+      str.val(str.ev(piece, False{}), rest, stack, goal)
+
+# a string a skip will not keep
+def str.skip(rest: String, stack: List<&2, Frame>, goal: Goal) -> St:
+  match goal:
+    case GNext{}:
+      err.st(goal)
+    case GSkip{depth}:
+      str.place(POwn{""}, rest, stack, goal)
+
+# `]` or `}` of a skip: depth 1 finishes the value, deeper keeps going
+def close.skip.go(rest: String, stack: List<&2, Frame>, left: Nat, root: Bool) -> St:
+  match left:
+    case 0n:
+      S{MDone{SSkip{}, rest}, stack, GSkip{0n}, root, False{}}
+    case 1n+more:
+      S{MIdle{}, stack, GSkip{1n+more}, False{}, False{}}
+
+# `]` or `}` of a skip, once the frame has been popped
+def close.skip(rest: String, stack: List<&2, Frame>, depth: Nat, root: Bool) -> St:
+  match depth:
+    case 0n:
+      err.st(GSkip{0n})
+    case 1n+left:
+      close.skip.go(rest, stack, left, root)
+
+# the parent after a container closes, for a reader
+def close.next(ev: Ev, rest: String, stack: List<&2, Frame>, root: Bool) -> St:
+  S{MDone{SEv{ev}, rest}, stack, GNext{}, root, False{}}
+
+# a container closed. `frames` is the stack with that frame popped
+def close.out(ev: Ev, rest: String, frames: List<&2, Frame>, goal: Goal) -> St:
+  match frames goal:
+    case Nil{} GNext{}:
+      close.next(ev, rest, Nil{}, True{})
+    case Nil{} GSkip{depth}:
+      close.skip(rest, Nil{}, depth, True{})
+    case Con{FArr{SVal{}, fresh}, outer} GNext{}:
+      close.next(ev, rest, FArr{SCom{}, False{}} <> outer, False{})
+    case Con{FObj{SVal{}, fresh}, outer} GNext{}:
+      close.next(ev, rest, FObj{SCom{}, False{}} <> outer, False{})
+    case Con{FArr{SVal{}, fresh}, outer} GSkip{depth}:
+      close.skip(rest, FArr{SCom{}, False{}} <> outer, depth, False{})
+    case Con{FObj{SVal{}, fresh}, outer} GSkip{depth}:
+      close.skip(rest, FObj{SCom{}, False{}} <> outer, depth, False{})
+    case frames2 g:
+      err.st(g)
+
+# a `]`. Empty, or just after a value
+def close.arr(rest: String, stack: List<&2, Frame>, goal: Goal) -> St:
+  match stack:
+    case Con{FArr{SVal{}, True{}}, frames}:
+      close.out(EEndArr{}, rest, frames, goal)
+    case Con{FArr{SCom{}, fresh}, frames}:
+      close.out(EEndArr{}, rest, frames, goal)
+    case other:
+      err.st(goal)
+
+# a `}`. Empty, or just after a value
+def close.obj(rest: String, stack: List<&2, Frame>, goal: Goal) -> St:
+  match stack:
+    case Con{FObj{SKey{}, True{}}, frames}:
+      close.out(EEndObj{}, rest, frames, goal)
+    case Con{FObj{SCom{}, fresh}, frames}:
+      close.out(EEndObj{}, rest, frames, goal)
+    case other:
+      err.st(goal)
+
+# a comma between values, or between object members
+def punct.comma(_rest: String, stack: List<&2, Frame>, goal: Goal) -> St:
+  match stack:
+    case Con{FArr{SCom{}, fresh}, frames}:
+      S{MIdle{}, FArr{SVal{}, False{}} <> frames, goal, False{}, False{}}
+    case Con{FObj{SCom{}, fresh}, frames}:
+      S{MIdle{}, FObj{SKey{}, False{}} <> frames, goal, False{}, False{}}
+    case other:
+      err.st(goal)
+
+# a colon after a key
+def punct.colon(_rest: String, stack: List<&2, Frame>, goal: Goal) -> St:
+  match stack:
+    case Con{FObj{SCol{}, fresh}, frames}:
+      S{MIdle{}, FObj{SVal{}, False{}} <> frames, goal, False{}, False{}}
+    case other:
+      err.st(goal)
+
+# `[` pushed. A reader returns the begin; a skip counts the container
+def punct.arr.go(rest: String, stack: List<&2, Frame>, goal: Goal) -> St:
+  match goal:
+    case GNext{}:
+      S{MDone{SEv{EBeginArr{}}, rest}, stack, goal, False{}, False{}}
+    case GSkip{depth}:
+      S{MIdle{}, stack, GSkip{1n+depth}, False{}, False{}}
+
+# `[`, once it is known whether a value may start
+def punct.arr.if(rest: String, stack: List<&2, Frame>, goal: Goal, ok: Bool) -> St:
+  match ok:
+    case True{}:
+      punct.arr.go(rest, FArr{SVal{}, True{}} <> stack, goal)
+    case False{}:
+      err.st(goal)
+
+# `[`, when a value may start
+def punct.arr(rest: String, +stack: List<&2, Frame>, goal: Goal, done: Bool) -> St:
+  punct.arr.if(rest, stack, goal, expect.val(stack, done))
+
+# `{` pushed
+def punct.obj.go(rest: String, stack: List<&2, Frame>, goal: Goal) -> St:
+  match goal:
+    case GNext{}:
+      S{MDone{SEv{EBeginObj{}}, rest}, stack, goal, False{}, False{}}
+    case GSkip{depth}:
+      S{MIdle{}, stack, GSkip{1n+depth}, False{}, False{}}
+
+# `{`, once it is known whether a value may start
+def punct.obj.if(rest: String, stack: List<&2, Frame>, goal: Goal, ok: Bool) -> St:
+  match ok:
+    case True{}:
+      punct.obj.go(rest, FObj{SKey{}, True{}} <> stack, goal)
+    case False{}:
+      err.st(goal)
+
+# `{`, when a value may start
+def punct.obj(rest: String, +stack: List<&2, Frame>, goal: Goal, done: Bool) -> St:
+  punct.obj.if(rest, stack, goal, expect.val(stack, done))
+
+# one punctuation token, once the root is still open
+def punct.go(tok: Lex.Tok, rest: String, stack: List<&2, Frame>, goal: Goal, done: Bool) -> St:
+  match tok:
+    case Lex.TOpenArr{}:
+      punct.arr(rest, stack, goal, done)
+    case Lex.TOpenObj{}:
+      punct.obj(rest, stack, goal, done)
+    case Lex.TCloseArr{}:
+      close.arr(rest, stack, goal)
+    case Lex.TCloseObj{}:
+      close.obj(rest, stack, goal)
+    case Lex.TColon{}:
+      punct.colon(rest, stack, goal)
+    case Lex.TComma{}:
+      punct.comma(rest, stack, goal)
+    case other:
+      err.st(goal)
+
+# one punctuation token
+def punct.on(tok: Lex.Tok, rest: String, stack: List<&2, Frame>, goal: Goal, done: Bool) -> St:
+  match done:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      punct.go(tok, rest, stack, goal, done)
+
+# whitespace, kept as the same state
+def idle.space(stack: List<&2, Frame>, goal: Goal, done: Bool) -> St:
+  S{MIdle{}, stack, goal, done, False{}}
+
+# a `"`, once it is known whether a string may start
+def idle.quote.if(rest: String, stack: List<&2, Frame>, goal: Goal, done: Bool, ok: Bool) -> St:
+  match ok:
+    case True{}:
+      S{MSpan{rest, 0}, stack, goal, done, False{}}
+    case False{}:
+      err.st(goal)
+
+# a `"` opened a string. The span starts on the suffix after the quote
+def idle.quote(rest: String, +stack: List<&2, Frame>, goal: Goal, +done: Bool) -> St:
+  idle.quote.if(rest, stack, goal, done, expect.str(stack, done))
+
+# a word's first character, once it is known whether a value may start
+def idle.word.if(
+  +ch: Char,
+  +tl: String,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  ok: Bool
+) -> St:
+  match ok:
+    case True{}:
+      S{MWord{SCon{ch, tl}, 1, V.num.ok.step(V.NStart{}, Char.to_u32(ch))},
+        stack, goal, done, False{}}
+    case False{}:
+      err.st(goal)
+
+# a word's first character
+def idle.word(+ch: Char, +tl: String, +stack: List<&2, Frame>, goal: Goal, +done: Bool) -> St:
+  idle.word.if(ch, tl, stack, goal, done, expect.val(stack, done))
+
+# the end of the text, between tokens
+def idle.eof(stack: List<&2, Frame>, goal: Goal, done: Bool, bad: Bool) -> (Stop & Cur):
+  match goal done bad:
+    case GNext{} True{} False{}:
+      (SEv{EEnd{}}, Cur{"", stack, True{}, False{}})
+    case g d b:
+      bad.cur()
+
+# one character between tokens, once the cursor is still good
+def idle.hit.go(
+  +ch: Char,
+  +tl: String,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  cls: Lex.Class
+) -> St:
+  match cls:
+    case Lex.CSpace{}:
+      idle.space(stack, goal, done)
+    case Lex.CPunct{tok}:
+      punct.on(tok, tl, stack, goal, done)
+    case Lex.CQuote{}:
+      idle.quote(tl, stack, goal, done)
+    case Lex.CBack{}:
+      err.st(goal)
+    case Lex.COther{}:
+      idle.word(ch, tl, stack, goal, done)
+
+# one character between tokens
+def idle.hit(
+  +ch: Char,
+  +tl: String,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  bad: Bool,
+  cls: Lex.Class
+) -> St:
+  match bad:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      idle.hit.go(ch, tl, stack, goal, done, cls)
+
+# a number, when the word is not null, true, or false
+def word.kind.num(ok: Bool) -> Atom:
+  match ok:
+    case True{}:
+      ANum{}
+    case False{}:
+      ABad{}
+
+# null, true, false, or a number that kept a legal spelling
+def word.kind.go(num: V.Num, is_null: Bool, is_true: Bool, is_false: Bool) -> Atom:
+  match is_null is_true is_false:
+    case True{} x y:
+      ANull{}
+    case False{} True{} y:
+      ATrue{}
+    case False{} False{} True{}:
+      AFalse{}
+    case False{} False{} False{}:
+      word.kind.num(V.num.ok.done(num))
+
+# what a bare word is
+def word.kind(+cut: String, +nn: U32, num: V.Num) -> Atom:
+  word.kind.go(num, V.span.eq(cut, nn, "null"), V.span.eq(cut, nn, "true"),
+    V.span.eq(cut, nn, "false"))
+
+# a word that ended at the end of the text
+def word.eof.place(
+  atom: Atom,
+  cut: String,
+  nn: U32,
+  stack: List<&2, Frame>,
+  goal: Goal
+) -> St:
+  match atom:
+    case ABad{}:
+      err.st(goal)
+    case ANull{}:
+      place.val(ENull{}, "", stack, goal)
+    case ATrue{}:
+      place.val(EBool{True{}}, "", stack, goal)
+    case AFalse{}:
+      place.val(EBool{False{}}, "", stack, goal)
+    case ANum{}:
+      place.val(ENum{cut, nn}, "", stack, goal)
+
+# a step that stopped, as the pair `next` returns
+def stop.of(st: St) -> (Stop & Cur):
+  match st:
+    case S{MDone{stop, saved}, stack, goal, done, bad}:
+      (stop, Cur{saved, stack, done, bad})
+    case other:
+      bad.cur()
+
+# a word that ended because the text did, on a live cursor
+def word.eof.go(
+  +cut: String,
+  +nn: U32,
+  num: V.Num,
+  stack: List<&2, Frame>,
+  goal: Goal
+) -> (Stop & Cur):
+  match goal:
+    case GSkip{1n+left}:
+      bad.cur()
+    case GNext{}:
+      stop.of(word.eof.place(word.kind(cut, nn, num), cut, nn, stack, goal))
+    case GSkip{0n}:
+      stop.of(word.eof.place(word.kind(cut, nn, num), cut, nn, stack, goal))
+
+# a word that ended because the text did
+def word.eof(
+  +cut: String,
+  +nn: U32,
+  num: V.Num,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  bad: Bool
+) -> (Stop & Cur):
+  match bad:
+    case True{}:
+      bad.cur()
+    case False{}:
+      word.eof.go(cut, nn, num, stack, goal)
+
+# the character that ended a word, once the value is inside a skipped container
+def lay.more(
+  +_ch: Char,
+  +tl: String,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  cls: Lex.Class
+) -> St:
+  match cls:
+    case Lex.CSpace{}:
+      S{MIdle{}, stack, goal, False{}, False{}}
+    case Lex.CPunct{tok}:
+      punct.on(tok, tl, stack, goal, False{})
+    case other:
+      err.st(goal)
+
+# place the word, then take the delimiter, because the skip is still open
+def word.cont.on(
+  +ch: Char,
+  +tl: String,
+  goal: Goal,
+  cls: Lex.Class,
+  spot: Spot
+) -> St:
+  match spot:
+    case SpotBad{}:
+      err.st(goal)
+    case Spot{stack, root}:
+      lay.more(ch, tl, stack, goal, cls)
+
+# place the word, then take the delimiter
+def word.cont(
+  +ch: Char,
+  +tl: String,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  cls: Lex.Class
+) -> St:
+  word.cont.on(ch, tl, goal, cls, place.spot(stack))
+
+# a word ended on `ch`, which still belongs to the suffix
+def word.place(
+  ev: Ev,
+  +ch: Char,
+  +tl: String,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  cls: Lex.Class
+) -> St:
+  match goal:
+    case GNext{}:
+      place.val(ev, SCon{ch, tl}, stack, goal)
+    case GSkip{0n}:
+      place.val(ev, SCon{ch, tl}, stack, goal)
+    case GSkip{1n+left}:
+      word.cont(ch, tl, stack, goal, cls)
+
+# a word ended on a delimiter
+def word.end.go(
+  +ch: Char,
+  +tl: String,
+  cut: String,
+  nn: U32,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  cls: Lex.Class,
+  atom: Atom
+) -> St:
+  match atom:
+    case ABad{}:
+      err.st(goal)
+    case ANull{}:
+      word.place(ENull{}, ch, tl, stack, goal, cls)
+    case ATrue{}:
+      word.place(EBool{True{}}, ch, tl, stack, goal, cls)
+    case AFalse{}:
+      word.place(EBool{False{}}, ch, tl, stack, goal, cls)
+    case ANum{}:
+      word.place(ENum{cut, nn}, ch, tl, stack, goal, cls)
+
+# a word ended on a delimiter
+def word.end(
+  +ch: Char,
+  +tl: String,
+  +cut: String,
+  +nn: U32,
+  num: V.Num,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  cls: Lex.Class
+) -> St:
+  word.end.go(ch, tl, cut, nn, stack, goal, cls, word.kind(cut, nn, num))
+
+# one more character of a word, or the character that ends it
+def word.hit.go(
+  +ch: Char,
+  +tl: String,
+  cut: String,
+  nn: U32,
+  num: V.Num,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  cls: Lex.Class
+) -> St:
+  match cls:
+    case Lex.COther{}:
+      S{MWord{cut, U32.add(nn, 1), V.num.ok.step(num, Char.to_u32(ch))},
+        stack, goal, done, False{}}
+    case other:
+      word.end(ch, tl, cut, nn, num, stack, goal, cls)
+
+# one character of a word
+def word.hit(
+  +ch: Char,
+  +tl: String,
+  cut: String,
+  nn: U32,
+  num: V.Num,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  bad: Bool,
+  cls: Lex.Class
+) -> St:
+  match bad:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      word.hit.go(ch, tl, cut, nn, num, stack, goal, done, cls)
+
+# a backslash in a span: copy the prefix, or drop it when skipping
+def span.esc(
+  +cut: String,
+  +nn: U32,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool
+) -> St:
+  match goal:
+    case GNext{}:
+      S{MEsc{copy.rev(cut, nn, U32.is_zero(nn), [])}, stack, goal, done, False{}}
+    case GSkip{depth}:
+      S{MSkEsc{}, stack, goal, done, False{}}
+
+# a `"` closed a span. A `\` hands the prefix to the copier, unless the
+# string is being skipped
+def span.hit.go(
+  +tl: String,
+  +cut: String,
+  +nn: U32,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  cls: Lex.Class,
+  ctrl: Bool
+) -> St:
+  match cls ctrl:
+    case Lex.CQuote{} c:
+      str.place(PSpan{cut, nn}, tl, stack, goal)
+    case Lex.CBack{} False{}:
+      span.esc(cut, nn, stack, goal, done)
+    case k True{}:
+      err.st(goal)
+    case k False{}:
+      S{MSpan{cut, U32.add(nn, 1)}, stack, goal, done, False{}}
+
+# one character of an unescaped string
+def span.hit(
+  +tl: String,
+  +cut: String,
+  +nn: U32,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  bad: Bool,
+  cls: Lex.Class,
+  ctrl: Bool
+) -> St:
+  match bad:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      span.hit.go(tl, cut, nn, stack, goal, done, cls, ctrl)
+
+# one character of a string that is being decoded
+def copy.hit.go(
+  +ch: Char,
+  +tl: String,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  cls: Lex.Class,
+  ctrl: Bool
+) -> St:
+  match cls ctrl:
+    case Lex.CQuote{} c:
+      str.place(POwn{Lex.text(buf)}, tl, stack, goal)
+    case Lex.CBack{} False{}:
+      S{MEsc{buf}, stack, goal, done, False{}}
+    case k True{}:
+      err.st(goal)
+    case k False{}:
+      S{MCopy{ch <> buf}, stack, goal, done, False{}}
+
+# one character of a string that is being decoded
+def copy.hit(
+  +ch: Char,
+  +tl: String,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  bad: Bool,
+  cls: Lex.Class,
+  ctrl: Bool
+) -> St:
+  match bad:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      copy.hit.go(ch, tl, buf, stack, goal, done, cls, ctrl)
+
+# the character after a backslash, once `u` has been noticed
+def esc.put(
+  _tl: String,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  got: Maybe<&2, Char>
+) -> St:
+  match got:
+    case Some{ch}:
+      S{MCopy{ch <> buf}, stack, goal, done, False{}}
+    case None{}:
+      err.st(goal)
+
+# the character after a backslash
+def esc.hit.go(
+  +ch: Char,
+  +tl: String,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  is_u: Bool
+) -> St:
+  match is_u:
+    case True{}:
+      S{MUni{3n, 0, buf}, stack, goal, done, False{}}
+    case False{}:
+      esc.put(tl, buf, stack, goal, done, Lex.unescape(ch))
+
+# the character after a backslash
+def esc.hit(
+  +ch: Char,
+  +tl: String,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  bad: Bool
+) -> St:
+  match bad:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      esc.hit.go(ch, tl, buf, stack, goal, done, U32.is_eq(Char.to_u32(ch), 117))
+
+# a `\u` code point that is not a surrogate
+def uni.end.go(
+  _tl: String,
+  cp: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  k: Lex.Sur
+) -> St:
+  match k:
+    case Lex.SOk{}:
+      S{MCopy{Char.from_u32(cp) <> buf}, stack, goal, done, False{}}
+    case Lex.SHi{}:
+      S{MHi{cp, buf}, stack, goal, done, False{}}
+    case Lex.SLo{}:
+      err.st(goal)
+
+# four hex digits are in
+def uni.end(
+  tl: String,
+  +cp: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool
+) -> St:
+  uni.end.go(tl, cp, buf, stack, goal, done, Lex.unicode.sur(cp))
+
+# one more hex digit, or the code point
+def uni.put(
+  tl: String,
+  left: Nat,
+  acc: U32,
+  dig: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool
+) -> St:
+  match left:
+    case 0n:
+      uni.end(tl, (acc * 16 + dig : U32), buf, stack, goal, done)
+    case 1n+p:
+      S{MUni{p, (acc * 16 + dig : U32), buf}, stack, goal, done, False{}}
+
+# one hex digit of a `\u` escape
+def uni.hit.go(
+  +ch: Char,
+  +tl: String,
+  left: Nat,
+  acc: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  ok: Bool
+) -> St:
+  match ok:
+    case True{}:
+      uni.put(tl, left, acc, Lex.hex(ch), buf, stack, goal, done)
+    case False{}:
+      err.st(goal)
+
+# one hex digit of a `\u` escape
+def uni.hit(
+  +ch: Char,
+  +tl: String,
+  left: Nat,
+  acc: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  bad: Bool
+) -> St:
+  match bad:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      uni.hit.go(ch, tl, left, acc, buf, stack, goal, done, Lex.hex.ok(Char.to_u32(ch)))
+
+# the character after a high surrogate, on a live cursor
+def hi.hit.go(
+  _tl: String,
+  hi: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  cls: Lex.Class
+) -> St:
+  match cls:
+    case Lex.CBack{}:
+      S{MHiEsc{hi, buf}, stack, goal, done, False{}}
+    case other:
+      err.st(goal)
+
+# the character after a high surrogate: it has to be a backslash
+def hi.hit(
+  tl: String,
+  hi: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  bad: Bool,
+  cls: Lex.Class
+) -> St:
+  match bad:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      hi.hit.go(tl, hi, buf, stack, goal, done, cls)
+
+# the character after the backslash of a pair: it has to be `u`
+def hiesc.hit.go(
+  _tl: String,
+  hi: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  is_u: Bool
+) -> St:
+  match is_u:
+    case True{}:
+      S{MLo{3n, 0, hi, buf}, stack, goal, done, False{}}
+    case False{}:
+      err.st(goal)
+
+# the character after the backslash of a pair
+def hiesc.hit(
+  +ch: Char,
+  tl: String,
+  hi: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  bad: Bool
+) -> St:
+  match bad:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      hiesc.hit.go(tl, hi, buf, stack, goal, done, U32.is_eq(Char.to_u32(ch), 117))
+
+# the low surrogate is in, or it is not one
+def lo.end.go(
+  _tl: String,
+  lo: U32,
+  hi: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  k: Lex.Sur
+) -> St:
+  match k:
+    case Lex.SLo{}:
+      S{MCopy{Char.from_u32(Lex.unicode.pair(hi, lo)) <> buf}, stack, goal, done, False{}}
+    case other:
+      err.st(goal)
+
+# four hex digits of the low surrogate are in
+def lo.end(
+  tl: String,
+  +lo: U32,
+  hi: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool
+) -> St:
+  lo.end.go(tl, lo, hi, buf, stack, goal, done, Lex.unicode.sur(lo))
+
+# one more hex digit of the low surrogate, or the code point
+def lo.put(
+  tl: String,
+  left: Nat,
+  acc: U32,
+  hi: U32,
+  dig: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool
+) -> St:
+  match left:
+    case 0n:
+      lo.end(tl, (acc * 16 + dig : U32), hi, buf, stack, goal, done)
+    case 1n+p:
+      S{MLo{p, (acc * 16 + dig : U32), hi, buf}, stack, goal, done, False{}}
+
+# one hex digit of the low surrogate
+def lo.hit.go(
+  +ch: Char,
+  +tl: String,
+  left: Nat,
+  acc: U32,
+  hi: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  ok: Bool
+) -> St:
+  match ok:
+    case True{}:
+      lo.put(tl, left, acc, hi, Lex.hex(ch), buf, stack, goal, done)
+    case False{}:
+      err.st(goal)
+
+# one hex digit of the low surrogate
+def lo.hit(
+  +ch: Char,
+  +tl: String,
+  left: Nat,
+  acc: U32,
+  hi: U32,
+  buf: List<&2, Char>,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  bad: Bool
+) -> St:
+  match bad:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      lo.hit.go(ch, tl, left, acc, hi, buf, stack, goal, done, Lex.hex.ok(Char.to_u32(ch)))
+
+# one character of a string a skip is dropping
+def sk.str.go(
+  tl: String,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  cls: Lex.Class,
+  ctrl: Bool
+) -> St:
+  match cls ctrl:
+    case Lex.CQuote{} c:
+      str.skip(tl, stack, goal)
+    case Lex.CBack{} False{}:
+      S{MSkEsc{}, stack, goal, done, False{}}
+    case k True{}:
+      err.st(goal)
+    case k False{}:
+      S{MSkStr{}, stack, goal, done, False{}}
+
+# one character of a string a skip is dropping
+def sk.str(
+  tl: String,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  bad: Bool,
+  cls: Lex.Class,
+  ctrl: Bool
+) -> St:
+  match bad:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      sk.str.go(tl, stack, goal, done, cls, ctrl)
+
+# a decoded short escape puts the skip back in the string
+def sk.esc.put(
+  _tl: String,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  got: Maybe<&2, Char>
+) -> St:
+  match got:
+    case Some{ch}:
+      S{MSkStr{}, stack, goal, done, False{}}
+    case None{}:
+      err.st(goal)
+
+# a short escape, or the start of `\u`, inside a skipped string
+def sk.esc.go(
+  +ch: Char,
+  tl: String,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  is_u: Bool
+) -> St:
+  match is_u:
+    case True{}:
+      S{MSkUni{3n, 0}, stack, goal, done, False{}}
+    case False{}:
+      sk.esc.put(tl, stack, goal, done, Lex.unescape(ch))
+
+# the character after a backslash in a skipped string
+def sk.esc(
+  +ch: Char,
+  tl: String,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  bad: Bool
+) -> St:
+  match bad:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      sk.esc.go(ch, tl, stack, goal, done, U32.is_eq(Char.to_u32(ch), 117))
+
+# a skipped `\u` that is not a surrogate
+def sk.uni.end.go(
+  _tl: String,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  k: Lex.Sur,
+  cp: U32
+) -> St:
+  match k:
+    case Lex.SOk{}:
+      S{MSkStr{}, stack, goal, done, False{}}
+    case Lex.SHi{}:
+      S{MSkHi{cp}, stack, goal, done, False{}}
+    case Lex.SLo{}:
+      err.st(goal)
+
+# four hex digits of a skipped `\u` are in
+def sk.uni.end(
+  tl: String,
+  +cp: U32,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool
+) -> St:
+  sk.uni.end.go(tl, stack, goal, done, Lex.unicode.sur(cp), cp)
+
+# one more skipped hex digit, or the code point
+def sk.uni.put(
+  tl: String,
+  left: Nat,
+  acc: U32,
+  dig: U32,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool
+) -> St:
+  match left:
+    case 0n:
+      sk.uni.end(tl, (acc * 16 + dig : U32), stack, goal, done)
+    case 1n+p:
+      S{MSkUni{p, (acc * 16 + dig : U32)}, stack, goal, done, False{}}
+
+# one hex digit of a skipped `\u`
+def sk.uni.go(
+  +ch: Char,
+  tl: String,
+  left: Nat,
+  acc: U32,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  ok: Bool
+) -> St:
+  match ok:
+    case True{}:
+      sk.uni.put(tl, left, acc, Lex.hex(ch), stack, goal, done)
+    case False{}:
+      err.st(goal)
+
+# one hex digit of a skipped `\u`
+def sk.uni(
+  +ch: Char,
+  tl: String,
+  left: Nat,
+  acc: U32,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  bad: Bool
+) -> St:
+  match bad:
+    case True{}:
+      err.st(goal)
+    case False{}:
+      sk.uni.go(ch, tl, left, acc, stack, goal, done, Lex.hex.ok(Char.to_u32(ch)))
+
+# the character after a skipped high surrogate
+def sk.hi(stack: List<&2, Frame>, goal: Goal, done: Bool, hi: U32, cls: Lex.Class) -> St:
+  match cls:
+    case Lex.CBack{}:
+      S{MSkHiEsc{hi}, stack, goal, done, False{}}
+    case other:
+      err.st(goal)
+
+# `u` after the backslash of a skipped pair
+def sk.hiesc(stack: List<&2, Frame>, goal: Goal, done: Bool, hi: U32, is_u: Bool) -> St:
+  match is_u:
+    case True{}:
+      S{MSkLo{3n, 0, hi}, stack, goal, done, False{}}
+    case False{}:
+      err.st(goal)
+
+# the low half of a skipped pair is in, or it is not one
+def sk.lo.end(_tl: String, stack: List<&2, Frame>, goal: Goal, done: Bool, k: Lex.Sur) -> St:
+  match k:
+    case Lex.SLo{}:
+      S{MSkStr{}, stack, goal, done, False{}}
+    case other:
+      err.st(goal)
+
+# one more hex digit of a skipped low surrogate, or the code point
+def sk.lo.put(
+  tl: String,
+  left: Nat,
+  acc: U32,
+  hi: U32,
+  dig: U32,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool
+) -> St:
+  match left:
+    case 0n:
+      sk.lo.end(tl, stack, goal, done, Lex.unicode.sur((acc * 16 + dig : U32)))
+    case 1n+p:
+      S{MSkLo{p, (acc * 16 + dig : U32), hi}, stack, goal, done, False{}}
+
+# one hex digit of a skipped low surrogate
+def sk.lo.go(
+  +ch: Char,
+  tl: String,
+  left: Nat,
+  acc: U32,
+  hi: U32,
+  stack: List<&2, Frame>,
+  goal: Goal,
+  done: Bool,
+  ok: Bool
+) -> St:
+  match ok:
+    case True{}:
+      sk.lo.put(tl, left, acc, hi, Lex.hex(ch), stack, goal, done)
+    case False{}:
+      err.st(goal)
+
+# one character, between events. A finished event returns; everything else
+# tail-calls on the shorter suffix
+def next.go(s: String, st: St) -> (Stop & Cur):
+  match s st:
+    case any S{MDone{stop, saved}, stack, goal, done, bad}:
+      (stop, Cur{saved, stack, done, bad})
+    case SNil{} S{MIdle{}, stack, goal, done, bad}:
+      idle.eof(stack, goal, done, bad)
+    case SCon{+ch, +tl} S{MIdle{}, stack, goal, done, bad}:
+      next.go(tl, idle.hit(ch, tl, stack, goal, done, bad, Lex.classify(ch)))
+    case SNil{} S{MWord{cut, nn, num}, stack, goal, done, bad}:
+      word.eof(cut, nn, num, stack, goal, bad)
+    case SCon{+ch, +tl} S{MWord{cut, nn, num}, stack, goal, done, bad}:
+      next.go(tl, word.hit(ch, tl, cut, nn, num, stack, goal, done, bad, Lex.classify(ch)))
+    case SNil{} S{MSpan{cut, nn}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{+ch, +tl} S{MSpan{cut, nn}, stack, goal, done, bad}:
+      next.go(tl, span.hit(tl, cut, nn, stack, goal, done, bad, Lex.classify(ch),
+        U32.is_lt(Char.to_u32(ch), 32)))
+    case SNil{} S{MCopy{buf}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{+ch, +tl} S{MCopy{buf}, stack, goal, done, bad}:
+      next.go(tl, copy.hit(ch, tl, buf, stack, goal, done, bad, Lex.classify(ch),
+        U32.is_lt(Char.to_u32(ch), 32)))
+    case SNil{} S{MEsc{buf}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{+ch, +tl} S{MEsc{buf}, stack, goal, done, bad}:
+      next.go(tl, esc.hit(ch, tl, buf, stack, goal, done, bad))
+    case SNil{} S{MUni{left, acc, buf}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{+ch, +tl} S{MUni{left, acc, buf}, stack, goal, done, bad}:
+      next.go(tl, uni.hit(ch, tl, left, acc, buf, stack, goal, done, bad))
+    case SNil{} S{MHi{hi, buf}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{ch, tl} S{MHi{hi, buf}, stack, goal, done, bad}:
+      next.go(tl, hi.hit(tl, hi, buf, stack, goal, done, bad, Lex.classify(ch)))
+    case SNil{} S{MHiEsc{hi, buf}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{+ch, tl} S{MHiEsc{hi, buf}, stack, goal, done, bad}:
+      next.go(tl, hiesc.hit(ch, tl, hi, buf, stack, goal, done, bad))
+    case SNil{} S{MLo{left, acc, hi, buf}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{+ch, +tl} S{MLo{left, acc, hi, buf}, stack, goal, done, bad}:
+      next.go(tl, lo.hit(ch, tl, left, acc, hi, buf, stack, goal, done, bad))
+    case SNil{} S{MSkStr{}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{+ch, +tl} S{MSkStr{}, stack, goal, done, bad}:
+      next.go(tl, sk.str(tl, stack, goal, done, bad, Lex.classify(ch),
+        U32.is_lt(Char.to_u32(ch), 32)))
+    case SNil{} S{MSkEsc{}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{+ch, tl} S{MSkEsc{}, stack, goal, done, bad}:
+      next.go(tl, sk.esc(ch, tl, stack, goal, done, bad))
+    case SNil{} S{MSkUni{left, acc}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{+ch, tl} S{MSkUni{left, acc}, stack, goal, done, bad}:
+      next.go(tl, sk.uni(ch, tl, left, acc, stack, goal, done, bad))
+    case SNil{} S{MSkHi{hi}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{ch, tl} S{MSkHi{hi}, stack, goal, done, bad}:
+      next.go(tl, sk.hi(stack, goal, done, hi, Lex.classify(ch)))
+    case SNil{} S{MSkHiEsc{hi}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{+ch, tl} S{MSkHiEsc{hi}, stack, goal, done, bad}:
+      next.go(tl, sk.hiesc(stack, goal, done, hi, U32.is_eq(Char.to_u32(ch), 117)))
+    case SNil{} S{MSkLo{left, acc, hi}, stack, goal, done, bad}:
+      bad.cur()
+    case SCon{+ch, tl} S{MSkLo{left, acc, hi}, stack, goal, done, bad}:
+      next.go(tl, sk.lo.go(ch, tl, left, acc, hi, stack, goal, done,
+        Lex.hex.ok(Char.to_u32(ch))))
+
+# an event from a step. A skip that surfaces here is a broken reader
+def next.use(got: (Stop & Cur)) -> (Ev & Cur):
+  (stop, cur) = got
+  match stop:
+    case SEv{ev}:
+      (ev, cur)
+    case SSkip{}:
+      (EErr{}, Cur{"", Nil{}, False{}, True{}})
+
+# the next event, unless the cursor has already failed
+def next.open(rest: String, stack: List<&2, Frame>, done: Bool, bad: Bool) -> (Ev & Cur):
+  match bad:
+    case True{}:
+      (EErr{}, Cur{"", Nil{}, False{}, True{}})
+    case False{}:
+      next.use(next.go(rest, S{MIdle{}, stack, GNext{}, done, False{}}))
+
+# the cursor after a skip. An event other than a failure means the skip
+# stopped on something that was not one value
+def skip.use(got: (Stop & Cur)) -> Cur:
+  (stop, cur) = got
+  match stop:
+    case SSkip{}:
+      cur
+    case SEv{EErr{}}:
+      cur
+    case SEv{ev}:
+      Cur{"", Nil{}, False{}, True{}}
+
+# drop one value, unless the cursor has already failed or the root is over
+def skip.open(rest: String, stack: List<&2, Frame>, done: Bool, bad: Bool) -> Cur:
+  match done bad:
+    case d True{}:
+      Cur{"", Nil{}, False{}, True{}}
+    case True{} False{}:
+      Cur{"", Nil{}, False{}, True{}}
+    case False{} False{}:
+      skip.use(next.go(rest, S{MIdle{}, stack, GSkip{0n}, False{}, False{}}))
+
+# a cursor at the start of `src`. It holds that string as its unread suffix,
+# so dropping the caller's own variable does not drop the cursor, and
+# dropping the cursor drops what it has not read yet
+def cursor(src: String) -> Cur:
+  Cur{src, Nil{}, False{}, False{}}
+
+# the next event. A comma or a colon is consumed on the way to the event
+# after it. After the root value, further calls are the end, or an error
+# when another value follows
+def next(cur: Cur) -> (Ev & Cur):
+  Cur{rest, stack, done, bad} = cur
+  next.open(rest, stack, done, bad)
+
+# drop the next value: one scalar, or one array or object with everything
+# inside it. The cursor is left where that value ended. A string with no
+# escapes is not copied; a string being skipped is not decoded into a buffer
+def skip(cur: Cur) -> Cur:
+  Cur{rest, stack, done, bad} = cur
+  skip.open(rest, stack, done, bad)
+
+# the text of a string, a key, or a number. A span is copied here. None when
+# the event is not one of those
+def text(ev: Ev) -> Maybe<&2, String>:
+  match ev:
+    case EStr{body}:
+      Some{body}
+    case EKey{body}:
+      Some{body}
+    case EStrS{src, +nn}:
+      Some{V.span.str(src, nn, U32.is_zero(nn))}
+    case EKeyS{src, +nn}:
+      Some{V.span.str(src, nn, U32.is_zero(nn))}
+    case ENum{src, +nn}:
+      Some{V.span.str(src, nn, U32.is_zero(nn))}
+    case other:
+      None{}
