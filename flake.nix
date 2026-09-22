@@ -32,19 +32,23 @@
         inherit pkgs bend bend-cc self;
         lib = pkgs.lib;
       };
+
+      scale = import ./scale {
+        inherit pkgs bend self;
+      };
     in {
       packages.${system} = {
         inherit bend bend-cc;
         ez = ezBin;
         inherit bolt;
-      } // bench.packages;
+      } // bench.packages // scale.packages;
 
       apps.${system} = bench.apps;
 
       checks.${system} = {
         proofs = ez.mkProofs { ez = ezBin; src = self; };
         lint = ez.mkLint { inherit bolt; src = self; };
-      } // bench.checks;
+      } // bench.checks // scale.checks;
 
       devShells.${system}.default = ez.mkShell {
         packages = [
