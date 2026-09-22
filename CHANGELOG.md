@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/Emerging-Patterns/ezjson/compare/v0.3.0...v0.3.1) (2026-09-22)
+
+
+### Performance Improvements
+
+* step long JSON strings without a per-character keep ([#24](https://github.com/Emerging-Patterns/ezjson/issues/24)) ([d7abc34](https://github.com/Emerging-Patterns/ezjson/commit/d7abc3410b61784d880bb70f38a234e105b431dd))
+
 ## [0.3.0](https://github.com/Emerging-Patterns/ezjson/compare/v0.2.0...v0.3.0) (2026-09-22)
 
 
