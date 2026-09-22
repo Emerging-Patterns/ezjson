@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/Emerging-Patterns/ezjson/compare/v0.3.1...v0.4.0) (2026-09-22)
+
+
+### Features
+
+* add large JSON to fair bench ([#26](https://github.com/Emerging-Patterns/ezjson/issues/26)) ([4359cd0](https://github.com/Emerging-Patterns/ezjson/commit/4359cd088dd0f8abc21f2cacf67cc6911ba588e5))
+
 ## [0.3.1](https://github.com/Emerging-Patterns/ezjson/compare/v0.3.0...v0.3.1) (2026-09-22)
 
 
