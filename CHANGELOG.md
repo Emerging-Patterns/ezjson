@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/Emerging-Patterns/ezjson/compare/v0.4.1...v0.4.2) (2026-09-22)
+
+
+### Performance Improvements
+
+* step long JSON numbers in one plain-word loop ([#29](https://github.com/Emerging-Patterns/ezjson/issues/29)) ([5e4eac4](https://github.com/Emerging-Patterns/ezjson/commit/5e4eac4680788083e26aa9d439d7f65a1ccc815a))
+
 ## [0.4.1](https://github.com/Emerging-Patterns/ezjson/compare/v0.4.0...v0.4.1) (2026-09-22)
 
 
