@@ -8,8 +8,8 @@
 # - Ratio = ezjson/rust (>1 ⇒ ezjson slower). Absolute ms/op for both.
 # - Fixtures are product-shaped: nested objects/arrays, unicode, numbers.
 #   One-shot parse/print keeps the 1KB/10KB/100KB rows and adds ~320KB nested
-#   and string-row docs. Those stay under 400KB: Bend `parse` overflows near
-#   523KiB string-row and OOMs near 599KiB nested (laya repro, #19).
+#   and string-row docs. Those stay under 400KB so one-shot parse stays
+#   inside Bend's stack and heap limits.
 # - Pull rows are 1MB and 4MB. They time `next` until end, `skip` of each
 #   `rows` array, and `text` on every 8th direct string in those arrays.
 #   The Rust side is an in-process token walk (deserialize_any). Skip borrows
@@ -197,16 +197,16 @@ def real_world_fixtures():
         return sized("nested_320kb", text)
 
     def rows_text():
-        # laya-weights shaped: one array of unescaped string rows.
+        # One array of unescaped string rows.
         row = "r" * 192
-        one = dumps({"fmt": "laya-weights-json-v2", "rows": [row], "n": 1})
-        two = dumps({"fmt": "laya-weights-json-v2", "rows": [row, row], "n": 2})
+        one = dumps({"fmt": "string-rows-v1", "rows": [row], "n": 1})
+        two = dumps({"fmt": "string-rows-v1", "rows": [row, row], "n": 2})
         marginal = len(two.encode("utf-8")) - len(one.encode("utf-8"))
-        base_n = len(dumps({"fmt": "laya-weights-json-v2", "rows": [], "n": 0}).encode("utf-8"))
+        base_n = len(dumps({"fmt": "string-rows-v1", "rows": [], "n": 0}).encode("utf-8"))
         n = max(1, (one_want - base_n) // max(marginal, 1))
         rows = [row] * n
         def pack():
-            return dumps({"fmt": "laya-weights-json-v2", "rows": rows, "n": len(rows)})
+            return dumps({"fmt": "string-rows-v1", "rows": rows, "n": len(rows)})
         text = pack()
         while len(text.encode("utf-8")) < one_want:
             rows.append(row)
