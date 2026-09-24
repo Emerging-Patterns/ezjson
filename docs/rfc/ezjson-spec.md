@@ -191,7 +191,7 @@ an induction on the characters.
 | JSON-STR-2 | Inside a string, `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t` decode to their characters; `\uXXXX` of a non-surrogate decodes to that code point; a high then low surrogate escape decodes to one code point; any other escape, and an unpaired surrogate escape, make `parse` `None` (§7, §8.2) | Proved | pending | |
 | JSON-STR-3 | Inside a string, a raw U+0000 to U+001F makes `parse` `None`, and every other raw code point except `"` and `\` is kept as itself (§7) | Proved | pending | |
 | JSON-STR-4 | Two object names compare equal in `get` exactly when their decoded characters are equal, whatever escapes spelled them (§8.3) | Proved | pending | |
-| JSON-STR-5 | `quote(s)` escapes exactly `"`, `\` and U+0000 to U+001F, using the two-character form where one exists and `\u00xx` otherwise, and writes every other scalar value as itself (§7) | Proved | pending | |
+| JSON-STR-5 | `quote(s)` escapes exactly `"`, `\` and U+0000 to U+001F, using the two-character form where one exists and `\u00xx` otherwise, and writes every other scalar value as itself, and writes U+FFFD for every code point that is not a Unicode scalar value (a surrogate, or past U+10FFFF) (§7, §8.1) | Proved | pending | |
 
 REVIEW-3 decides what `quote` does with a code point that is not a scalar
 value. JSON-STR-1 and JSON-STR-5 are stated over scalar values either way.
@@ -298,8 +298,8 @@ master's results against the branch's in the description.
 | Change | Needed by | REVIEW |
 | :---- | :---- | :---- |
 | `as_f32` returns none on overflow (landed) | JSON-TREE-7 | REVIEW-6 |
-| `print` writes U+FFFD for a code point that is not a scalar value | JSON-STR-1, JSON-PRINT-1 | REVIEW-3 |
-| add `wf` | JSON-PRINT-1, JSON-PRINT-3 | REVIEW-3 |
+| `print` writes U+FFFD for a code point that is not a scalar value (landed) | JSON-STR-1, JSON-STR-5, JSON-PRINT-1 | REVIEW-3 |
+| add `wf` (landed) | JSON-PRINT-1, JSON-PRINT-3 | REVIEW-3 |
 | add `has` and `len` (landed) | JSON-TREE-8, JSON-TREE-9 | REVIEW-5 |
 | README import hash | none (docs) | REVIEW-13 |
 

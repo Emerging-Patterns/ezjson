@@ -4,7 +4,7 @@ This is the list of every behavior ezjson guarantees, each under a stable requir
 
 Every requirement has one of two levels. A **Proved** requirement holds for every input, and is backed by a quantified law (a `for` or `exs` binder) in `ezjson/LAWS.bend` that passes the proof gate. A **Trusted** requirement is an assumption ezjson cannot check from inside its own gate, and it is listed in the trust boundary below. A Proved requirement whose laws have not all landed has status **pending**: we intend to prove it, and until then it is not guaranteed. The proof gate is this check: the first line `bend ezjson/PROOF.bend` prints is exactly `All terms check.` Tests and fixtures are never evidence for a requirement.
 
-A value is **well-formed** when `V.wf` holds of it (the def lands with JSON-PRINT-3): its arrays and objects are chains of cells ending in `JNil`, no cell stands where a value belongs, and every number's text is a JSON number. Every value built through `main.bend` or returned by `parse` is well-formed (JSON-PRINT-3). `same` is the specification relation "the same JSON value", which ignores whether a string or key is owned or a span of the source.
+A value is **well-formed** when `V.wf` holds of it: its arrays and objects are chains of cells ending in `JNil`, no cell stands where a value belongs, and every number's text is a JSON number. Every value built through `main.bend` or returned by `parse` is well-formed (JSON-PRINT-3). `same` is the specification relation "the same JSON value", which ignores whether a string or key is owned or a span of the source.
 
 The reasoning behind each requirement, the verdict of each against the code at `089d520`, and the decisions that shaped them are in [docs/rfc/ezjson-spec.md](docs/rfc/ezjson-spec.md). Every law as it stood then, and the progress of the rollout, is in [docs/rfc/ezjson-law-inventory.md](docs/rfc/ezjson-law-inventory.md).
 
@@ -50,7 +50,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | JSON-STR-2 | Inside a string, `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t` decode to their characters; `\uXXXX` of a non-surrogate decodes to that code point; a high then low surrogate escape decodes to one code point; any other escape, and an unpaired surrogate escape, make `parse` `None` (§7, §8.2) | Proved | pending |  |
 | JSON-STR-3 | Inside a string, a raw U+0000 to U+001F makes `parse` `None`, and every other raw code point except `"` and `\` is kept as itself (§7) | Proved | pending |  |
 | JSON-STR-4 | Two object names compare equal in `get` exactly when their decoded characters are equal, whatever escapes spelled them (§8.3) | Proved | pending |  |
-| JSON-STR-5 | `quote(s)` escapes exactly `"`, `\` and U+0000 to U+001F, using the two-character form where one exists and `\u00xx` otherwise, and writes every other scalar value as itself (§7) | Proved | pending |  |
+| JSON-STR-5 | `quote(s)` escapes exactly `"`, `\` and U+0000 to U+001F, using the two-character form where one exists and `\u00xx` otherwise, and writes every other scalar value as itself, and writes U+FFFD for every code point that is not a Unicode scalar value (a surrogate, or past U+10FFFF) (§7, §8.1) | Proved | pending | ezjson/LAWS.bend print_non_scalar |
 
 ### Print and round trip (JSON-PRINT)
 
@@ -58,7 +58,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | :---- | :---- | :---- | :---- | :---- |
 | JSON-PRINT-1 | For every well-formed value `j`, `parse(print(j))` is `Some` of a value `same` as `j` | Proved | pending |  |
 | JSON-PRINT-2 | For every text `t` with `parse(t) == Some{j}`, `print(j)` holds no whitespace outside strings, and `print(j) == print(j2)` where `parse(print(j)) == Some{j2}` | Proved | pending |  |
-| JSON-PRINT-3 | For every value built only from `null`, `bool`, `str`, `num`, `arr` and `obj`, or returned by `parse`, `wf` holds | Proved | pending |  |
+| JSON-PRINT-3 | For every value built only from `null`, `bool`, `str`, `num`, `arr` and `obj`, or returned by `parse`, `wf` holds | Proved | pending | ezjson/LAWS.bend wf_scalars; ezjson/LAWS.bend wf_num; ezjson/LAWS.bend wf_arr; ezjson/LAWS.bend wf_obj |
 
 ### The tree interface (JSON-TREE)
 
@@ -93,6 +93,8 @@ Every pending row with no Law entry is unproved in full; the RFC's Rollout says 
 | :---- | :---- | :---- |
 | JSON-TREE-3 | `at` on a value that is not an array is `null()` at every index (`at_not_arr`) | `at(arr(xs), i)` is the `i`-th element, or `null()` past the end |
 | JSON-TREE-4 | `get` on a value that is not an object is `null()` for every key (`get_not_obj`) | `get(obj(ps), k)` is the first pair's value with key `k`, or `null()` |
+| JSON-STR-5 | a code point that is not a scalar value is written as U+FFFD (`print_non_scalar`) | what is written for each scalar value: `"`, `\` and U+0000 to U+001F escaped, everything else as itself |
+| JSON-PRINT-3 | `null`, `bool`, `str` and `num` build well-formed values, and `arr` and `obj` do from well-formed values (`wf_scalars`, `wf_num`, `wf_arr`, `wf_obj`) | every value `parse` returns is well-formed |
 | JSON-TREE-8 | `has` is false on a non-object (`has_not_obj`) and on `obj([])` (`has_empty`); on `obj((k2, v) <> ps)` it is `find.eq(k2, k)` or `has(obj(ps), k)` (`has_first`) | that `find.eq(a, b)` is true exactly when `a == b`, the string lemma JSON-TREE-4 and JSON-STR-4 also need |
 
 ## Trust boundary

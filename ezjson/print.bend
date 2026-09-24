@@ -25,16 +25,35 @@ def escape.rest.go(+cp: U32, ch: Char, ctrl: Bool) -> String:
 def escape.rest(+cp: U32, ch: Char) -> String:
   escape.rest.go(cp, ch, U32.is_lt(cp, 32))
 
+# whether a code point is a Unicode scalar value: not a surrogate, and not
+# past U+10FFFF. No UTF-8 JSON text can hold any other
+def scalar(+cp: U32) -> Bool:
+  Bool.not(Bool.or(Bool.and(U32.is_ge(cp, 55296), U32.is_le(cp, 57343)), U32.is_gt(cp, 1114111)))
+
+# one scalar value, escaped when JSON requires it
+def escape.plain(+cp: U32, ch: Char) -> String:
+  Bool.pick(String, U32.is_eq(cp, 34), "\\\"",
+  Bool.pick(String, U32.is_eq(cp, 92), "\\\\",
+  Bool.pick(String, U32.is_eq(cp, 8), "\\b",
+  Bool.pick(String, U32.is_eq(cp, 12), "\\f",
+  Bool.pick(String, U32.is_eq(cp, 10), "\\n",
+  Bool.pick(String, U32.is_eq(cp, 13), "\\r",
+  Bool.pick(String, U32.is_eq(cp, 9), "\\t",
+    escape.rest(cp, ch))))))))
+
+# a scalar value as escape.plain writes it; any other code point as U+FFFD,
+# as Go's encoding/json writes invalid UTF-8
+def escape.scalar(+cp: U32, ch: Char, ok: Bool) -> String:
+  match ok:
+    case True{}:
+      escape.plain(cp, ch)
+    case False{}:
+      String.from_list([Char.from_u32(65533)])
+
+# one char of a string
 def escape.char(+ch: Char) -> String:
-  +x = Char.to_u32(ch)
-  Bool.pick(String, U32.is_eq(x, 34), "\\\"",
-  Bool.pick(String, U32.is_eq(x, 92), "\\\\",
-  Bool.pick(String, U32.is_eq(x, 8), "\\b",
-  Bool.pick(String, U32.is_eq(x, 12), "\\f",
-  Bool.pick(String, U32.is_eq(x, 10), "\\n",
-  Bool.pick(String, U32.is_eq(x, 13), "\\r",
-  Bool.pick(String, U32.is_eq(x, 9), "\\t",
-    escape.rest(x, ch))))))))
+  +cp = Char.to_u32(ch)
+  escape.scalar(cp, ch, scalar(cp))
 
 # the chars of a string with quotes, backslashes, and controls escaped
 def escape(cs: List<&2, Char>) -> String:

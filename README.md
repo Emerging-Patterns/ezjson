@@ -14,7 +14,8 @@ ez add Emerging-Patterns/ezjson
 ## Usage
 
 `parse` reads JSON text into `Maybe Json`: null, booleans, numbers, strings,
-arrays, and objects. `print` writes that value back as compact text. A number
+arrays, and objects. `print` writes that value back as compact text, and
+writes U+FFFD for a code point no UTF-8 text can hold (a lone surrogate). A number
 keeps the spelling it was parsed with. `num` builds one from that text, and
 builds null when the text is not a JSON number.
 

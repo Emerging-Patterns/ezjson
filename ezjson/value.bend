@@ -345,6 +345,49 @@ def at(val: Json, idx: U32) -> Json:
     case other:
       JNull{}
 
+# what wf.go checks: a value, the cells of an array, or the cells of an object
+type Shape is Data:
+  WVal{}
+  WArr{}
+  WObj{}
+
+# whether a value, or a chain of cells, has the shape the parser and the
+# builders give: arrays and objects are chains of cells ending in JNil, no
+# cell stands where a value belongs, and a number's text is a JSON number
+def wf.go(val: Json, shape: Shape) -> Bool:
+  match val shape:
+    case JNull{} WVal{}:
+      True{}
+    case JBool{_} WVal{}:
+      True{}
+    case JNum{raw} WVal{}:
+      num.ok(raw)
+    case JStr{_} WVal{}:
+      True{}
+    case JSpan{_, _} WVal{}:
+      True{}
+    case JArr{items} WVal{}:
+      wf.go(items, WArr{})
+    case JObj{pairs} WVal{}:
+      wf.go(pairs, WObj{})
+    case JNil{} WArr{}:
+      True{}
+    case JCons{hd, tl} WArr{}:
+      Lazy.stop(Bool, Bool.not(wf.go(hd, WVal{})), False{}, _u => wf.go(tl, WArr{}))
+    case JNil{} WObj{}:
+      True{}
+    case JPair{_, vv, rr} WObj{}:
+      Lazy.stop(Bool, Bool.not(wf.go(vv, WVal{})), False{}, _u => wf.go(rr, WObj{}))
+    case JBind{_, _, vv, rr} WObj{}:
+      Lazy.stop(Bool, Bool.not(wf.go(vv, WVal{})), False{}, _u => wf.go(rr, WObj{}))
+    case _ _:
+      False{}
+
+# whether a value is well-formed: the shape every value from the builders and
+# from parse has. print writes JSON text for exactly these
+def wf(val: Json) -> Bool:
+  wf.go(val, WVal{})
+
 # whether a chain of pairs has the key, stopping at the first match
 def has.go(cells: Json, +key: String) -> Bool:
   match cells:
