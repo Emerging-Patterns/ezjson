@@ -836,6 +836,95 @@ def bounded(+txt: String, +left: U32) -> Bool:
 def short(+txt: String) -> Bool:
   bounded(txt, 4294967295)
 
+# what one event of the cursor says, its text read out: a string's, a key's
+# or a number's characters, whether a span or owned
+type Evt is Data:
+  VNull{}
+  VBool{b: Bool}
+  VNum{raw: String}
+  VStr{s: String}
+  VKey{s: String}
+  VBeginArr{}
+  VEndArr{}
+  VBeginObj{}
+  VEndObj{}
+  VEnd{}
+  VErr{}
+
+# an event as what it says
+def view(ev: Pull.Ev) -> Evt:
+  match ev:
+    case Pull.ENull{}:
+      VNull{}
+    case Pull.EBool{bb}:
+      VBool{bb}
+    case Pull.ENum{src, +nn}:
+      VNum{take(src, U32.to_nat(nn))}
+    case Pull.EStr{body}:
+      VStr{body}
+    case Pull.EStrS{src, +nn}:
+      VStr{take(src, U32.to_nat(nn))}
+    case Pull.EKey{body}:
+      VKey{body}
+    case Pull.EKeyS{src, +nn}:
+      VKey{take(src, U32.to_nat(nn))}
+    case Pull.EBeginArr{}:
+      VBeginArr{}
+    case Pull.EEndArr{}:
+      VEndArr{}
+    case Pull.EBeginObj{}:
+      VBeginObj{}
+    case Pull.EEndObj{}:
+      VEndObj{}
+    case Pull.EEnd{}:
+      VEnd{}
+    case Pull.EErr{}:
+      VErr{}
+
+# a value's events in document order: its scalars, keys, and container
+# begins and ends. A value holds no comma or colon event. Read through the
+# cells of an array or an object, it gives their elements' or members' events
+def events(val: V.Json) -> List<&2, Evt>:
+  match val:
+    case V.JNull{}:
+      [VNull{}]
+    case V.JBool{bb}:
+      [VBool{bb}]
+    case V.JNum{raw}:
+      [VNum{raw}]
+    case V.JStr{txt}:
+      [VStr{txt}]
+    case V.JSpan{src, +nn}:
+      [VStr{take(src, U32.to_nat(nn))}]
+    case V.JArr{items}:
+      VBeginArr{} <> List.append(&2, Evt, events(items), [VEndArr{}])
+    case V.JObj{pairs}:
+      VBeginObj{} <> List.append(&2, Evt, events(pairs), [VEndObj{}])
+    case V.JNil{}:
+      []
+    case V.JCons{hd, tl}:
+      List.append(&2, Evt, events(hd), events(tl))
+    case V.JPair{kk, vv, rr}:
+      VKey{kk} <> List.append(&2, Evt, events(vv), events(rr))
+    case V.JBind{src, +nn, vv, rr}:
+      VKey{take(src, U32.to_nat(nn))} <> List.append(&2, Evt, events(vv), events(rr))
+
+# the first `left` events next yields from a cursor, one call after another
+def pulled(left: Nat, +cur: Pull.Cur) -> List<&2, Evt>:
+  match left:
+    case 0n:
+      []
+    case 1n+pp:
+      view(ev_of(Ezjson.next(cur))) <> pulled(pp, cur_of(Ezjson.next(cur)))
+
+# the cursor after `left` calls of next
+def nexts(left: Nat, cur: Pull.Cur) -> Pull.Cur:
+  match left:
+    case 0n:
+      cur
+    case 1n+pp:
+      nexts(pp, cur_of(Ezjson.next(cur)))
+
 # LAW: as_bool reads back the boolean bool built
 # JSON-TREE-1
 law as_bool_bool:

@@ -30894,3 +30894,3546 @@ def Laws.u32_nat_inj(aa, bb, h):
       Equal.cong(Nat, Bool, zz => Cmp.is_eq(Nat.cmp(zz, U32.to_nat(bb))), U32.to_nat(aa), U32.to_nat(bb), h),
       Equal.cong(Cmp, Bool, zz => Cmp.is_eq(zz), Nat.cmp(U32.to_nat(bb), U32.to_nat(bb)), EQ{},
         nat_cmp_refl(U32.to_nat(bb))))))
+
+# JSON-PULL-1: the cursor on a derivation's text
+
+# a step that already stopped on the suffix in hand returns it
+law go_rest:
+  for +ff: Nat
+  for +txt: String
+  for stop: Pull.Stop
+  for stack: List<&2, Pull.Frame>
+  for goal: Pull.Goal
+  for done: Bool
+  for bad: Bool
+  {Pull.next.go(1n+ff, txt, Pull.S{Pull.MRest{stop}, stack, goal, done, bad})
+    == Pull.Fin{(stop, Pull.Cur{txt, stack, done, bad})} : Pull.Out}
+
+def go_rest(_ff, txt, _stop, _stack, _goal, _done, _bad):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{_, _}:
+      {==}
+
+# the cursor steps over whitespace between tokens, keeping its state, from
+# one character on, the rest given, whether or not the root is over
+law go_wsd.cons:
+  for +ff: Nat
+  for +uu: U32
+  for +tl: String
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +goal: Pull.Goal
+  for +done: Bool
+  for got: ({Laws.is_ws(Chr{uu}) == True{} : Bool} & {Laws.all_ws(tl) == True{} : Bool})
+  for ih: {Laws.all_ws(tl) == True{} : Bool}
+    -> {Pull.next.go(1n+ff, tl ++ tail, Pull.S{Pull.MIdle{}, stack, goal, done, False{}})
+      == Pull.next.go(1n+ff, tail, Pull.S{Pull.MIdle{}, stack, goal, done, False{}}) : Pull.Out}
+  {Pull.next.go(1n+ff, SCon{Chr{uu}, tl ++ tail}, Pull.S{Pull.MIdle{}, stack, goal, done, False{}})
+    == Pull.next.go(1n+ff, tail, Pull.S{Pull.MIdle{}, stack, goal, done, False{}}) : Pull.Out}
+
+def go_wsd.cons(ff, uu, tl, tail, stack, goal, done, got, ih):
+  (e1, e2) = got
+  cls = Equal.sym(Lex.Class, Lex.classify(Chr{uu}), Lex.CSpace{}, ws_a(uu, U32.is_eq(uu, 32), {==}, e1))
+  %cls : {Pull.next.go(1n+ff, tl ++ tail, Pull.look.plan(Chr{uu}, stack, goal, done, _))
+    == Pull.next.go(1n+ff, tail, Pull.S{Pull.MIdle{}, stack, goal, done, False{}}) : Pull.Out}
+  ih(e2)
+
+# the cursor steps over whitespace between tokens, keeping its state
+law go_wsd:
+  for +ff: Nat
+  for +ws: String
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +goal: Pull.Goal
+  for +done: Bool
+  for h_ws: {Laws.all_ws(ws) == True{} : Bool}
+  {Pull.next.go(1n+ff, ws ++ tail, Pull.S{Pull.MIdle{}, stack, goal, done, False{}})
+    == Pull.next.go(1n+ff, tail, Pull.S{Pull.MIdle{}, stack, goal, done, False{}}) : Pull.Out}
+
+def go_wsd(ff, ws, tail, stack, goal, done, h_ws):
+  match ws:
+    case SNil{}:
+      {==}
+    case SCon{Chr{+uu}, +tl}:
+      go_wsd.cons(ff, uu, tl, tail, stack, goal, done, and_both(Laws.is_ws(Chr{uu}), Laws.all_ws(tl), h_ws),
+        hh => go_wsd(ff, tl, tail, stack, goal, done, hh))
+
+# next steps over whitespace, whether or not the root is over
+law next_ws:
+  for +ws: String
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for h_ws: {Laws.all_ws(ws) == True{} : Bool}
+  {Ezjson.next(Pull.Cur{ws ++ tail, stack, done, False{}}) == Ezjson.next(Pull.Cur{tail, stack, done, False{}})
+    : (Pull.Ev & Pull.Cur)}
+
+def next_ws(ws, tail, stack, done, h_ws):
+  Equal.cong(Pull.Out, (Pull.Ev & Pull.Cur), xx => Pull.next.use(Pull.next.fin(Pull.next.grow(32n, 1n, xx))),
+    Pull.next.go(4n, ws ++ tail, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, done, False{}}),
+    Pull.next.go(4n, tail, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, done, False{}}),
+    go_wsd(3n, ws, tail, stack, Pull.GNext{}, done, h_ws))
+
+# next, once the first budget's walk is known to have finished
+law next_fin:
+  for +txt: String
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for got: (Pull.Stop & Pull.Cur)
+  for ee: {Pull.next.go(4n, txt, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, done, False{}}) == Pull.Fin{got}
+    : Pull.Out}
+  {Ezjson.next(Pull.Cur{txt, stack, done, False{}}) == Pull.next.use(got) : (Pull.Ev & Pull.Cur)}
+
+def next_fin(txt, stack, done, got, ee):
+  Equal.cong(Pull.Out, (Pull.Ev & Pull.Cur), xx => Pull.next.use(Pull.next.fin(Pull.next.grow(32n, 1n, xx))),
+    Pull.next.go(4n, txt, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, done, False{}}), Pull.Fin{got}, ee)
+
+# after the root and whitespace, the text's end is the end
+law next_eof:
+  for +ws: String
+  for +stack: List<&2, Pull.Frame>
+  for h_ws: {Laws.all_ws(ws) == True{} : Bool}
+  {Ezjson.next(Pull.Cur{ws, stack, True{}, False{}}) == (Pull.EEnd{}, Pull.Cur{"", stack, True{}, False{}})
+    : (Pull.Ev & Pull.Cur)}
+
+def next_eof(ws, stack, h_ws):
+  ea = append_nil(ws)
+  %ea : {Ezjson.next(Pull.Cur{_, stack, True{}, False{}}) == (Pull.EEnd{}, Pull.Cur{"", stack, True{}, False{}})
+    : (Pull.Ev & Pull.Cur)}
+  next_ws(ws, "", stack, True{}, h_ws)
+
+# appending strings is associative
+law sassoc:
+  for +aa: String
+  for +bb: String
+  for +cc: String
+  {(aa ++ bb) ++ cc == aa ++ (bb ++ cc) : String}
+
+def sassoc(aa, bb, cc):
+  match aa:
+    case SNil{}:
+      {==}
+    case SCon{hd, tl}:
+      Equal.cong(String, String, xx => SCon{hd, xx}, (tl ++ bb) ++ cc, tl ++ (bb ++ cc), sassoc(tl, bb, cc))
+
+# an append regrouped, then its right side rewritten
+law app3:
+  for +aa: String
+  for +bb: String
+  for +tail: String
+  for +mid: String
+  for +rhs: String
+  for e1: {bb ++ tail == mid : String}
+  for e2: {aa ++ mid == rhs : String}
+  {(aa ++ bb) ++ tail == rhs : String}
+
+def app3(aa, bb, tail, mid, rhs, e1, e2):
+  Equal.trans(String, (aa ++ bb) ++ tail, aa ++ (bb ++ tail), rhs, sassoc(aa, bb, tail),
+    Equal.trans(String, aa ++ (bb ++ tail), aa ++ mid, rhs,
+      Equal.cong(String, String, xx => aa ++ xx, bb ++ tail, mid, e1), e2))
+
+# pieces spelled in front of a tail
+def sp(ps: List<&2, Laws.Piece>, tail: String) -> String:
+  match ps:
+    case Nil{}:
+      tail
+    case pc <> tl:
+      Laws.piece.text(pc) ++ sp(tl, tail)
+
+# spelled pieces then a tail are sp
+law sp_eq:
+  for +ps: List<&2, Laws.Piece>
+  for +tail: String
+  {Laws.spell(ps) ++ tail == sp(ps, tail) : String}
+
+def sp_eq(ps, tail):
+  match ps:
+    case Nil{}:
+      {==}
+    case +pc <> +tl:
+      app3(Laws.piece.text(pc), Laws.spell(tl), tail, sp(tl, tail), Laws.piece.text(pc) ++ sp(tl, tail),
+        sp_eq(tl, tail), {==})
+
+# a derivation's text in front of a tail, grouped to the right
+def gt(gg: Laws.Gv, tail: String) -> String:
+  match gg:
+    case Laws.GWord{w}:
+      w ++ tail
+    case Laws.GStr{ps}:
+      SCon{'"', sp(ps, SCon{'"', tail})}
+    case Laws.GArr0{w0}:
+      SCon{'[', w0 ++ SCon{']', tail}}
+    case Laws.GArr{w0, vv, w1, rr}:
+      SCon{'[', w0 ++ gt(vv, w1 ++ gt(rr, SCon{']', tail}))}
+    case Laws.GObj0{w0}:
+      SCon{'{', w0 ++ SCon{'}', tail}}
+    case Laws.GObj{w0, ps, w1, w2, vv, w3, rr}:
+      SCon{'{', w0 ++ SCon{'"', sp(ps, SCon{'"', w1 ++ SCon{':', w2 ++ gt(vv, w3 ++ gt(rr, SCon{'}', tail}))}})}}
+    case Laws.GEnd{}:
+      tail
+    case Laws.GNext{w2, vv, w1, rr}:
+      SCon{',', w2 ++ gt(vv, w1 ++ gt(rr, tail))}
+    case Laws.GNextM{w4, ps, w1, w2, vv, w3, rr}:
+      SCon{',', w4 ++ SCon{'"', sp(ps, SCon{'"', w1 ++ SCon{':', w2 ++ gt(vv, w3 ++ gt(rr, tail))}})}}
+
+# a member's text after its name's opening quote, in front of a tail
+law mem_eq:
+  for +ps: List<&2, Laws.Piece>
+  for +w1: String
+  for +w2: String
+  for +vv: Laws.Gv
+  for +w3: String
+  for +rs: String
+  for +rt: String
+  for +tail: String
+  for +ev: {Laws.g.text(vv) ++ (w3 ++ rt) == gt(vv, w3 ++ rt) : String}
+  for +er: {rs ++ tail == rt : String}
+  {(Laws.spell(ps) ++ "\"" ++ w1 ++ ":" ++ w2 ++ Laws.g.text(vv) ++ w3 ++ rs) ++ tail
+    == sp(ps, SCon{'"', w1 ++ SCon{':', w2 ++ gt(vv, w3 ++ rt)}}) : String}
+
+def mem_eq(ps, w1, w2, vv, w3, rs, rt, tail, ev, er):
+  +t3 = w3 ++ rt
+  +t2 = w2 ++ gt(vv, t3)
+  +t1 = w1 ++ SCon{':', t2}
+  app3(Laws.spell(ps), "\"" ++ w1 ++ ":" ++ w2 ++ Laws.g.text(vv) ++ w3 ++ rs, tail, SCon{'"', t1},
+    sp(ps, SCon{'"', t1}),
+    Equal.cong(String, String, xx => SCon{'"', xx}, (w1 ++ ":" ++ w2 ++ Laws.g.text(vv) ++ w3 ++ rs) ++ tail,
+      t1,
+      app3(w1, ":" ++ w2 ++ Laws.g.text(vv) ++ w3 ++ rs, tail, SCon{':', t2}, t1,
+        Equal.cong(String, String, xx => SCon{':', xx}, (w2 ++ Laws.g.text(vv) ++ w3 ++ rs) ++ tail, t2,
+          app3(w2, Laws.g.text(vv) ++ w3 ++ rs, tail, gt(vv, t3), t2,
+            app3(Laws.g.text(vv), w3 ++ rs, tail, t3, gt(vv, t3),
+              app3(w3, rs, tail, rt, t3, er, {==}), ev), {==})), {==})),
+    sp_eq(ps, SCon{'"', t1}))
+
+# a derivation's text then a tail is gt
+law gt_eq:
+  for +gg: Laws.Gv
+  for +tail: String
+  {Laws.g.text(gg) ++ tail == gt(gg, tail) : String}
+
+def gt_eq(gg, tail):
+  match gg:
+    case Laws.GWord{_}:
+      {==}
+    case Laws.GStr{+ps}:
+      Equal.cong(String, String, xx => SCon{'"', xx}, (Laws.spell(ps) ++ "\"") ++ tail, sp(ps, SCon{'"', tail}),
+        app3(Laws.spell(ps), "\"", tail, SCon{'"', tail}, sp(ps, SCon{'"', tail}), {==}, sp_eq(ps, SCon{'"', tail})))
+    case Laws.GArr0{+w0}:
+      Equal.cong(String, String, xx => SCon{'[', xx}, (w0 ++ "]") ++ tail, w0 ++ SCon{']', tail},
+        app3(w0, "]", tail, SCon{']', tail}, w0 ++ SCon{']', tail}, {==}, {==}))
+    case Laws.GArr{+w0, +vv, +w1, +rr}:
+      +t1 = w1 ++ gt(rr, SCon{']', tail})
+      Equal.cong(String, String, xx => SCon{'[', xx}, (w0 ++ Laws.g.text(vv) ++ w1 ++ Laws.g.text(rr) ++ "]") ++ tail,
+        w0 ++ gt(vv, t1),
+        app3(w0, Laws.g.text(vv) ++ w1 ++ Laws.g.text(rr) ++ "]", tail, gt(vv, t1), w0 ++ gt(vv, t1),
+          app3(Laws.g.text(vv), w1 ++ Laws.g.text(rr) ++ "]", tail, t1, gt(vv, t1),
+            app3(w1, Laws.g.text(rr) ++ "]", tail, gt(rr, SCon{']', tail}), t1,
+              app3(Laws.g.text(rr), "]", tail, SCon{']', tail}, gt(rr, SCon{']', tail}), {==},
+                gt_eq(rr, SCon{']', tail})), {==}),
+            gt_eq(vv, t1)), {==}))
+    case Laws.GObj0{+w0}:
+      Equal.cong(String, String, xx => SCon{'{', xx}, (w0 ++ "}") ++ tail, w0 ++ SCon{'}', tail},
+        app3(w0, "}", tail, SCon{'}', tail}, w0 ++ SCon{'}', tail}, {==}, {==}))
+    case Laws.GObj{+w0, +ps, +w1, +w2, +vv, +w3, +rr}:
+      +t3 = w3 ++ gt(rr, SCon{'}', tail})
+      +t1 = "\"" ++ sp(ps, SCon{'"', w1 ++ SCon{':', w2 ++ gt(vv, t3)}})
+      Equal.cong(String, String, xx => SCon{'{', xx},
+        (w0 ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ w1 ++ ":" ++ w2 ++ Laws.g.text(vv) ++ w3 ++ Laws.g.text(rr) ++ "}")
+          ++ tail, w0 ++ t1,
+        app3(w0, "\"" ++ Laws.spell(ps) ++ "\"" ++ w1 ++ ":" ++ w2 ++ Laws.g.text(vv) ++ w3 ++ Laws.g.text(rr) ++ "}",
+          tail, t1, w0 ++ t1,
+          Equal.cong(String, String, xx => SCon{'"', xx},
+            (Laws.spell(ps) ++ "\"" ++ w1 ++ ":" ++ w2 ++ Laws.g.text(vv) ++ w3 ++ Laws.g.text(rr) ++ "}") ++ tail,
+            sp(ps, SCon{'"', w1 ++ SCon{':', w2 ++ gt(vv, t3)}}),
+            mem_eq(ps, w1, w2, vv, w3, Laws.g.text(rr) ++ "}", gt(rr, SCon{'}', tail}), tail, gt_eq(vv, t3),
+              app3(Laws.g.text(rr), "}", tail, SCon{'}', tail}, gt(rr, SCon{'}', tail}), {==},
+                gt_eq(rr, SCon{'}', tail})))), {==}))
+    case Laws.GEnd{}:
+      {==}
+    case Laws.GNext{+w2, +vv, +w1, +rr}:
+      +t1 = w1 ++ gt(rr, tail)
+      Equal.cong(String, String, xx => SCon{',', xx}, (w2 ++ Laws.g.text(vv) ++ w1 ++ Laws.g.text(rr)) ++ tail,
+        w2 ++ gt(vv, t1),
+        app3(w2, Laws.g.text(vv) ++ w1 ++ Laws.g.text(rr), tail, gt(vv, t1), w2 ++ gt(vv, t1),
+          app3(Laws.g.text(vv), w1 ++ Laws.g.text(rr), tail, t1, gt(vv, t1),
+            app3(w1, Laws.g.text(rr), tail, gt(rr, tail), t1, gt_eq(rr, tail), {==}),
+            gt_eq(vv, t1)), {==}))
+    case Laws.GNextM{+w4, +ps, +w1, +w2, +vv, +w3, +rr}:
+      +t3 = w3 ++ gt(rr, tail)
+      +t1 = "\"" ++ sp(ps, SCon{'"', w1 ++ SCon{':', w2 ++ gt(vv, t3)}})
+      Equal.cong(String, String, xx => SCon{',', xx},
+        (w4 ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ w1 ++ ":" ++ w2 ++ Laws.g.text(vv) ++ w3 ++ Laws.g.text(rr)) ++ tail,
+        w4 ++ t1,
+        app3(w4, "\"" ++ Laws.spell(ps) ++ "\"" ++ w1 ++ ":" ++ w2 ++ Laws.g.text(vv) ++ w3 ++ Laws.g.text(rr),
+          tail, t1, w4 ++ t1,
+          Equal.cong(String, String, xx => SCon{'"', xx},
+            (Laws.spell(ps) ++ "\"" ++ w1 ++ ":" ++ w2 ++ Laws.g.text(vv) ++ w3 ++ Laws.g.text(rr)) ++ tail,
+            sp(ps, SCon{'"', w1 ++ SCon{':', w2 ++ gt(vv, t3)}}),
+            mem_eq(ps, w1, w2, vv, w3, Laws.g.text(rr), gt(rr, tail), tail, gt_eq(vv, t3), gt_eq(rr, tail))), {==}))
+
+# where the cursor is after a value that landed on `stack`, with `tail` left
+def aft.on(tail: String, spot: Pull.Spot) -> Pull.Cur:
+  match spot:
+    case Pull.Spot{st, root}:
+      Pull.Cur{tail, st, root, False{}}
+    case Pull.SpotBad{}:
+      Pull.Cur{"", [], False{}, True{}}
+
+# where the cursor is after a value in the slot `stack` gives it
+def aft(tail: String, stack: List<&2, Pull.Frame>) -> Pull.Cur:
+  aft.on(tail, Pull.place.spot(stack))
+
+# appending event lists is associative
+law eapp_assoc:
+  for +aa: List<&2, Laws.Evt>
+  for +bb: List<&2, Laws.Evt>
+  for +cc: List<&2, Laws.Evt>
+  {List.append(&2, Laws.Evt, List.append(&2, Laws.Evt, aa, bb), cc)
+    == List.append(&2, Laws.Evt, aa, List.append(&2, Laws.Evt, bb, cc)) : List<&2, Laws.Evt>}
+
+def eapp_assoc(aa, bb, cc):
+  match aa:
+    case Nil{}:
+      {==}
+    case hd <> tl:
+      Equal.cong(List<&2, Laws.Evt>, List<&2, Laws.Evt>, xx => hd <> xx,
+        List.append(&2, Laws.Evt, List.append(&2, Laws.Evt, tl, bb), cc),
+        List.append(&2, Laws.Evt, tl, List.append(&2, Laws.Evt, bb, cc)), eapp_assoc(tl, bb, cc))
+
+# adding is associative
+law add_assoc:
+  for +aa: Nat
+  for +bb: Nat
+  for +cc: Nat
+  {Nat.add(Nat.add(aa, bb), cc) == Nat.add(aa, Nat.add(bb, cc)) : Nat}
+
+def add_assoc(aa, bb, cc):
+  match aa:
+    case 0n:
+      {==}
+    case 1n+pp:
+      Equal.cong(Nat, Nat, xx => 1n+xx, Nat.add(Nat.add(pp, bb), cc), Nat.add(pp, Nat.add(bb, cc)),
+        add_assoc(pp, bb, cc))
+
+# adding one is the successor
+law add_one:
+  for +aa: Nat
+  {Nat.add(aa, 1n) == 1n+aa : Nat}
+
+def add_one(aa):
+  match aa:
+    case 0n:
+      {==}
+    case 1n+pp:
+      Equal.cong(Nat, Nat, xx => 1n+xx, Nat.add(pp, 1n), 1n+pp, add_one(pp))
+
+# the length of appended event lists
+law len_app:
+  for +aa: List<&2, Laws.Evt>
+  for +bb: List<&2, Laws.Evt>
+  {List.length(&2, Laws.Evt, List.append(&2, Laws.Evt, aa, bb))
+    == Nat.add(List.length(&2, Laws.Evt, aa), List.length(&2, Laws.Evt, bb)) : Nat}
+
+def len_app(aa, bb):
+  match aa:
+    case Nil{}:
+      {==}
+    case _hd <> tl:
+      Equal.cong(Nat, Nat, xx => 1n+xx, List.length(&2, Laws.Evt, List.append(&2, Laws.Evt, tl, bb)),
+        Nat.add(List.length(&2, Laws.Evt, tl), List.length(&2, Laws.Evt, bb)), len_app(tl, bb))
+
+# the events from `c` start with `es`, after which the cursor is `c2`
+def strm(_c: Pull.Cur, _es: List<&2, Laws.Evt>, _c2: Pull.Cur) -> Type:
+  @nn: Nat -> {Laws.pulled(Nat.add(List.length(&2, Laws.Evt, _es), nn), _c)
+    == List.append(&2, Laws.Evt, _es, Laws.pulled(nn, _c2)) : List<&2, Laws.Evt>}
+
+# one step of next is one event
+law strm_one:
+  for +c: Pull.Cur
+  for +ev: Pull.Ev
+  for +c2: Pull.Cur
+  for ee: {Ezjson.next(c) == (ev, c2) : (Pull.Ev & Pull.Cur)}
+  strm(c, [Laws.view(ev)], c2)
+
+def strm_one(c, ev, c2, ee):
+  nn => Equal.cong((Pull.Ev & Pull.Cur), List<&2, Laws.Evt>,
+    xx => Laws.view(Laws.ev_of(xx)) <> Laws.pulled(nn, Laws.cur_of(xx)), Ezjson.next(c), (ev, c2), ee)
+
+# strm_app at one count
+law strm_app.at:
+  for +c: Pull.Cur
+  for +aa: List<&2, Laws.Evt>
+  for +c1: Pull.Cur
+  for +bb: List<&2, Laws.Evt>
+  for +c2: Pull.Cur
+  for s1: strm(c, aa, c1)
+  for s2: strm(c1, bb, c2)
+  for +nn: Nat
+  {Laws.pulled(Nat.add(List.length(&2, Laws.Evt, List.append(&2, Laws.Evt, aa, bb)), nn), c)
+    == List.append(&2, Laws.Evt, List.append(&2, Laws.Evt, aa, bb), Laws.pulled(nn, c2)) : List<&2, Laws.Evt>}
+
+def strm_app.at(c, aa, c1, bb, c2, s1, s2, nn):
+  +la = List.length(&2, Laws.Evt, aa)
+  +lb = List.length(&2, Laws.Evt, bb)
+  el = Equal.sym(Nat, List.length(&2, Laws.Evt, List.append(&2, Laws.Evt, aa, bb)), Nat.add(la, lb),
+    len_app(aa, bb))
+  %el : {Laws.pulled(Nat.add(_, nn), c) == List.append(&2, Laws.Evt, List.append(&2, Laws.Evt, aa, bb),
+    Laws.pulled(nn, c2)) : List<&2, Laws.Evt>}
+  ea = Equal.sym(Nat, Nat.add(Nat.add(la, lb), nn), Nat.add(la, Nat.add(lb, nn)), add_assoc(la, lb, nn))
+  %ea : {Laws.pulled(_, c) == List.append(&2, Laws.Evt, List.append(&2, Laws.Evt, aa, bb),
+    Laws.pulled(nn, c2)) : List<&2, Laws.Evt>}
+  Equal.trans(List<&2, Laws.Evt>, Laws.pulled(Nat.add(la, Nat.add(lb, nn)), c),
+    List.append(&2, Laws.Evt, aa, Laws.pulled(Nat.add(lb, nn), c1)),
+    List.append(&2, Laws.Evt, List.append(&2, Laws.Evt, aa, bb), Laws.pulled(nn, c2)),
+    s1(Nat.add(lb, nn)),
+    Equal.trans(List<&2, Laws.Evt>, List.append(&2, Laws.Evt, aa, Laws.pulled(Nat.add(lb, nn), c1)),
+      List.append(&2, Laws.Evt, aa, List.append(&2, Laws.Evt, bb, Laws.pulled(nn, c2))),
+      List.append(&2, Laws.Evt, List.append(&2, Laws.Evt, aa, bb), Laws.pulled(nn, c2)),
+      Equal.cong(List<&2, Laws.Evt>, List<&2, Laws.Evt>, xx => List.append(&2, Laws.Evt, aa, xx),
+        Laws.pulled(Nat.add(lb, nn), c1), List.append(&2, Laws.Evt, bb, Laws.pulled(nn, c2)), s2(nn)),
+      Equal.sym(List<&2, Laws.Evt>, List.append(&2, Laws.Evt, List.append(&2, Laws.Evt, aa, bb),
+        Laws.pulled(nn, c2)), List.append(&2, Laws.Evt, aa, List.append(&2, Laws.Evt, bb, Laws.pulled(nn, c2))),
+        eapp_assoc(aa, bb, Laws.pulled(nn, c2)))))
+
+# events one after another
+law strm_app:
+  for +c: Pull.Cur
+  for +aa: List<&2, Laws.Evt>
+  for +c1: Pull.Cur
+  for +bb: List<&2, Laws.Evt>
+  for +c2: Pull.Cur
+  for s1: strm(c, aa, c1)
+  for s2: strm(c1, bb, c2)
+  strm(c, List.append(&2, Laws.Evt, aa, bb), c2)
+
+def strm_app(c, aa, c1, bb, c2, s1, s2):
+  nn => strm_app.at(c, aa, c1, bb, c2, s1, s2, nn)
+
+# no events
+law strm_nil:
+  for c: Pull.Cur
+  strm(c, [], c)
+
+def strm_nil(_c):
+  _nn => {==}
+
+# an event, then more events
+law strm_cons:
+  for +c: Pull.Cur
+  for +ev: Pull.Ev
+  for +c1: Pull.Cur
+  for +bb: List<&2, Laws.Evt>
+  for +c2: Pull.Cur
+  for ee: {Ezjson.next(c) == (ev, c1) : (Pull.Ev & Pull.Cur)}
+  for s2: strm(c1, bb, c2)
+  strm(c, Laws.view(ev) <> bb, c2)
+
+def strm_cons(c, ev, c1, bb, c2, ee, s2):
+  strm_app(c, [Laws.view(ev)], c1, bb, c2, strm_one(c, ev, c1, ee), s2)
+
+# a cursor whose next step is another's gives the same events, when there are some
+law strm_same:
+  for +c: Pull.Cur
+  for +c0: Pull.Cur
+  for +e0: Laws.Evt
+  for +es: List<&2, Laws.Evt>
+  for +c2: Pull.Cur
+  for ee: {Ezjson.next(c) == Ezjson.next(c0) : (Pull.Ev & Pull.Cur)}
+  for s0: strm(c0, e0 <> es, c2)
+  strm(c, e0 <> es, c2)
+
+def strm_same(c, c0, e0, es, c2, ee, s0):
+  +nn => Equal.trans(List<&2, Laws.Evt>, Laws.pulled(1n+Nat.add(List.length(&2, Laws.Evt, es), nn), c),
+    Laws.pulled(1n+Nat.add(List.length(&2, Laws.Evt, es), nn), c0),
+    List.append(&2, Laws.Evt, e0 <> es, Laws.pulled(nn, c2)),
+    Equal.cong((Pull.Ev & Pull.Cur), List<&2, Laws.Evt>,
+      xx => Laws.view(Laws.ev_of(xx)) <> Laws.pulled(Nat.add(List.length(&2, Laws.Evt, es), nn), Laws.cur_of(xx)),
+      Ezjson.next(c), Ezjson.next(c0), ee), s0(nn))
+
+# next from one walk equals next from another, once their first budgets agree
+law go_next:
+  for +x: String
+  for +st: List<&2, Pull.Frame>
+  for +dd: Bool
+  for +y: String
+  for +st2: List<&2, Pull.Frame>
+  for +dd2: Bool
+  for ee: {Pull.next.go(4n, x, Pull.S{Pull.MIdle{}, st, Pull.GNext{}, dd, False{}})
+    == Pull.next.go(4n, y, Pull.S{Pull.MIdle{}, st2, Pull.GNext{}, dd2, False{}}) : Pull.Out}
+  {Ezjson.next(Pull.Cur{x, st, dd, False{}}) == Ezjson.next(Pull.Cur{y, st2, dd2, False{}}) : (Pull.Ev & Pull.Cur)}
+
+def go_next(x, st, dd, y, st2, dd2, ee):
+  Equal.cong(Pull.Out, (Pull.Ev & Pull.Cur), xx => Pull.next.use(Pull.next.fin(Pull.next.grow(32n, 1n, xx))),
+    Pull.next.go(4n, x, Pull.S{Pull.MIdle{}, st, Pull.GNext{}, dd, False{}}),
+    Pull.next.go(4n, y, Pull.S{Pull.MIdle{}, st2, Pull.GNext{}, dd2, False{}}), ee)
+
+# `[` where a value may go opens an array
+law go_open_arr:
+  for +x: String
+  for +stack: List<&2, Pull.Frame>
+  for hs: {True{} == Pull.expect.val.go(stack) : Bool}
+  {Pull.next.go(4n, SCon{'[', x}, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, False{}, False{}})
+    == Pull.Fin{(Pull.SEv{Pull.EBeginArr{}}, Pull.Cur{x, Pull.FArr{Pull.SVal{}, True{}} <> stack, False{}, False{}})}
+    : Pull.Out}
+
+def go_open_arr(x, stack, hs):
+  %hs : {Pull.next.go(4n, x, Pull.punct.arr.if(stack, Pull.GNext{}, _))
+    == Pull.Fin{(Pull.SEv{Pull.EBeginArr{}}, Pull.Cur{x, Pull.FArr{Pull.SVal{}, True{}} <> stack, False{}, False{}})}
+    : Pull.Out}
+  go_rest(3n, x, Pull.SEv{Pull.EBeginArr{}}, Pull.FArr{Pull.SVal{}, True{}} <> stack, Pull.GNext{}, False{}, False{})
+
+law next_oarr:
+  for +x: String
+  for +stack: List<&2, Pull.Frame>
+  for h: {Pull.expect.val.go(stack) == True{} : Bool}
+  {Ezjson.next(Pull.Cur{SCon{'[', x}, stack, False{}, False{}})
+    == (Pull.EBeginArr{}, Pull.Cur{x, Pull.FArr{Pull.SVal{}, True{}} <> stack, False{}, False{}})
+    : (Pull.Ev & Pull.Cur)}
+
+def next_oarr(x, stack, h):
+  hs = Equal.sym(Bool, Pull.expect.val.go(stack), True{}, h)
+  next_fin(SCon{'[', x}, stack, False{}, (Pull.SEv{Pull.EBeginArr{}}, Pull.Cur{x, Pull.FArr{Pull.SVal{},
+    True{}} <> stack,
+    False{}, False{}}),
+    go_open_arr(x, stack, hs))
+
+# `{` where a value may go opens an object
+law go_open_obj:
+  for +x: String
+  for +stack: List<&2, Pull.Frame>
+  for hs: {True{} == Pull.expect.val.go(stack) : Bool}
+  {Pull.next.go(4n, SCon{'{', x}, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, False{}, False{}})
+    == Pull.Fin{(Pull.SEv{Pull.EBeginObj{}}, Pull.Cur{x, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, False{}})}
+    : Pull.Out}
+
+def go_open_obj(x, stack, hs):
+  %hs : {Pull.next.go(4n, x, Pull.punct.obj.if(stack, Pull.GNext{}, _))
+    == Pull.Fin{(Pull.SEv{Pull.EBeginObj{}}, Pull.Cur{x, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, False{}})}
+    : Pull.Out}
+  go_rest(3n, x, Pull.SEv{Pull.EBeginObj{}}, Pull.FObj{Pull.SKey{}, True{}} <> stack, Pull.GNext{}, False{}, False{})
+
+# `{` where a value may go opens an object
+law next_oobj:
+  for +x: String
+  for +stack: List<&2, Pull.Frame>
+  for h: {Pull.expect.val.go(stack) == True{} : Bool}
+  {Ezjson.next(Pull.Cur{SCon{'{', x}, stack, False{}, False{}})
+    == (Pull.EBeginObj{}, Pull.Cur{x, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, False{}})
+    : (Pull.Ev & Pull.Cur)}
+
+def next_oobj(x, stack, h):
+  hs = Equal.sym(Bool, Pull.expect.val.go(stack), True{}, h)
+  next_fin(SCon{'{', x}, stack, False{}, (Pull.SEv{Pull.EBeginObj{}}, Pull.Cur{x, Pull.FObj{Pull.SKey{},
+    True{}} <> stack,
+    False{}, False{}}),
+    go_open_obj(x, stack, hs))
+
+# a container closed in a slot a value may go lands there
+law close_ok:
+  for +ev: Pull.Ev
+  for +x: String
+  for +stack: List<&2, Pull.Frame>
+  for h: {Pull.expect.val.go(stack) == True{} : Bool}
+  {Pull.next.go(4n, x, Pull.close.out(ev, stack, Pull.GNext{})) == Pull.Fin{(Pull.SEv{ev}, aft(x, stack))} : Pull.Out}
+
+def close_ok(ev, x, stack, h):
+  match stack:
+    case Nil{}:
+      go_rest(3n, x, Pull.SEv{ev}, [], Pull.GNext{}, True{}, False{})
+    case Pull.FArr{Pull.SVal{}, _} <> +oo:
+      go_rest(3n, x, Pull.SEv{ev}, Pull.FArr{Pull.SCom{}, False{}} <> oo, Pull.GNext{}, False{}, False{})
+    case Pull.FObj{Pull.SVal{}, _} <> +oo:
+      go_rest(3n, x, Pull.SEv{ev}, Pull.FObj{Pull.SCom{}, False{}} <> oo, Pull.GNext{}, False{}, False{})
+    case Pull.FArr{Pull.SCom{}, fr} <> oo:
+      no({Pull.next.go(4n, x, Pull.close.out(ev, Pull.FArr{Pull.SCom{}, fr} <> oo, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{ev}, aft(x, Pull.FArr{Pull.SCom{}, fr} <> oo))} : Pull.Out}, h)
+    case Pull.FArr{Pull.SKey{}, fr} <> oo:
+      no({Pull.next.go(4n, x, Pull.close.out(ev, Pull.FArr{Pull.SKey{}, fr} <> oo, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{ev}, aft(x, Pull.FArr{Pull.SKey{}, fr} <> oo))} : Pull.Out}, h)
+    case Pull.FArr{Pull.SCol{}, fr} <> oo:
+      no({Pull.next.go(4n, x, Pull.close.out(ev, Pull.FArr{Pull.SCol{}, fr} <> oo, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{ev}, aft(x, Pull.FArr{Pull.SCol{}, fr} <> oo))} : Pull.Out}, h)
+    case Pull.FObj{Pull.SCom{}, fr} <> oo:
+      no({Pull.next.go(4n, x, Pull.close.out(ev, Pull.FObj{Pull.SCom{}, fr} <> oo, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{ev}, aft(x, Pull.FObj{Pull.SCom{}, fr} <> oo))} : Pull.Out}, h)
+    case Pull.FObj{Pull.SKey{}, fr} <> oo:
+      no({Pull.next.go(4n, x, Pull.close.out(ev, Pull.FObj{Pull.SKey{}, fr} <> oo, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{ev}, aft(x, Pull.FObj{Pull.SKey{}, fr} <> oo))} : Pull.Out}, h)
+    case Pull.FObj{Pull.SCol{}, fr} <> oo:
+      no({Pull.next.go(4n, x, Pull.close.out(ev, Pull.FObj{Pull.SCol{}, fr} <> oo, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{ev}, aft(x, Pull.FObj{Pull.SCol{}, fr} <> oo))} : Pull.Out}, h)
+
+# `]` after an element closes the array
+law next_carr:
+  for +x: String
+  for +fr: Bool
+  for +stack: List<&2, Pull.Frame>
+  for h: {Pull.expect.val.go(stack) == True{} : Bool}
+  {Ezjson.next(Pull.Cur{SCon{']', x}, Pull.FArr{Pull.SCom{}, fr} <> stack, False{}, False{}})
+    == (Pull.EEndArr{}, aft(x, stack)) : (Pull.Ev & Pull.Cur)}
+
+def next_carr(x, fr, stack, h):
+  next_fin(SCon{']', x}, Pull.FArr{Pull.SCom{}, fr} <> stack, False{}, (Pull.SEv{Pull.EEndArr{}}, aft(x, stack)),
+    close_ok(Pull.EEndArr{}, x, stack, h))
+
+# `]` of an empty array closes it
+law next_carr0:
+  for +x: String
+  for +stack: List<&2, Pull.Frame>
+  for h: {Pull.expect.val.go(stack) == True{} : Bool}
+  {Ezjson.next(Pull.Cur{SCon{']', x}, Pull.FArr{Pull.SVal{}, True{}} <> stack, False{}, False{}})
+    == (Pull.EEndArr{}, aft(x, stack)) : (Pull.Ev & Pull.Cur)}
+
+def next_carr0(x, stack, h):
+  next_fin(SCon{']', x}, Pull.FArr{Pull.SVal{}, True{}} <> stack, False{}, (Pull.SEv{Pull.EEndArr{}}, aft(x, stack)),
+    close_ok(Pull.EEndArr{}, x, stack, h))
+
+# `}` after a member closes the object
+law next_cobj:
+  for +x: String
+  for +fr: Bool
+  for +stack: List<&2, Pull.Frame>
+  for h: {Pull.expect.val.go(stack) == True{} : Bool}
+  {Ezjson.next(Pull.Cur{SCon{'}', x}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, False{}})
+    == (Pull.EEndObj{}, aft(x, stack)) : (Pull.Ev & Pull.Cur)}
+
+def next_cobj(x, fr, stack, h):
+  next_fin(SCon{'}', x}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, (Pull.SEv{Pull.EEndObj{}}, aft(x, stack)),
+    close_ok(Pull.EEndObj{}, x, stack, h))
+
+# `}` of an empty object closes it
+law next_cobj0:
+  for +x: String
+  for +stack: List<&2, Pull.Frame>
+  for h: {Pull.expect.val.go(stack) == True{} : Bool}
+  {Ezjson.next(Pull.Cur{SCon{'}', x}, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, False{}})
+    == (Pull.EEndObj{}, aft(x, stack)) : (Pull.Ev & Pull.Cur)}
+
+def next_cobj0(x, stack, h):
+  next_fin(SCon{'}', x}, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, (Pull.SEv{Pull.EEndObj{}}, aft(x, stack)),
+    close_ok(Pull.EEndObj{}, x, stack, h))
+
+# whitespace, a comma and whitespace after an element: the next element's slot
+law next_comma_arr:
+  for +w1: String
+  for +w2: String
+  for +x: String
+  for +fr: Bool
+  for +stack: List<&2, Pull.Frame>
+  for h1: {Laws.all_ws(w1) == True{} : Bool}
+  for h2: {Laws.all_ws(w2) == True{} : Bool}
+  {Ezjson.next(Pull.Cur{w1 ++ SCon{',', w2 ++ x}, Pull.FArr{Pull.SCom{}, fr} <> stack, False{}, False{}})
+    == Ezjson.next(Pull.Cur{x, Pull.FArr{Pull.SVal{}, False{}} <> stack, False{}, False{}}) : (Pull.Ev & Pull.Cur)}
+
+def next_comma_arr(w1, w2, x, fr, stack, h1, h2):
+  Equal.trans((Pull.Ev & Pull.Cur),
+    Ezjson.next(Pull.Cur{w1 ++ SCon{',', w2 ++ x}, Pull.FArr{Pull.SCom{}, fr} <> stack, False{}, False{}}),
+    Ezjson.next(Pull.Cur{SCon{',', w2 ++ x}, Pull.FArr{Pull.SCom{}, fr} <> stack, False{}, False{}}),
+    Ezjson.next(Pull.Cur{x, Pull.FArr{Pull.SVal{}, False{}} <> stack, False{}, False{}}),
+    next_ws(w1, SCon{',', w2 ++ x}, Pull.FArr{Pull.SCom{}, fr} <> stack, False{}, h1),
+    go_next(SCon{',', w2 ++ x}, Pull.FArr{Pull.SCom{}, fr} <> stack, False{}, x,
+      Pull.FArr{Pull.SVal{}, False{}} <> stack, False{},
+      go_wsd(3n, w2, x, Pull.FArr{Pull.SVal{}, False{}} <> stack, Pull.GNext{}, False{}, h2)))
+
+# whitespace, a comma and whitespace after a member: the next member's name
+law next_comma_obj:
+  for +w1: String
+  for +w2: String
+  for +x: String
+  for +fr: Bool
+  for +stack: List<&2, Pull.Frame>
+  for h1: {Laws.all_ws(w1) == True{} : Bool}
+  for h2: {Laws.all_ws(w2) == True{} : Bool}
+  {Ezjson.next(Pull.Cur{w1 ++ SCon{',', w2 ++ x}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, False{}})
+    == Ezjson.next(Pull.Cur{x, Pull.FObj{Pull.SKey{}, False{}} <> stack, False{}, False{}}) : (Pull.Ev & Pull.Cur)}
+
+def next_comma_obj(w1, w2, x, fr, stack, h1, h2):
+  Equal.trans((Pull.Ev & Pull.Cur),
+    Ezjson.next(Pull.Cur{w1 ++ SCon{',', w2 ++ x}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, False{}}),
+    Ezjson.next(Pull.Cur{SCon{',', w2 ++ x}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, False{}}),
+    Ezjson.next(Pull.Cur{x, Pull.FObj{Pull.SKey{}, False{}} <> stack, False{}, False{}}),
+    next_ws(w1, SCon{',', w2 ++ x}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, h1),
+    go_next(SCon{',', w2 ++ x}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, x,
+      Pull.FObj{Pull.SKey{}, False{}} <> stack, False{},
+      go_wsd(3n, w2, x, Pull.FObj{Pull.SKey{}, False{}} <> stack, Pull.GNext{}, False{}, h2)))
+
+# whitespace, a colon and whitespace after a name: the member's value's slot
+law next_colon:
+  for +w1: String
+  for +w2: String
+  for +x: String
+  for +fr: Bool
+  for +stack: List<&2, Pull.Frame>
+  for h1: {Laws.all_ws(w1) == True{} : Bool}
+  for h2: {Laws.all_ws(w2) == True{} : Bool}
+  {Ezjson.next(Pull.Cur{w1 ++ SCon{':', w2 ++ x}, Pull.FObj{Pull.SCol{}, fr} <> stack, False{}, False{}})
+    == Ezjson.next(Pull.Cur{x, Pull.FObj{Pull.SVal{}, False{}} <> stack, False{}, False{}}) : (Pull.Ev & Pull.Cur)}
+
+def next_colon(w1, w2, x, fr, stack, h1, h2):
+  Equal.trans((Pull.Ev & Pull.Cur),
+    Ezjson.next(Pull.Cur{w1 ++ SCon{':', w2 ++ x}, Pull.FObj{Pull.SCol{}, fr} <> stack, False{}, False{}}),
+    Ezjson.next(Pull.Cur{SCon{':', w2 ++ x}, Pull.FObj{Pull.SCol{}, fr} <> stack, False{}, False{}}),
+    Ezjson.next(Pull.Cur{x, Pull.FObj{Pull.SVal{}, False{}} <> stack, False{}, False{}}),
+    next_ws(w1, SCon{':', w2 ++ x}, Pull.FObj{Pull.SCol{}, fr} <> stack, False{}, h1),
+    go_next(SCon{':', w2 ++ x}, Pull.FObj{Pull.SCol{}, fr} <> stack, False{}, x,
+      Pull.FObj{Pull.SVal{}, False{}} <> stack, False{},
+      go_wsd(3n, w2, x, Pull.FObj{Pull.SVal{}, False{}} <> stack, Pull.GNext{}, False{}, h2)))
+
+# JSON-PULL-1, words
+
+# a text that is empty or starts with a character that ends a word
+def stops(txt: String) -> Bool:
+  match txt:
+    case SNil{}:
+      True{}
+    case SCon{ch, _}:
+      Bool.not(is_other(Lex.classify(ch)))
+
+
+# a code point none of the delimiter tests hold of is no delimiter
+law spec_false.go:
+  for +uu: U32
+  for e9: {U32.is_eq(uu, 9) == False{} : Bool}
+  for e10: {U32.is_eq(uu, 10) == False{} : Bool}
+  for e13: {U32.is_eq(uu, 13) == False{} : Bool}
+  for e32: {U32.is_eq(uu, 32) == False{} : Bool}
+  for e34: {U32.is_eq(uu, 34) == False{} : Bool}
+  for e44: {U32.is_eq(uu, 44) == False{} : Bool}
+  for e58: {U32.is_eq(uu, 58) == False{} : Bool}
+  for e91: {U32.is_eq(uu, 91) == False{} : Bool}
+  for e92: {U32.is_eq(uu, 92) == False{} : Bool}
+  for e93: {U32.is_eq(uu, 93) == False{} : Bool}
+  for e123: {U32.is_eq(uu, 123) == False{} : Bool}
+  for e125: {U32.is_eq(uu, 125) == False{} : Bool}
+  {Pull.word.special(uu) == False{} : Bool}
+
+def spec_false.go(uu, e9, e10, e13, e32, e34, e44, e58, e91, e92, e93, e123, e125):
+  s9 = Equal.sym(Bool, U32.is_eq(uu, 9), False{}, e9)
+  s10 = Equal.sym(Bool, U32.is_eq(uu, 10), False{}, e10)
+  s13 = Equal.sym(Bool, U32.is_eq(uu, 13), False{}, e13)
+  s32 = Equal.sym(Bool, U32.is_eq(uu, 32), False{}, e32)
+  s34 = Equal.sym(Bool, U32.is_eq(uu, 34), False{}, e34)
+  s44 = Equal.sym(Bool, U32.is_eq(uu, 44), False{}, e44)
+  s58 = Equal.sym(Bool, U32.is_eq(uu, 58), False{}, e58)
+  s91 = Equal.sym(Bool, U32.is_eq(uu, 91), False{}, e91)
+  s92 = Equal.sym(Bool, U32.is_eq(uu, 92), False{}, e92)
+  s93 = Equal.sym(Bool, U32.is_eq(uu, 93), False{}, e93)
+  s123 = Equal.sym(Bool, U32.is_eq(uu, 123), False{}, e123)
+  s125 = Equal.sym(Bool, U32.is_eq(uu, 125), False{}, e125)
+  %s9 : {Bool.or(_, Bool.or(U32.is_eq(uu, 10), Bool.or(U32.is_eq(uu, 13), Bool.or(U32.is_eq(uu, 32),
+    Bool.or(U32.is_eq(uu, 34), Bool.or(U32.is_eq(uu, 44), Bool.or(U32.is_eq(uu, 58), Bool.or(U32.is_eq(uu, 91),
+    Bool.or(U32.is_eq(uu, 92), Bool.or(U32.is_eq(uu, 93), Bool.or(U32.is_eq(uu, 123), U32.is_eq(uu,
+    125)))))))))))) == False{} : Bool}
+  %s10 : {Bool.or(_, Bool.or(U32.is_eq(uu, 13), Bool.or(U32.is_eq(uu, 32), Bool.or(U32.is_eq(uu, 34),
+    Bool.or(U32.is_eq(uu, 44), Bool.or(U32.is_eq(uu, 58), Bool.or(U32.is_eq(uu, 91), Bool.or(U32.is_eq(uu, 92),
+    Bool.or(U32.is_eq(uu, 93), Bool.or(U32.is_eq(uu, 123), U32.is_eq(uu, 125))))))))))) == False{} : Bool}
+  %s13 : {Bool.or(_, Bool.or(U32.is_eq(uu, 32), Bool.or(U32.is_eq(uu, 34), Bool.or(U32.is_eq(uu, 44),
+    Bool.or(U32.is_eq(uu, 58), Bool.or(U32.is_eq(uu, 91), Bool.or(U32.is_eq(uu, 92), Bool.or(U32.is_eq(uu, 93),
+    Bool.or(U32.is_eq(uu, 123), U32.is_eq(uu, 125)))))))))) == False{} : Bool}
+  %s32 : {Bool.or(_, Bool.or(U32.is_eq(uu, 34), Bool.or(U32.is_eq(uu, 44), Bool.or(U32.is_eq(uu, 58),
+    Bool.or(U32.is_eq(uu, 91), Bool.or(U32.is_eq(uu, 92), Bool.or(U32.is_eq(uu, 93), Bool.or(U32.is_eq(uu, 123),
+    U32.is_eq(uu, 125))))))))) == False{} : Bool}
+  %s34 : {Bool.or(_, Bool.or(U32.is_eq(uu, 44), Bool.or(U32.is_eq(uu, 58), Bool.or(U32.is_eq(uu, 91),
+    Bool.or(U32.is_eq(uu, 92), Bool.or(U32.is_eq(uu, 93), Bool.or(U32.is_eq(uu, 123), U32.is_eq(uu,
+    125)))))))) == False{} : Bool}
+  %s44 : {Bool.or(_, Bool.or(U32.is_eq(uu, 58), Bool.or(U32.is_eq(uu, 91), Bool.or(U32.is_eq(uu, 92),
+    Bool.or(U32.is_eq(uu, 93), Bool.or(U32.is_eq(uu, 123), U32.is_eq(uu, 125))))))) == False{} : Bool}
+  %s58 : {Bool.or(_, Bool.or(U32.is_eq(uu, 91), Bool.or(U32.is_eq(uu, 92), Bool.or(U32.is_eq(uu, 93),
+    Bool.or(U32.is_eq(uu, 123), U32.is_eq(uu, 125)))))) == False{} : Bool}
+  %s91 : {Bool.or(_, Bool.or(U32.is_eq(uu, 92), Bool.or(U32.is_eq(uu, 93), Bool.or(U32.is_eq(uu, 123), U32.is_eq(uu,
+    125))))) == False{} : Bool}
+  %s92 : {Bool.or(_, Bool.or(U32.is_eq(uu, 93), Bool.or(U32.is_eq(uu, 123), U32.is_eq(uu, 125)))) == False{} : Bool}
+  %s93 : {Bool.or(_, Bool.or(U32.is_eq(uu, 123), U32.is_eq(uu, 125))) == False{} : Bool}
+  %s123 : {Bool.or(_, U32.is_eq(uu, 125)) == False{} : Bool}
+  %s125 : {_ == False{} : Bool}
+  {==}
+
+# a word character is no delimiter
+law spec_false:
+  for +ch: Char
+  for +hc: {Lex.classify(ch) == Lex.COther{} : Lex.Class}
+  {Pull.word.special(Char.to_u32(ch)) == False{} : Bool}
+
+def spec_false(ch, hc):
+  match ch:
+    case Chr{+uu}:
+      spec_false.go(uu, neq_cls(U32.is_eq(uu, 9), uu, 9, {==}, hc, {==}),
+        neq_cls(U32.is_eq(uu, 10), uu, 10, {==}, hc, {==}),
+        neq_cls(U32.is_eq(uu, 13), uu, 13, {==}, hc, {==}),
+        neq_cls(U32.is_eq(uu, 32), uu, 32, {==}, hc, {==}),
+        neq_cls(U32.is_eq(uu, 34), uu, 34, {==}, hc, {==}),
+        neq_cls(U32.is_eq(uu, 44), uu, 44, {==}, hc, {==}),
+        neq_cls(U32.is_eq(uu, 58), uu, 58, {==}, hc, {==}),
+        neq_cls(U32.is_eq(uu, 91), uu, 91, {==}, hc, {==}),
+        neq_cls(U32.is_eq(uu, 92), uu, 92, {==}, hc, {==}),
+        neq_cls(U32.is_eq(uu, 93), uu, 93, {==}, hc, {==}),
+        neq_cls(U32.is_eq(uu, 123), uu, 123, {==}, hc, {==}),
+        neq_cls(U32.is_eq(uu, 125), uu, 125, {==}, hc, {==}))
+
+# a character that is not a word character is a delimiter, once the test is named
+law spec_true.at:
+  for +ch: Char
+  for bs: Bool
+  for es: {Pull.word.special(Char.to_u32(ch)) == bs : Bool}
+  for hn: {is_other(Lex.classify(ch)) == False{} : Bool}
+  {Pull.word.special(Char.to_u32(ch)) == True{} : Bool}
+
+def spec_true.at(ch, bs, es, hn):
+  match bs:
+    case True{}:
+      es
+    case False{}:
+      hc = cls_by(ch, xx => Bool.not(Pull.word.special(xx)),
+        Equal.cong(Bool, Bool, xx => Bool.not(xx), Pull.word.special(Char.to_u32(ch)), False{}, es),
+        {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==})
+      Empty.absurd({Pull.word.special(Char.to_u32(ch)) == True{} : Bool}, true_false(Equal.trans(Bool, True{},
+        is_other(Lex.classify(ch)), False{}, Equal.cong(Lex.Class, Bool, xx => is_other(xx), Lex.COther{},
+          Lex.classify(ch), Equal.sym(Lex.Class, Lex.classify(ch), Lex.COther{}, hc)), hn)))
+
+# a character that is not a word character is a delimiter
+law spec_true:
+  for +ch: Char
+  for hn: {is_other(Lex.classify(ch)) == False{} : Bool}
+  {Pull.word.special(Char.to_u32(ch)) == True{} : Bool}
+
+def spec_true(ch, hn):
+  spec_true.at(ch, Pull.word.special(Char.to_u32(ch)), {==}, hn)
+
+# a character that is not a word character is no digit, once the test is named
+law dig_false.at:
+  for +ch: Char
+  for bd: Bool
+  for ed: {V.num.ok.digit(Char.to_u32(ch)) == bd : Bool}
+  for hn: {is_other(Lex.classify(ch)) == False{} : Bool}
+  {V.num.ok.digit(Char.to_u32(ch)) == False{} : Bool}
+
+def dig_false.at(ch, bd, ed, hn):
+  match bd:
+    case False{}:
+      ed
+    case True{}:
+      hc = oth_digit(ch, ed)
+      Empty.absurd({V.num.ok.digit(Char.to_u32(ch)) == False{} : Bool}, true_false(Equal.trans(Bool, True{},
+        is_other(Lex.classify(ch)), False{}, Equal.cong(Lex.Class, Bool, xx => is_other(xx), Lex.COther{},
+          Lex.classify(ch), Equal.sym(Lex.Class, Lex.classify(ch), Lex.COther{}, hc)), hn)))
+
+# a character that is not a word character is no digit
+law dig_false:
+  for +ch: Char
+  for hn: {is_other(Lex.classify(ch)) == False{} : Bool}
+  {V.num.ok.digit(Char.to_u32(ch)) == False{} : Bool}
+
+def dig_false(ch, hn):
+  dig_false.at(ch, V.num.ok.digit(Char.to_u32(ch)), {==}, hn)
+
+# a word character grows the word, once the digit test is named
+law decide_oth.at:
+  for +ch: Char
+  for +buf: List<&2, Char>
+  for +nn: U32
+  for +num: V.Num
+  for bd: Bool
+  for ed: {V.num.ok.digit(Char.to_u32(ch)) == bd : Bool}
+  for hc: {Lex.classify(ch) == Lex.COther{} : Lex.Class}
+  {Pull.word.decide(ch, Char.to_u32(ch), buf, nn, num)
+    == Pull.WMore{ch <> buf, U32.add(nn, 1), V.num.ok.step(num, Char.to_u32(ch))} : Pull.Wst}
+
+def decide_oth.at(ch, buf, nn, num, bd, ed, hc):
+  match bd:
+    case True{}:
+      es = Equal.sym(Bool, V.num.ok.digit(Char.to_u32(ch)), True{}, ed)
+      %es : {Pull.word.digit.go(ch, Char.to_u32(ch), buf, nn, num, _)
+        == Pull.WMore{ch <> buf, U32.add(nn, 1), V.num.ok.step(num, Char.to_u32(ch))} : Pull.Wst}
+      {==}
+    case False{}:
+      es = Equal.sym(Bool, V.num.ok.digit(Char.to_u32(ch)), False{}, ed)
+      %es : {Pull.word.digit.go(ch, Char.to_u32(ch), buf, nn, num, _)
+        == Pull.WMore{ch <> buf, U32.add(nn, 1), V.num.ok.step(num, Char.to_u32(ch))} : Pull.Wst}
+      sf = Equal.sym(Bool, Pull.word.special(Char.to_u32(ch)), False{}, spec_false(ch, hc))
+      %sf : {Pull.word.keep.go(ch, Char.to_u32(ch), buf, nn, num, Bool.not(_))
+        == Pull.WMore{ch <> buf, U32.add(nn, 1), V.num.ok.step(num, Char.to_u32(ch))} : Pull.Wst}
+      {==}
+
+# a word character grows the word
+law decide_oth:
+  for +ch: Char
+  for +buf: List<&2, Char>
+  for +nn: U32
+  for +num: V.Num
+  for hc: {Lex.classify(ch) == Lex.COther{} : Lex.Class}
+  {Pull.word.decide(ch, Char.to_u32(ch), buf, nn, num)
+    == Pull.WMore{ch <> buf, U32.add(nn, 1), V.num.ok.step(num, Char.to_u32(ch))} : Pull.Wst}
+
+def decide_oth(ch, buf, nn, num, hc):
+  decide_oth.at(ch, buf, nn, num, V.num.ok.digit(Char.to_u32(ch)), {==}, hc)
+
+# a character that is not a word character ends the word
+law decide_stop:
+  for +ch: Char
+  for +buf: List<&2, Char>
+  for +nn: U32
+  for +num: V.Num
+  for +hn: {is_other(Lex.classify(ch)) == False{} : Bool}
+  {Pull.word.decide(ch, Char.to_u32(ch), buf, nn, num) == Pull.WStop{buf, nn, num, ch} : Pull.Wst}
+
+def decide_stop(ch, buf, nn, num, hn):
+  ed = Equal.sym(Bool, V.num.ok.digit(Char.to_u32(ch)), False{}, dig_false(ch, hn))
+  %ed : {Pull.word.digit.go(ch, Char.to_u32(ch), buf, nn, num, _) == Pull.WStop{buf, nn, num, ch} : Pull.Wst}
+  st = Equal.sym(Bool, Pull.word.special(Char.to_u32(ch)), True{}, spec_true(ch, hn))
+  %st : {Pull.word.keep.go(ch, Char.to_u32(ch), buf, nn, num, Bool.not(_)) == Pull.WStop{buf, nn, num, ch} : Pull.Wst}
+  {==}
+
+# a count after one more for each character of a string
+def addn(ws: String, nn: U32) -> U32:
+  match ws:
+    case SNil{}:
+      nn
+    case SCon{_, tl}:
+      addn(tl, U32.add(nn, 1))
+
+# a number's scan state after the characters of a string
+def nfold(ws: String, num: V.Num) -> V.Num:
+  match ws:
+    case SNil{}:
+      num
+    case SCon{ch, tl}:
+      nfold(tl, V.num.ok.step(num, Char.to_u32(ch)))
+
+# what wrun says: the run on to the rest, and the span that has grown
+def wrun_ty(ws: String, tail: String, cut: String, buf: List<&2, Char>, nn: U32, num: V.Num) -> Type:
+  ({Pull.word.run(ws ++ tail, Pull.WMore{buf, nn, num}) == Pull.word.run(tail, Pull.WMore{List.reverse.go(&2, Char,
+    String.to_list(ws), buf), addn(ws, nn), nfold(ws, num)}) : (String & Pull.Wst)}
+    & ({sdrop(cut, addn(ws, nn), U32.is_zero(addn(ws, nn))) == tail : String}
+      & {Lex.tokens.rev(cut, addn(ws, nn), U32.is_zero(addn(ws, nn)), []) == List.reverse.go(&2, Char,
+        String.to_list(ws), buf) : List<&2, Char>}))
+
+# a word run over word characters, one character on, the rest given
+law wrun.cons:
+  for +ch: Char
+  for +tl: String
+  for +tail: String
+  for +cut: String
+  for +buf: List<&2, Char>
+  for +nn: U32
+  for +num: V.Num
+  for hc: {Lex.classify(ch) == Lex.COther{} : Lex.Class}
+  for +h_d: {sdrop(cut, nn, U32.is_zero(nn)) == SCon{ch, tl ++ tail} : String}
+  for h_r: {Lex.tokens.rev(cut, nn, U32.is_zero(nn), []) == buf : List<&2, Char>}
+  for h_s: {Laws.short(cut) == True{} : Bool}
+  for ih: {sdrop(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1))) == tl ++ tail : String}
+    -> {Lex.tokens.rev(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), []) == ch <> buf : List<&2, Char>}
+    -> wrun_ty(tl, tail, cut, ch <> buf, U32.add(nn, 1), V.num.ok.step(num, Char.to_u32(ch)))
+  wrun_ty(SCon{ch, tl}, tail, cut, buf, nn, num)
+
+def wrun.cons(ch, tl, tail, cut, buf, nn, num, hc, h_d, h_r, h_s, ih):
+  +top = pos_ne(cut, nn, 4294967295, U32.is_zero(nn), {==}, h_s, ch, tl ++ tail, h_d)
+  +ed = sdrop_grow(cut, nn, U32.is_zero(nn), {==}, top, ch, tl ++ tail, h_d)
+  +er = Equal.trans(List<&2, Char>, Lex.tokens.rev(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), []),
+    ch <> Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), ch <> buf,
+    rev_grow(cut, nn, U32.is_zero(nn), {==}, top, ch, tl ++ tail, h_d, []),
+    Equal.cong(List<&2, Char>, List<&2, Char>, xx => ch <> xx, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), buf, h_r))
+
+  dd = Equal.sym(Pull.Wst, Pull.word.decide(ch, Char.to_u32(ch), buf, nn, num),
+    Pull.WMore{ch <> buf, U32.add(nn, 1), V.num.ok.step(num, Char.to_u32(ch))}, decide_oth(ch, buf, nn, num, hc))
+  %dd : ({Pull.word.run(tl ++ tail, _) == Pull.word.run(tail, Pull.WMore{List.reverse.go(&2, Char,
+    String.to_list(tl), ch <> buf), addn(tl, U32.add(nn, 1)), nfold(tl, V.num.ok.step(num, Char.to_u32(ch)))})
+    : (String & Pull.Wst)}
+    & ({sdrop(cut, addn(tl, U32.add(nn, 1)), U32.is_zero(addn(tl, U32.add(nn, 1)))) == tail : String}
+      & {Lex.tokens.rev(cut, addn(tl, U32.add(nn, 1)), U32.is_zero(addn(tl, U32.add(nn, 1))), [])
+        == List.reverse.go(&2, Char, String.to_list(tl), ch <> buf) : List<&2, Char>}))
+  ih(ed, er)
+
+# a word run over word characters
+law wrun:
+  for +ws: String
+  for +tail: String
+  for +cut: String
+  for +buf: List<&2, Char>
+  for +nn: U32
+  for +num: V.Num
+  for h_o: others(String.to_list(ws))
+  for h_d: {sdrop(cut, nn, U32.is_zero(nn)) == ws ++ tail : String}
+  for h_r: {Lex.tokens.rev(cut, nn, U32.is_zero(nn), []) == buf : List<&2, Char>}
+  for +h_s: {Laws.short(cut) == True{} : Bool}
+  wrun_ty(ws, tail, cut, buf, nn, num)
+
+def wrun(ws, tail, cut, buf, nn, num, h_o, h_d, h_r, h_s):
+  match ws:
+    case SNil{}:
+      ({==}, (h_d, h_r))
+    case SCon{+ch, +tl}:
+      (hc, ht) = h_o
+      wrun.cons(ch, tl, tail, cut, buf, nn, num, hc, h_d, h_r, h_s,
+        ed => er => wrun(tl, tail, cut, ch <> buf, U32.add(nn, 1), V.num.ok.step(num, Char.to_u32(ch)), ht, ed, er,
+          h_s))
+
+# a scalar that lands where a value may go is that event, and the cursor
+# moves on past it
+law place_ok:
+  for +ev: Pull.Ev
+  for +rest: String
+  for +stack: List<&2, Pull.Frame>
+  for h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  for +ff: Nat
+  {Pull.next.go(1n+ff, "", Pull.place.val(ev, rest, stack, Pull.GNext{})) == Pull.Fin{(Pull.SEv{ev}, aft(rest, stack))}
+    : Pull.Out}
+
+def place_ok(ev, rest, stack, h_v, ff):
+  match stack:
+    case Nil{}:
+      {==}
+    case Pull.FArr{Pull.SVal{}, _} <> _:
+      {==}
+    case Pull.FObj{Pull.SVal{}, _} <> _:
+      {==}
+    case Pull.FArr{Pull.SCom{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, "", Pull.place.val(ev, rest, Pull.FArr{Pull.SCom{}, fr} <> oo, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{ev}, aft(rest, Pull.FArr{Pull.SCom{}, fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FArr{Pull.SKey{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, "", Pull.place.val(ev, rest, Pull.FArr{Pull.SKey{}, fr} <> oo, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{ev}, aft(rest, Pull.FArr{Pull.SKey{}, fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FArr{Pull.SCol{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, "", Pull.place.val(ev, rest, Pull.FArr{Pull.SCol{}, fr} <> oo, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{ev}, aft(rest, Pull.FArr{Pull.SCol{}, fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FObj{Pull.SCom{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, "", Pull.place.val(ev, rest, Pull.FObj{Pull.SCom{}, fr} <> oo, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{ev}, aft(rest, Pull.FObj{Pull.SCom{}, fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FObj{Pull.SKey{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, "", Pull.place.val(ev, rest, Pull.FObj{Pull.SKey{}, fr} <> oo, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{ev}, aft(rest, Pull.FObj{Pull.SKey{}, fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FObj{Pull.SCol{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, "", Pull.place.val(ev, rest, Pull.FObj{Pull.SCol{}, fr} <> oo, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{ev}, aft(rest, Pull.FObj{Pull.SCol{}, fr} <> oo))} : Pull.Out}, h_v)
+
+# the event a word's kind stands for
+def aev(atom: Pull.Atom, raw: String, nn: U32) -> Pull.Ev:
+  match atom:
+    case Pull.ANull{}:
+      Pull.ENull{}
+    case Pull.ATrue{}:
+      Pull.EBool{True{}}
+    case Pull.AFalse{}:
+      Pull.EBool{False{}}
+    case Pull.ANum{}:
+      Pull.ENum{raw, nn}
+    case Pull.ABad{}:
+      Pull.EErr{}
+
+# whether a word's kind is not one
+def is_abad(atom: Pull.Atom) -> Bool:
+  match atom:
+    case Pull.ABad{}:
+      True{}
+    case _:
+      False{}
+
+# a word's end at the text's end, once its kind is named
+law burst_eof:
+  for +ff: Nat
+  for +stack: List<&2, Pull.Frame>
+  for +raw: String
+  for +nn: U32
+  for +atom: Pull.Atom
+  for h_k: {is_abad(atom) == False{} : Bool}
+  for h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  {Pull.next.go(1n+ff, "", Pull.word.eof.place(atom, raw, nn, stack, Pull.GNext{}))
+    == Pull.Fin{(Pull.SEv{aev(atom, raw, nn)}, aft("", stack))} : Pull.Out}
+
+def burst_eof(ff, stack, raw, nn, atom, h_k, h_v):
+  match atom:
+    case Pull.ANull{}:
+      place_ok(Pull.ENull{}, "", stack, h_v, ff)
+    case Pull.ATrue{}:
+      place_ok(Pull.EBool{True{}}, "", stack, h_v, ff)
+    case Pull.AFalse{}:
+      place_ok(Pull.EBool{False{}}, "", stack, h_v, ff)
+    case Pull.ANum{}:
+      place_ok(Pull.ENum{raw, nn}, "", stack, h_v, ff)
+    case Pull.ABad{}:
+      Empty.absurd({Pull.next.go(1n+ff, "", Pull.word.eof.place(Pull.ABad{}, raw, nn, stack, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{aev(Pull.ABad{}, raw, nn)}, aft("", stack))} : Pull.Out}, true_false(h_k))
+
+# a word's end at a delimiter, once its kind is named
+law burst_stop:
+  for +ff: Nat
+  for +stack: List<&2, Pull.Frame>
+  for +ch: Char
+  for +rr: String
+  for +raw: String
+  for +nn: U32
+  for +atom: Pull.Atom
+  for h_k: {is_abad(atom) == False{} : Bool}
+  for h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  {Pull.next.go(1n+ff, "", Pull.word.burst.atom(rr, ch, raw, nn, stack, Pull.GNext{}, atom))
+    == Pull.Fin{(Pull.SEv{aev(atom, raw, nn)}, aft(SCon{ch, rr}, stack))} : Pull.Out}
+
+def burst_stop(ff, stack, ch, rr, raw, nn, atom, h_k, h_v):
+  match atom:
+    case Pull.ANull{}:
+      place_ok(Pull.ENull{}, SCon{ch, rr}, stack, h_v, ff)
+    case Pull.ATrue{}:
+      place_ok(Pull.EBool{True{}}, SCon{ch, rr}, stack, h_v, ff)
+    case Pull.AFalse{}:
+      place_ok(Pull.EBool{False{}}, SCon{ch, rr}, stack, h_v, ff)
+    case Pull.ANum{}:
+      place_ok(Pull.ENum{raw, nn}, SCon{ch, rr}, stack, h_v, ff)
+    case Pull.ABad{}:
+      Empty.absurd({Pull.next.go(1n+ff, "", Pull.word.burst.atom(rr, ch, raw, nn, stack, Pull.GNext{}, Pull.ABad{}))
+        == Pull.Fin{(Pull.SEv{aev(Pull.ABad{}, raw, nn)}, aft(SCon{ch, rr}, stack))} : Pull.Out}, true_false(h_k))
+
+# a stopped word run stays stopped
+law run_stopped:
+  for +rr: String
+  for buf: List<&2, Char>
+  for nn: U32
+  for num: V.Num
+  for ch: Char
+  {Pull.word.run(rr, Pull.WStop{buf, nn, num, ch}) == (rr, Pull.WStop{buf, nn, num, ch}) : (String & Pull.Wst)}
+
+def run_stopped(rr, _buf, _nn, _num, _ch):
+  match rr:
+    case SNil{}:
+      {==}
+    case SCon{_, _}:
+      {==}
+
+# a word's end: the word lands as its kind's event, and the cursor moves on
+# to its delimiter
+law burst_fin:
+  for +ff: Nat
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +buf: List<&2, Char>
+  for +nn: U32
+  for +num: V.Num
+  for h_k: {is_abad(Pull.word.kind(Lex.text(buf), nn, num)) == False{} : Bool}
+  for h_t: {stops(tail) == True{} : Bool}
+  for h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  {Pull.next.go(1n+ff, "", Pull.word.burst.at(Pull.word.run(tail, Pull.WMore{buf, nn, num}), stack, Pull.GNext{}))
+    == Pull.Fin{(Pull.SEv{aev(Pull.word.kind(Lex.text(buf), nn, num), Lex.text(buf), nn)}, aft(tail, stack))}
+    : Pull.Out}
+
+def burst_fin(ff, tail, stack, buf, nn, num, h_k, h_t, h_v):
+  match tail:
+    case SNil{}:
+      burst_eof(ff, stack, Lex.text(buf), nn, Pull.word.kind(Lex.text(buf), nn, num), h_k, h_v)
+    case SCon{+ch, +rr}:
+      ds = Equal.sym(Pull.Wst, Pull.word.decide(ch, Char.to_u32(ch), buf, nn, num), Pull.WStop{buf, nn, num, ch},
+        decide_stop(ch, buf, nn, num, not_true(is_other(Lex.classify(ch)), h_t)))
+      %ds : {Pull.next.go(1n+ff, "", Pull.word.burst.at(Pull.word.run(rr, _), stack, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{aev(Pull.word.kind(Lex.text(buf), nn, num), Lex.text(buf), nn)}, aft(SCon{ch, rr},
+          stack))} : Pull.Out}
+      rs = Equal.sym((String & Pull.Wst), Pull.word.run(rr, Pull.WStop{buf, nn, num, ch}),
+        (rr, Pull.WStop{buf, nn, num, ch}), run_stopped(rr, buf, nn, num, ch))
+      %rs : {Pull.next.go(1n+ff, "", Pull.word.burst.at(_, stack, Pull.GNext{}))
+        == Pull.Fin{(Pull.SEv{aev(Pull.word.kind(Lex.text(buf), nn, num), Lex.text(buf), nn)}, aft(SCon{ch, rr},
+          stack))} : Pull.Out}
+      burst_stop(ff, stack, ch, rr, Lex.text(buf), nn, Pull.word.kind(Lex.text(buf), nn, num), h_k, h_v)
+
+# the first characters of the first characters are those
+law take_take:
+  for +src: String
+  for +kk: Nat
+  {Laws.take(Laws.take(src, kk), kk) == Laws.take(src, kk) : String}
+
+def take_take(src, kk):
+  match src:
+    case SNil{}:
+      {==}
+    case SCon{+hd, +tl}:
+      match kk:
+        case 0n:
+          {==}
+        case 1n+pp:
+          Equal.cong(String, String, xx => SCon{hd, xx}, Laws.take(Laws.take(tl, pp), pp), Laws.take(tl, pp),
+            take_take(tl, pp))
+
+# a span that holds a whole word compares as the word
+law sp_w:
+  for +ww: String
+  for +nn: U32
+  for +lit: String
+  for h_tk: {Laws.take(ww, U32.to_nat(nn)) == ww : String}
+  {V.span.eq(ww, nn, lit) == String.eq(ww, lit) : Bool}
+
+def sp_w(ww, nn, lit, h_tk):
+  Equal.trans(Bool, V.span.eq(ww, nn, lit), String.eq(V.span.str(ww, nn, U32.is_zero(nn)), lit), String.eq(ww, lit),
+    span_eq_go(ww, U32.is_zero(nn), lit, nn),
+    Equal.cong(String, Bool, xx => String.eq(xx, lit), V.span.str(ww, nn, U32.is_zero(nn)), ww,
+      Equal.trans(String, V.span.str(ww, nn, U32.is_zero(nn)), Laws.take(ww, U32.to_nat(nn)), ww,
+        span_take(ww, nn), h_tk)))
+
+# a word's kind, told by its own spelling
+def wk(+ww: String, num: V.Num) -> Pull.Atom:
+  Pull.word.kind.go(num, String.eq(ww, "null"), String.eq(ww, "true"), String.eq(ww, "false"))
+
+# a span that holds a whole word is of the word's kind
+law kind_eq:
+  for +ww: String
+  for +nn: U32
+  for +num: V.Num
+  for +h_tk: {Laws.take(ww, U32.to_nat(nn)) == ww : String}
+  {Pull.word.kind(ww, nn, num) == wk(ww, num) : Pull.Atom}
+
+def kind_eq(ww, nn, num, h_tk):
+  e1 = Equal.sym(Bool, V.span.eq(ww, nn, "null"), String.eq(ww, "null"), sp_w(ww, nn, "null", h_tk))
+  e2 = Equal.sym(Bool, V.span.eq(ww, nn, "true"), String.eq(ww, "true"), sp_w(ww, nn, "true", h_tk))
+  e3 = Equal.sym(Bool, V.span.eq(ww, nn, "false"), String.eq(ww, "false"), sp_w(ww, nn, "false", h_tk))
+  %e1 : {Pull.word.kind.go(num, _, V.span.eq(ww, nn, "true"), V.span.eq(ww, nn, "false")) == wk(ww, num) : Pull.Atom}
+  %e2 : {Pull.word.kind.go(num, String.eq(ww, "null"), _, V.span.eq(ww, nn, "false")) == wk(ww, num) : Pull.Atom}
+  %e3 : {Pull.word.kind.go(num, String.eq(ww, "null"), String.eq(ww, "true"), _) == wk(ww, num) : Pull.Atom}
+  {==}
+
+# the number scan over a string's characters
+law nok_fold:
+  for +ws: String
+  for +num: V.Num
+  {V.num.ok.go(String.to_list(ws), num) == V.num.ok.done(nfold(ws, num)) : Bool}
+
+def nok_fold(ws, num):
+  match ws:
+    case SNil{}:
+      {==}
+    case SCon{+ch, +tl}:
+      nok_fold(tl, V.num.ok.step(num, Char.to_u32(ch)))
+
+# a word that is none of the literal names: lit_or_num is number
+law lit_num.e:
+  for +ww: String
+  for e1: {String.eq(ww, "null") == False{} : Bool}
+  for e2: {String.eq(ww, "true") == False{} : Bool}
+  for e3: {String.eq(ww, "false") == False{} : Bool}
+  {Laws.lit_or_num(ww) == Laws.number(String.to_list(ww)) : Bool}
+
+def lit_num.e(ww, e1, e2, e3):
+  s1 = Equal.sym(Bool, String.eq(ww, "null"), False{}, e1)
+  s2 = Equal.sym(Bool, String.eq(ww, "true"), False{}, e2)
+  s3 = Equal.sym(Bool, String.eq(ww, "false"), False{}, e3)
+  %s1 : {Bool.or(_, Bool.or(String.eq(ww, "true"), Bool.or(String.eq(ww, "false"),
+    Laws.number(String.to_list(ww))))) == Laws.number(String.to_list(ww)) : Bool}
+  %s2 : {Bool.or(_, Bool.or(String.eq(ww, "false"), Laws.number(String.to_list(ww)))) == Laws.number(String.to_list(ww))
+    : Bool}
+  %s3 : {Bool.or(_, Laws.number(String.to_list(ww))) == Laws.number(String.to_list(ww)) : Bool}
+  {==}
+
+# a word that is none of the literal names is a number
+law lit_num:
+  for +ww: String
+  for e1: {String.eq(ww, "null") == False{} : Bool}
+  for e2: {String.eq(ww, "true") == False{} : Bool}
+  for e3: {String.eq(ww, "false") == False{} : Bool}
+  for h_w: {Laws.lit_or_num(ww) == True{} : Bool}
+  {Laws.number(String.to_list(ww)) == True{} : Bool}
+
+def lit_num(ww, e1, e2, e3, h_w):
+  Equal.trans(Bool, Laws.number(String.to_list(ww)), Laws.lit_or_num(ww), True{},
+    Equal.sym(Bool, Laws.lit_or_num(ww), Laws.number(String.to_list(ww)), lit_num.e(ww, e1, e2, e3)), h_w)
+
+# what wk_ev says: the word's kind is one, and its event is the value's
+def wk_ty(ww: String, num: V.Num, nn: U32) -> Type:
+  ({is_abad(wk(ww, num)) == False{} : Bool}
+    & {Laws.events(Laws.g.word(ww)) == [Laws.view(aev(wk(ww, num), ww, nn))] : List<&2, Laws.Evt>})
+
+# a literal name's or a number's kind and event, with the literal tests named
+law wk_ev.at:
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for +ww: String
+  for +num: V.Num
+  for +nn: U32
+  for +e1: {String.eq(ww, "null") == b1 : Bool}
+  for +e2: {String.eq(ww, "true") == b2 : Bool}
+  for +e3: {String.eq(ww, "false") == b3 : Bool}
+  for h_w: {Laws.lit_or_num(ww) == True{} : Bool}
+  for h_num: {V.num.ok.done(num) == Laws.number(String.to_list(ww)) : Bool}
+  for h_tk: {Laws.take(ww, U32.to_nat(nn)) == ww : String}
+  wk_ty(ww, num, nn)
+
+def wk_ev.at(b1, b2, b3, ww, num, nn, e1, e2, e3, h_w, h_num, h_tk):
+  match b1:
+    case True{}:
+      ek = Equal.sym(String, ww, "null", str_eq_sound(ww, "null", e1))
+      %ek : wk_ty(_, num, nn)
+      ({==}, {==})
+    case False{}:
+      match b2:
+        case True{}:
+          ek = Equal.sym(String, ww, "true", str_eq_sound(ww, "true", e2))
+          %ek : wk_ty(_, num, nn)
+          ({==}, {==})
+        case False{}:
+          match b3:
+            case True{}:
+              ek = Equal.sym(String, ww, "false", str_eq_sound(ww, "false", e3))
+              %ek : wk_ty(_, num, nn)
+              ({==}, {==})
+            case False{}:
+              +hn = lit_num(ww, e1, e2, e3, h_w)
+              s1 = Equal.sym(Bool, String.eq(ww, "null"), False{}, e1)
+              s2 = Equal.sym(Bool, String.eq(ww, "true"), False{}, e2)
+              s3 = Equal.sym(Bool, String.eq(ww, "false"), False{}, e3)
+              %s1 : ({is_abad(Pull.word.kind.go(num, _, String.eq(ww, "true"), String.eq(ww, "false"))) == False{}
+                : Bool}
+                & {Laws.events(Bool.pick(V.Json, _, V.JNull{}, Bool.pick(V.Json, String.eq(ww, "true"),
+                  V.JBool{True{}}, Bool.pick(V.Json, String.eq(ww, "false"), V.JBool{False{}}, V.JNum{ww}))))
+                  == [Laws.view(aev(Pull.word.kind.go(num, _, String.eq(ww, "true"), String.eq(ww, "false")), ww,
+                    nn))] : List<&2, Laws.Evt>})
+              %s2 : ({is_abad(Pull.word.kind.go(num, False{}, _, String.eq(ww, "false"))) == False{} : Bool}
+                & {Laws.events(Bool.pick(V.Json, _, V.JBool{True{}}, Bool.pick(V.Json, String.eq(ww, "false"),
+                  V.JBool{False{}}, V.JNum{ww})))
+                  == [Laws.view(aev(Pull.word.kind.go(num, False{}, _, String.eq(ww, "false")), ww, nn))]
+                  : List<&2, Laws.Evt>})
+              %s3 : ({is_abad(Pull.word.kind.go(num, False{}, False{}, _)) == False{} : Bool}
+                & {Laws.events(Bool.pick(V.Json, _, V.JBool{False{}}, V.JNum{ww}))
+                  == [Laws.view(aev(Pull.word.kind.go(num, False{}, False{}, _), ww, nn))] : List<&2, Laws.Evt>})
+              en = Equal.sym(Bool, V.num.ok.done(num), True{}, Equal.trans(Bool, V.num.ok.done(num),
+                Laws.number(String.to_list(ww)), True{}, h_num, hn))
+              %en : ({is_abad(Pull.word.kind.num(_)) == False{} : Bool}
+                & {[Laws.VNum{ww}] == [Laws.view(aev(Pull.word.kind.num(_), ww, nn))] : List<&2, Laws.Evt>})
+              ({==}, Equal.cong(String, List<&2, Laws.Evt>, xx => [Laws.VNum{xx}], ww, Laws.take(ww, U32.to_nat(nn)),
+                Equal.sym(String, Laws.take(ww, U32.to_nat(nn)), ww, h_tk)))
+
+# a literal name's or a number's kind and event
+law wk_ev:
+  for +ww: String
+  for +num: V.Num
+  for +nn: U32
+  for h_w: {Laws.lit_or_num(ww) == True{} : Bool}
+  for h_num: {V.num.ok.done(num) == Laws.number(String.to_list(ww)) : Bool}
+  for h_tk: {Laws.take(ww, U32.to_nat(nn)) == ww : String}
+  wk_ty(ww, num, nn)
+
+def wk_ev(ww, num, nn, h_w, h_num, h_tk):
+  wk_ev.at(String.eq(ww, "null"), String.eq(ww, "true"), String.eq(ww, "false"), ww, num, nn, {==}, {==}, {==}, h_w,
+    h_num, h_tk)
+
+# a word's buffer, its first character then the rest reversed on, reads back as the word
+law wtext:
+  for +ch: Char
+  for +tl: String
+  {Lex.text(List.reverse.go(&2, Char, String.to_list(tl), [ch])) == SCon{ch, tl} : String}
+
+def wtext(ch, tl):
+  Equal.trans(String, Lex.text(List.reverse.go(&2, Char, String.to_list(tl), [ch])),
+    SCon{ch, String.from_list(String.to_list(tl)) ++ ""}, SCon{ch, tl},
+    text_revgo(String.to_list(tl), [ch], ""),
+    Equal.cong(String, String, xx => SCon{ch, xx}, String.from_list(String.to_list(tl)) ++ "", tl,
+      Equal.trans(String, String.from_list(String.to_list(tl)) ++ "", String.from_list(String.to_list(tl)), tl,
+        append_nil(String.from_list(String.to_list(tl))), from_to(tl))))
+
+# a span's text is all of its first characters
+law tk_of:
+  for +cut: String
+  for +nn: U32
+  for +bf: List<&2, Char>
+  for +ww: String
+  for e_r: {Lex.tokens.rev(cut, nn, U32.is_zero(nn), []) == bf : List<&2, Char>}
+  for e_t: {Lex.text(bf) == ww : String}
+  {Laws.take(ww, U32.to_nat(nn)) == ww : String}
+
+def tk_of(cut, nn, bf, ww, e_r, e_t):
+  +kk = U32.to_nat(nn)
+  +ew = Equal.trans(String, ww, Lex.text(bf), Laws.take(cut, kk), Equal.sym(String, Lex.text(bf), ww, e_t),
+    Equal.trans(String, Lex.text(bf), Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), [])), Laws.take(cut, kk),
+      Equal.cong(List<&2, Char>, String, xx => Lex.text(xx), bf, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []),
+        Equal.sym(List<&2, Char>, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), bf, e_r)),
+      Equal.trans(String, Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), [])),
+        V.span.str(cut, nn, U32.is_zero(nn)), Laws.take(cut, kk),
+        text_span(cut, nn, U32.is_zero(nn)), span_take(cut, nn))))
+  Equal.trans(String, Laws.take(ww, kk), Laws.take(Laws.take(cut, kk), kk), ww,
+    Equal.cong(String, String, xx => Laws.take(xx, kk), ww, Laws.take(cut, kk), ew),
+    Equal.trans(String, Laws.take(Laws.take(cut, kk), kk), Laws.take(cut, kk), ww, take_take(cut, kk),
+      Equal.sym(String, ww, Laws.take(cut, kk), ew)))
+
+# a finished step on a word's event is that event
+law use_aev:
+  for +atom: Pull.Atom
+  for +raw: String
+  for +nn: U32
+  for cur: Pull.Cur
+  for h_k: {is_abad(atom) == False{} : Bool}
+  {Pull.next.use((Pull.SEv{aev(atom, raw, nn)}, cur)) == (aev(atom, raw, nn), cur) : (Pull.Ev & Pull.Cur)}
+
+def use_aev(atom, raw, nn, cur, h_k):
+  match atom:
+    case Pull.ANull{}:
+      {==}
+    case Pull.ATrue{}:
+      {==}
+    case Pull.AFalse{}:
+      {==}
+    case Pull.ANum{}:
+      {==}
+    case Pull.ABad{}:
+      Empty.absurd({Pull.next.use((Pull.SEv{aev(Pull.ABad{}, raw, nn)}, cur)) == (aev(Pull.ABad{}, raw, nn), cur)
+        : (Pull.Ev & Pull.Cur)}, true_false(h_k))
+
+# a literal name's or a number's word characters
+law lit_others.at:
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for +ww: String
+  for +e1: {String.eq(ww, "null") == b1 : Bool}
+  for +e2: {String.eq(ww, "true") == b2 : Bool}
+  for +e3: {String.eq(ww, "false") == b3 : Bool}
+  for h_w: {Laws.lit_or_num(ww) == True{} : Bool}
+  others(String.to_list(ww))
+
+def lit_others.at(b1, b2, b3, ww, e1, e2, e3, h_w):
+  match b1:
+    case True{}:
+      ek = Equal.sym(String, ww, "null", str_eq_sound(ww, "null", e1))
+      %ek : others(String.to_list(_))
+      ({==}, ({==}, ({==}, ({==}, Unit{}))))
+    case False{}:
+      match b2:
+        case True{}:
+          ek = Equal.sym(String, ww, "true", str_eq_sound(ww, "true", e2))
+          %ek : others(String.to_list(_))
+          ({==}, ({==}, ({==}, ({==}, Unit{}))))
+        case False{}:
+          match b3:
+            case True{}:
+              ek = Equal.sym(String, ww, "false", str_eq_sound(ww, "false", e3))
+              %ek : others(String.to_list(_))
+              ({==}, ({==}, ({==}, ({==}, ({==}, Unit{})))))
+            case False{}:
+              oth_number(String.to_list(ww), lit_num(ww, e1, e2, e3, h_w))
+
+# a literal name's or a number's word characters
+law lit_others:
+  for +ww: String
+  for h_w: {Laws.lit_or_num(ww) == True{} : Bool}
+  others(String.to_list(ww))
+
+def lit_others(ww, h_w):
+  lit_others.at(String.eq(ww, "null"), String.eq(ww, "true"), String.eq(ww, "false"), ww, {==}, {==}, {==}, h_w)
+
+# wk_ev's first half
+law wk_fst:
+  for ww: String
+  for num: V.Num
+  for nn: U32
+  for h: wk_ty(ww, num, nn)
+  {is_abad(wk(ww, num)) == False{} : Bool}
+
+def wk_fst(_ww, _num, _nn, h):
+  (aa, _bb) = h
+  aa
+
+# wk_ev's second half
+law wk_snd:
+  for ww: String
+  for num: V.Num
+  for nn: U32
+  for h: wk_ty(ww, num, nn)
+  {Laws.events(Laws.g.word(ww)) == [Laws.view(aev(wk(ww, num), ww, nn))] : List<&2, Laws.Evt>}
+
+def wk_snd(_ww, _num, _nn, h):
+  (_aa, bb) = h
+  bb
+
+# a word's first step is the burst over the whole rest, whatever it is
+law go_mword:
+  for +ff: Nat
+  for +txt: String
+  for buf: List<&2, Char>
+  for nn: U32
+  for num: V.Num
+  for stack: List<&2, Pull.Frame>
+  for goal: Pull.Goal
+  for done: Bool
+  for bad: Bool
+  {Pull.next.go(1n+ff, txt, Pull.S{Pull.MWord{buf, nn, num}, stack, goal, done, bad})
+    == Pull.next.go(ff, "", Pull.word.burst(txt, buf, nn, num, stack, goal, bad)) : Pull.Out}
+
+def go_mword(_ff, txt, _buf, _nn, _num, _stack, _goal, _done, _bad):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{_, _}:
+      {==}
+
+law go_word.b:
+  for +ch: Char
+  for +tl: String
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  for e_run: {Pull.word.run(tl ++ tail, Pull.WMore{[ch], 1, V.num.ok.step(V.NStart{}, Char.to_u32(ch))})
+    == Pull.word.run(tail, Pull.WMore{List.reverse.go(&2, Char, String.to_list(tl), [ch]), addn(tl, 1),
+      nfold(tl, V.num.ok.step(V.NStart{}, Char.to_u32(ch)))}) : (String & Pull.Wst)}
+  for hk: {is_abad(Pull.word.kind(Lex.text(List.reverse.go(&2, Char, String.to_list(tl), [ch])), addn(tl, 1),
+    nfold(tl, V.num.ok.step(V.NStart{}, Char.to_u32(ch))))) == False{} : Bool}
+  for h_t: {stops(tail) == True{} : Bool}
+  {Pull.next.go(3n, "", Pull.word.burst(tl ++ tail, [ch], 1, V.num.ok.step(V.NStart{}, Char.to_u32(ch)), stack,
+    Pull.GNext{}, False{}))
+    == Pull.Fin{(Pull.SEv{aev(Pull.word.kind(Lex.text(List.reverse.go(&2, Char, String.to_list(tl), [ch])),
+      addn(tl, 1), nfold(tl, V.num.ok.step(V.NStart{}, Char.to_u32(ch)))),
+      Lex.text(List.reverse.go(&2, Char, String.to_list(tl), [ch])), addn(tl, 1))}, aft(tail, stack))} : Pull.Out}
+
+def go_word.b(ch, tl, tail, stack, h_v, e_run, hk, h_t):
+  +bf = List.reverse.go(&2, Char, String.to_list(tl), [ch])
+  +nf = addn(tl, 1)
+  +mf = nfold(tl, V.num.ok.step(V.NStart{}, Char.to_u32(ch)))
+  ers = Equal.sym((String & Pull.Wst), Pull.word.run(tl ++ tail, Pull.WMore{[ch], 1, V.num.ok.step(V.NStart{},
+    Char.to_u32(ch))}), Pull.word.run(tail, Pull.WMore{bf, nf, mf}), e_run)
+  %ers : {Pull.next.go(3n, "", Pull.word.burst.at(_, stack,
+    Pull.GNext{})) == Pull.Fin{(Pull.SEv{aev(Pull.word.kind(Lex.text(bf), nf, mf), Lex.text(bf), nf)}, aft(tail,
+    stack))} : Pull.Out}
+  burst_fin(2n, tail, stack, bf, nf, mf, hk, h_t, h_v)
+
+# the first budget's walk over a word and its delimiter
+law go_word:
+  for +ch: Char
+  for +tl: String
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for hc: {Lex.classify(ch) == Lex.COther{} : Lex.Class}
+  for +h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  for e_run: {Pull.word.run(tl ++ tail, Pull.WMore{[ch], 1, V.num.ok.step(V.NStart{}, Char.to_u32(ch))})
+    == Pull.word.run(tail, Pull.WMore{List.reverse.go(&2, Char, String.to_list(tl), [ch]), addn(tl, 1),
+      nfold(tl, V.num.ok.step(V.NStart{}, Char.to_u32(ch)))}) : (String & Pull.Wst)}
+  for hk: {is_abad(Pull.word.kind(Lex.text(List.reverse.go(&2, Char, String.to_list(tl), [ch])), addn(tl, 1),
+    nfold(tl, V.num.ok.step(V.NStart{}, Char.to_u32(ch))))) == False{} : Bool}
+  for h_t: {stops(tail) == True{} : Bool}
+  {Pull.next.go(4n, SCon{ch, tl ++ tail}, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, False{}, False{}})
+    == Pull.Fin{(Pull.SEv{aev(Pull.word.kind(Lex.text(List.reverse.go(&2, Char, String.to_list(tl), [ch])),
+      addn(tl, 1), nfold(tl, V.num.ok.step(V.NStart{}, Char.to_u32(ch)))),
+      Lex.text(List.reverse.go(&2, Char, String.to_list(tl), [ch])), addn(tl, 1))}, aft(tail, stack))} : Pull.Out}
+
+def go_word(ch, tl, tail, stack, hc, h_v, e_run, hk, h_t):
+  +bf = List.reverse.go(&2, Char, String.to_list(tl), [ch])
+  +nf = addn(tl, 1)
+  +mf = nfold(tl, V.num.ok.step(V.NStart{}, Char.to_u32(ch)))
+  hcs = Equal.sym(Lex.Class, Lex.classify(ch), Lex.COther{}, hc)
+  %hcs : {Pull.next.go(4n, tl ++ tail, Pull.look.plan(ch, stack, Pull.GNext{}, False{},
+    _)) == Pull.Fin{(Pull.SEv{aev(Pull.word.kind(Lex.text(bf), nf, mf), Lex.text(bf), nf)}, aft(tail,
+    stack))} : Pull.Out}
+  hvs = Equal.sym(Bool, Pull.expect.val.go(stack), True{}, h_v)
+  %hvs : {Pull.next.go(4n, tl ++ tail, Pull.look.word(ch, stack, Pull.GNext{}, False{},
+    _)) == Pull.Fin{(Pull.SEv{aev(Pull.word.kind(Lex.text(bf), nf, mf), Lex.text(bf), nf)}, aft(tail,
+    stack))} : Pull.Out}
+  +m0 = V.num.ok.step(V.NStart{}, Char.to_u32(ch))
+  Equal.trans(Pull.Out, Pull.next.go(4n, tl ++ tail, Pull.S{Pull.MWord{[ch], 1, m0}, stack, Pull.GNext{}, False{},
+    False{}}), Pull.next.go(3n, "", Pull.word.burst(tl ++ tail, [ch], 1, m0, stack, Pull.GNext{}, False{})),
+      Pull.Fin{(Pull.SEv{aev(Pull.word.kind(Lex.text(bf), nf, mf), Lex.text(bf), nf)}, aft(tail, stack))},
+    go_mword(3n, tl ++ tail, [ch], 1, m0, stack, Pull.GNext{}, False{}, False{}),
+    go_word.b(ch, tl, tail, stack, h_v, e_run, hk, h_t))
+
+# a literal name or a number, once its first character and the run over the
+# rest are in hand
+law next_word.run:
+  for +ch: Char
+  for +tl: String
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for hc: {Lex.classify(ch) == Lex.COther{} : Lex.Class}
+  for +h_w: {Laws.lit_or_num(SCon{ch, tl}) == True{} : Bool}
+  for +h_t: {stops(tail) == True{} : Bool}
+  for +h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  for ww: wrun_ty(tl, tail, SCon{ch, tl ++ tail}, [ch], 1, V.num.ok.step(V.NStart{}, Char.to_u32(ch)))
+  for +c0: Pull.Cur
+  for h_c: {Ezjson.next(c0) == Ezjson.next(Pull.Cur{SCon{ch, tl ++ tail}, stack, False{},
+    False{}}) : (Pull.Ev & Pull.Cur)}
+  strm(c0, Laws.events(Laws.g.word(SCon{ch, tl})), aft(tail, stack))
+
+def next_word.run(ch, tl, tail, stack, hc, h_w, h_t, h_v, ww, c0, h_c):
+  (e_run, (_e_d, e_r)) = ww
+  +m0 = V.num.ok.step(V.NStart{}, Char.to_u32(ch))
+  +bf = List.reverse.go(&2, Char, String.to_list(tl), [ch])
+  +nf = addn(tl, 1)
+  +mf = nfold(tl, m0)
+  +wd = "" ++ SCon{ch, tl}
+  +et = wtext(ch, tl)
+  +htk = tk_of(SCon{ch, tl ++ tail}, nf, bf, wd, e_r, et)
+  +ek = Equal.trans(Pull.Atom, Pull.word.kind(Lex.text(bf), nf, mf), Pull.word.kind(wd, nf, mf), wk(wd, mf),
+    Equal.cong(String, Pull.Atom, xx => Pull.word.kind(xx, nf, mf), Lex.text(bf), wd, et), kind_eq(wd, nf, mf, htk))
+  +hnum = Equal.trans(Bool, V.num.ok.done(mf), V.num.ok(wd), Laws.number(String.to_list(wd)),
+    Equal.sym(Bool, V.num.ok(wd), V.num.ok.done(mf), nok_fold(tl, m0)), Laws.num_grammar(wd))
+
+  +hk = Equal.trans(Bool, is_abad(Pull.word.kind(Lex.text(bf), nf, mf)), is_abad(wk(wd, mf)), False{},
+    Equal.cong(Pull.Atom, Bool, xx => is_abad(xx), Pull.word.kind(Lex.text(bf), nf, mf), wk(wd, mf), ek),
+    wk_fst(wd, mf, nf, wk_ev(wd, mf, nf, h_w, hnum, htk)))
+  +kk = Pull.word.kind(Lex.text(bf), nf, mf)
+  main = Equal.trans((Pull.Ev & Pull.Cur), Ezjson.next(c0), Ezjson.next(Pull.Cur{SCon{ch, tl ++ tail}, stack, False{},
+    False{}}), (aev(kk, Lex.text(bf), nf), aft(tail, stack)), h_c, Equal.trans((Pull.Ev & Pull.Cur),
+    Ezjson.next(Pull.Cur{SCon{ch, tl ++ tail}, stack, False{}, False{}}), Pull.next.use((Pull.SEv{aev(kk, Lex.text(bf),
+      nf)},
+    aft(tail, stack))), (aev(kk, Lex.text(bf), nf), aft(tail, stack)),
+    next_fin(SCon{ch, tl ++ tail}, stack, False{}, (Pull.SEv{aev(kk, Lex.text(bf), nf)}, aft(tail, stack)),
+      go_word(ch, tl, tail, stack, hc, h_v, e_run, hk, h_t)),
+    use_aev(kk, Lex.text(bf), nf, aft(tail, stack), hk)))
+  es = Equal.sym(List<&2, Laws.Evt>, Laws.events(Laws.g.word(wd)), [Laws.view(aev(wk(wd, mf), wd, nf))],
+    wk_snd(wd, mf, nf, wk_ev(wd, mf, nf, h_w, hnum, htk)))
+  %es : strm(c0, _, aft(tail, stack))
+  %ek : strm(c0, [Laws.view(aev(_, wd, nf))], aft(tail, stack))
+  %et : strm(c0, [Laws.view(aev(kk, _, nf))], aft(tail, stack))
+  strm_one(c0, aev(kk, Lex.text(bf), nf), aft(tail, stack), main)
+
+# a literal name or a number, once its first character is in hand
+law next_word.cons:
+  for +ch: Char
+  for +tl: String
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for ho: others(String.to_list(SCon{ch, tl}))
+  for +h_w: {Laws.lit_or_num(SCon{ch, tl}) == True{} : Bool}
+  for +h_t: {stops(tail) == True{} : Bool}
+  for +h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  for +h_s: {Laws.short(SCon{ch, tl ++ tail}) == True{} : Bool}
+  for +c0: Pull.Cur
+  for h_c: {Ezjson.next(c0) == Ezjson.next(Pull.Cur{SCon{ch, tl ++ tail}, stack, False{},
+    False{}}) : (Pull.Ev & Pull.Cur)}
+  strm(c0, Laws.events(Laws.g.word(SCon{ch, tl})), aft(tail, stack))
+
+def next_word.cons(ch, tl, tail, stack, ho, h_w, h_t, h_v, h_s, c0, h_c):
+  (hc, ht) = ho
+  next_word.run(ch, tl, tail, stack, hc, h_w, h_t, h_v, wrun(tl, tail, SCon{ch, tl ++ tail}, [ch], 1,
+    V.num.ok.step(V.NStart{}, Char.to_u32(ch)), ht, sdrop_zero(tl ++ tail, tl ++ tail, {==}),
+    rev_zero(tl ++ tail, 0, [ch]), h_s), c0, h_c)
+
+# the cursor reads a literal name or a number where a value may go, and moves
+# on to the character after it
+law next_word:
+  for +ww: String
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +h_w: {Laws.lit_or_num(ww) == True{} : Bool}
+  for +h_t: {stops(tail) == True{} : Bool}
+  for +h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  for +h_s: {Laws.short(ww ++ tail) == True{} : Bool}
+  for +c0: Pull.Cur
+  for h_c: {Ezjson.next(c0) == Ezjson.next(Pull.Cur{ww ++ tail, stack, False{}, False{}}) : (Pull.Ev & Pull.Cur)}
+  strm(c0, Laws.events(Laws.g.word(ww)), aft(tail, stack))
+
+def next_word(ww, tail, stack, h_w, h_t, h_v, h_s, c0, h_c):
+  match ww:
+    case SNil{}:
+      no(strm(c0, Laws.events(Laws.g.word("")), aft(tail, stack)), h_w)
+    case SCon{+ch, +tl}:
+      next_word.cons(ch, tl, tail, stack, lit_others(SCon{ch, tl}, h_w), h_w, h_t, h_v, h_s, c0, h_c)
+
+# JSON-PULL-1, strings
+
+# a raw character is no quotation mark
+law raw34:
+  for +uu: U32
+  for h: {Laws.raw_char(Chr{uu}) == True{} : Bool}
+  {U32.is_eq(uu, 34) == False{} : Bool}
+
+def raw34(uu, h):
+  or_false_l(U32.is_eq(uu, 34), Bool.or(U32.is_eq(uu, 92), U32.is_lt(uu, 32)),
+    not_true(Bool.or(U32.is_eq(uu, 34), Bool.or(U32.is_eq(uu, 92), U32.is_lt(uu, 32))), h))
+
+# a raw character is no reverse solidus
+law raw92:
+  for +uu: U32
+  for h: {Laws.raw_char(Chr{uu}) == True{} : Bool}
+  {U32.is_eq(uu, 92) == False{} : Bool}
+
+def raw92(uu, h):
+  or_false_l(U32.is_eq(uu, 92), U32.is_lt(uu, 32), or_false_r(U32.is_eq(uu, 34), Bool.or(U32.is_eq(uu, 92),
+    U32.is_lt(uu, 32)), not_true(Bool.or(U32.is_eq(uu, 34), Bool.or(U32.is_eq(uu, 92), U32.is_lt(uu, 32))), h)))
+
+# a raw character is no control
+law rawlt:
+  for +uu: U32
+  for h: {Laws.raw_char(Chr{uu}) == True{} : Bool}
+  {U32.is_lt(uu, 32) == False{} : Bool}
+
+def rawlt(uu, h):
+  or_false_r(U32.is_eq(uu, 92), U32.is_lt(uu, 32), or_false_r(U32.is_eq(uu, 34), Bool.or(U32.is_eq(uu, 92),
+    U32.is_lt(uu, 32)), not_true(Bool.or(U32.is_eq(uu, 34), Bool.or(U32.is_eq(uu, 92), U32.is_lt(uu, 32))), h)))
+
+# a raw character's class is no quotation mark's
+law nq34:
+  for +uu: U32
+  for e34: {U32.is_eq(uu, 34) == False{} : Bool}
+  for ecls: {Lex.classify(Chr{uu}) == Lex.CQuote{} : Lex.Class}
+  Empty
+
+def nq34(uu, e34, ecls):
+  false_true(Equal.trans(Bool, False{}, U32.is_eq(uu, 34), True{}, Equal.sym(Bool, U32.is_eq(uu, 34), False{}, e34),
+    Equal.cong(U32, Bool, xx => U32.is_eq(xx, 34), uu, 34, cls_quote(Chr{uu}, ecls))))
+
+# a raw character's class is no reverse solidus'
+law nb92:
+  for +uu: U32
+  for e92: {U32.is_eq(uu, 92) == False{} : Bool}
+  for ecls: {Lex.classify(Chr{uu}) == Lex.CBack{} : Lex.Class}
+  Empty
+
+def nb92(uu, e92, ecls):
+  false_true(Equal.trans(Bool, False{}, U32.is_eq(uu, 92), True{}, Equal.sym(Bool, U32.is_eq(uu, 92), False{}, e92),
+    Equal.cong(U32, Bool, xx => U32.is_eq(xx, 92), uu, 92, cls_back(Chr{uu}, ecls))))
+
+# a raw character stays in the string, by its class
+law kind_go:
+  for cls: Lex.Class
+  for +uu: U32
+  for ecls: {Lex.classify(Chr{uu}) == cls : Lex.Class}
+  for e34: {U32.is_eq(uu, 34) == False{} : Bool}
+  for e92: {U32.is_eq(uu, 92) == False{} : Bool}
+  for ect: {U32.is_lt(uu, 32) == False{} : Bool}
+  {Pull.span.kind(cls, U32.is_lt(uu, 32)) == Pull.KGo{} : Pull.Skind}
+
+def kind_go(cls, uu, ecls, e34, e92, ect):
+  match cls:
+    case Lex.CQuote{}:
+      Empty.absurd({Pull.span.kind(Lex.CQuote{}, U32.is_lt(uu, 32)) == Pull.KGo{} : Pull.Skind}, nq34(uu, e34, ecls))
+    case Lex.CBack{}:
+      Empty.absurd({Pull.span.kind(Lex.CBack{}, U32.is_lt(uu, 32)) == Pull.KGo{} : Pull.Skind}, nb92(uu, e92, ecls))
+    case Lex.CPunct{tt}:
+      ec = Equal.sym(Bool, U32.is_lt(uu, 32), False{}, ect)
+      %ec : {Pull.span.kind(Lex.CPunct{tt}, _) == Pull.KGo{} : Pull.Skind}
+      {==}
+    case Lex.CSpace{}:
+      ec = Equal.sym(Bool, U32.is_lt(uu, 32), False{}, ect)
+      %ec : {Pull.span.kind(Lex.CSpace{}, _) == Pull.KGo{} : Pull.Skind}
+      {==}
+    case Lex.COther{}:
+      ec = Equal.sym(Bool, U32.is_lt(uu, 32), False{}, ect)
+      %ec : {Pull.span.kind(Lex.COther{}, _) == Pull.KGo{} : Pull.Skind}
+      {==}
+
+# a raw character stays in the string
+law kind_raw:
+  for +ch: Char
+  for +h: {Laws.raw_char(ch) == True{} : Bool}
+  {Pull.span.kind.of(ch) == Pull.KGo{} : Pull.Skind}
+
+def kind_raw(ch, h):
+  match ch:
+    case Chr{+uu}:
+      kind_go(Lex.classify(Chr{uu}), uu, {==}, raw34(uu, h), raw92(uu, h), rawlt(uu, h))
+
+# a raw character is copied, by its class
+law copy_go:
+  for cls: Lex.Class
+  for +uu: U32
+  for ecls: {Lex.classify(Chr{uu}) == cls : Lex.Class}
+  for e34: {U32.is_eq(uu, 34) == False{} : Bool}
+  for e92: {U32.is_eq(uu, 92) == False{} : Bool}
+  for ect: {U32.is_lt(uu, 32) == False{} : Bool}
+  for +tl: String
+  for +buf: List<&2, Char>
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  {Pull.copy.hit.go(Chr{uu}, tl, buf, stack, Pull.GNext{}, done, cls, U32.is_lt(uu, 32))
+    == Pull.S{Pull.MCopy{Chr{uu} <> buf}, stack, Pull.GNext{}, done, False{}} : Pull.St}
+
+def copy_go(cls, uu, ecls, e34, e92, ect, tl, buf, stack, done):
+  match cls:
+    case Lex.CQuote{}:
+      Empty.absurd({Pull.copy.hit.go(Chr{uu}, tl, buf, stack, Pull.GNext{}, done, Lex.CQuote{}, U32.is_lt(uu, 32))
+        == Pull.S{Pull.MCopy{Chr{uu} <> buf}, stack, Pull.GNext{}, done, False{}} : Pull.St}, nq34(uu, e34, ecls))
+    case Lex.CBack{}:
+      Empty.absurd({Pull.copy.hit.go(Chr{uu}, tl, buf, stack, Pull.GNext{}, done, Lex.CBack{}, U32.is_lt(uu, 32))
+        == Pull.S{Pull.MCopy{Chr{uu} <> buf}, stack, Pull.GNext{}, done, False{}} : Pull.St}, nb92(uu, e92, ecls))
+
+    case Lex.CPunct{tt}:
+      ec = Equal.sym(Bool, U32.is_lt(uu, 32), False{}, ect)
+      %ec : {Pull.copy.hit.go(Chr{uu}, tl, buf, stack, Pull.GNext{}, done, Lex.CPunct{tt}, _)
+        == Pull.S{Pull.MCopy{Chr{uu} <> buf}, stack, Pull.GNext{}, done, False{}} : Pull.St}
+      {==}
+    case Lex.CSpace{}:
+      ec = Equal.sym(Bool, U32.is_lt(uu, 32), False{}, ect)
+      %ec : {Pull.copy.hit.go(Chr{uu}, tl, buf, stack, Pull.GNext{}, done, Lex.CSpace{}, _)
+        == Pull.S{Pull.MCopy{Chr{uu} <> buf}, stack, Pull.GNext{}, done, False{}} : Pull.St}
+      {==}
+    case Lex.COther{}:
+      ec = Equal.sym(Bool, U32.is_lt(uu, 32), False{}, ect)
+      %ec : {Pull.copy.hit.go(Chr{uu}, tl, buf, stack, Pull.GNext{}, done, Lex.COther{}, _)
+        == Pull.S{Pull.MCopy{Chr{uu} <> buf}, stack, Pull.GNext{}, done, False{}} : Pull.St}
+      {==}
+
+# a raw character, copied
+law copy_raw:
+  for +ch: Char
+  for +h: {Laws.raw_char(ch) == True{} : Bool}
+  for +tl: String
+  for +buf: List<&2, Char>
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  {Pull.copy.hit.go(ch, tl, buf, stack, Pull.GNext{}, done, Lex.classify(ch), U32.is_lt(Char.to_u32(ch), 32))
+    == Pull.S{Pull.MCopy{ch <> buf}, stack, Pull.GNext{}, done, False{}} : Pull.St}
+
+def copy_raw(ch, h, tl, buf, stack, done):
+  match ch:
+    case Chr{+uu}:
+      copy_go(Lex.classify(Chr{uu}), uu, {==}, raw34(uu, h), raw92(uu, h), rawlt(uu, h), tl, buf, stack, done)
+
+# the escape copier's reversed prefix is the span scanner's
+law crev0:
+  for +src: String
+  for nn: U32
+  for acc: List<&2, Char>
+  {Pull.copy.rev(src, nn, True{}, acc) == acc : List<&2, Char>}
+
+def crev0(src, _nn, _acc):
+  match src:
+    case SNil{}:
+      {==}
+    case SCon{_, _}:
+      {==}
+
+law crev:
+  for +src: String
+  for +nn: U32
+  for zz: Bool
+  for +acc: List<&2, Char>
+  {Pull.copy.rev(src, nn, zz, acc) == Lex.tokens.rev(src, nn, zz, acc) : List<&2, Char>}
+
+def crev(src, nn, zz, acc):
+  match src zz:
+    case ss True{}:
+      Equal.trans(List<&2, Char>, Pull.copy.rev(ss, nn, True{}, acc), acc, Lex.tokens.rev(ss, nn, True{}, acc),
+        crev0(ss, nn, acc), Equal.sym(List<&2, Char>, Lex.tokens.rev(ss, nn, True{}, acc), acc, rev_zero(ss, nn, acc)))
+    case SNil{} False{}:
+      {==}
+    case SCon{+hd, +tl} False{}:
+      crev(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), hd <> acc)
+
+
+# the escape copier's reversed prefix of no characters
+# a two-character escape, once the backslash is in: its character is copied
+law et_esc.at:
+  for isu: Bool
+  for +uu: U32
+  for eu: {U32.is_eq(uu, 117) == isu : Bool}
+  for +h: {Laws.has_char(Laws.unesc(Chr{uu})) == True{} : Bool}
+  for +rest: String
+  for +bb: List<&2, Char>
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  {Pull.next.go(1n+ff, SCon{Chr{uu}, rest}, Pull.S{Pull.MEsc{bb}, stack, Pull.GNext{}, done, False{}})
+    == Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PEsc{Chr{uu}}) <> bb}, stack, Pull.GNext{},
+      done, False{}}) : Pull.Out}
+
+def et_esc.at(isu, uu, eu, h, rest, bb, stack, done, ff):
+  match isu:
+    case True{}:
+      ek = Equal.sym(U32, uu, 117, ueq(uu, 117, eu))
+      e2 = Equal.cong(U32, Bool, zz => Laws.has_char(Laws.unesc(Chr{zz})), 117, uu, ek)
+      no({Pull.next.go(1n+ff, SCon{Chr{uu}, rest}, Pull.S{Pull.MEsc{bb}, stack, Pull.GNext{}, done, False{}})
+        == Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PEsc{Chr{uu}}) <> bb}, stack, Pull.GNext{},
+          done, False{}}) : Pull.Out}, Equal.trans(Bool, False{}, Laws.has_char(Laws.unesc(Chr{uu})), True{}, e2, h))
+    case False{}:
+      es = Equal.sym(Bool, U32.is_eq(uu, 117), False{}, eu)
+      %es : {Pull.next.go(1n+ff, rest, Pull.esc.hit.go(Chr{uu}, rest, bb, stack, Pull.GNext{}, done, _))
+        == Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PEsc{Chr{uu}}) <> bb}, stack,
+          Pull.GNext{}, done, False{}}) : Pull.Out}
+      ms = Equal.sym(Maybe<&2, Char>, Laws.unesc(Chr{uu}), Some{Laws.some_or(Laws.unesc(Chr{uu}), Chr{uu})},
+        some_is(Laws.unesc(Chr{uu}), Chr{uu}, h))
+      %ms : {Pull.next.go(1n+ff, rest, Pull.esc.put(rest, bb, stack, Pull.GNext{}, done, _))
+        == Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PEsc{Chr{uu}}) <> bb}, stack,
+          Pull.GNext{}, done, False{}}) : Pull.Out}
+      {==}
+
+
+law et_esc:
+  for +ch: Char
+  for h: {Laws.has_char(Laws.unesc(ch)) == True{} : Bool}
+  for +rest: String
+  for +bb: List<&2, Char>
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  {Pull.next.go(1n+ff, SCon{ch, rest}, Pull.S{Pull.MEsc{bb}, stack, Pull.GNext{}, done, False{}})
+    == Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PEsc{ch}) <> bb}, stack, Pull.GNext{}, done,
+      False{}}) : Pull.Out}
+
+def et_esc(ch, h, rest, bb, stack, done, ff):
+  match ch:
+    case Chr{+uu}:
+      et_esc.at(U32.is_eq(uu, 117), uu, {==}, h, rest, bb, stack, done, ff)
+
+
+# et_esc, once whether the character is u is named
+# one hex digit of a \u escape
+law dig_u:
+  for +ch: Char
+  for h: {Laws.hexd(ch) == True{} : Bool}
+  for +tl: String
+  for left: Nat
+  for +acc: U32
+  for +bb: List<&2, Char>
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  {Pull.next.go(1n+ff, SCon{ch, tl}, Pull.S{Pull.MUni{left, acc, bb}, stack, Pull.GNext{}, done, False{}})
+    == Pull.next.go(1n+ff, tl, Pull.uni.put(tl, left, acc, Lex.hex(ch), bb, stack, Pull.GNext{}, done)) : Pull.Out}
+
+def dig_u(ch, h, tl, left, acc, bb, stack, done, ff):
+  hs = Equal.sym(Bool, Laws.hexd(ch), True{}, h)
+  %hs : {Pull.next.go(1n+ff, tl, Pull.uni.hit.go(ch, tl, left, acc, bb, stack, Pull.GNext{}, done, _))
+    == Pull.next.go(1n+ff, tl, Pull.uni.put(tl, left, acc, Lex.hex(ch), bb, stack, Pull.GNext{}, done)) : Pull.Out}
+  {==}
+
+# one hex digit of a low surrogate's \u escape
+law dig_l:
+  for +ch: Char
+  for h: {Laws.hexd(ch) == True{} : Bool}
+  for +tl: String
+  for left: Nat
+  for +acc: U32
+  for +hi: U32
+  for +bb: List<&2, Char>
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  {Pull.next.go(1n+ff, SCon{ch, tl}, Pull.S{Pull.MLo{left, acc, hi, bb}, stack, Pull.GNext{}, done, False{}})
+    == Pull.next.go(1n+ff, tl, Pull.lo.put(tl, left, acc, hi, Lex.hex(ch), bb, stack, Pull.GNext{}, done)) : Pull.Out}
+
+def dig_l(ch, h, tl, left, acc, hi, bb, stack, done, ff):
+  hs = Equal.sym(Bool, Laws.hexd(ch), True{}, h)
+  %hs : {Pull.next.go(1n+ff, tl, Pull.lo.hit.go(ch, tl, left, acc, hi, bb, stack, Pull.GNext{}, done, _))
+    == Pull.next.go(1n+ff, tl, Pull.lo.put(tl, left, acc, hi, Lex.hex(ch), bb, stack, Pull.GNext{}, done)) : Pull.Out}
+  {==}
+
+
+# a \u escape's four digits, once the backslash is in: its character is copied
+law et_u:
+  for +aa: Char
+  for +bb: Char
+  for +cc: Char
+  for +dd: Char
+  for +h: {Laws.piece.ok(Laws.PU{aa, bb, cc, dd}) == True{} : Bool}
+  for +rest: String
+  for +bf: List<&2, Char>
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  {Pull.next.go(1n+ff, SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, rest}}}}}, Pull.S{Pull.MEsc{bf}, stack,
+    Pull.GNext{}, done, False{}})
+    == Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PU{aa, bb, cc, dd}) <> bf}, stack,
+      Pull.GNext{}, done, False{}}) : Pull.Out}
+
+def et_u(aa, bb, cc, dd, h, rest, bf, stack, done, ff):
+  +hh = and_left(Bool.and(Laws.hexd(aa), Bool.and(Laws.hexd(bb), Bool.and(Laws.hexd(cc), Laws.hexd(dd)))),
+    Laws.non_sur(Laws.hex4(aa, bb, cc, dd)), h)
+  hn = and_right(Bool.and(Laws.hexd(aa), Bool.and(Laws.hexd(bb), Bool.and(Laws.hexd(cc), Laws.hexd(dd)))),
+    Laws.non_sur(Laws.hex4(aa, bb, cc, dd)), h)
+  +fin = Equal.cong(Lex.Sur, Pull.Out, zz => Pull.next.go(1n+ff, rest, Pull.uni.end.go(rest,
+    Laws.hex4(aa, bb, cc, dd), bf, stack, Pull.GNext{}, done, zz)), Lex.unicode.sur(Laws.hex4(aa, bb, cc, dd)),
+      Lex.SOk{},
+    sur_ok(Laws.hex4(aa, bb, cc, dd), hn))
+  Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{aa, SCon{bb, SCon{cc, SCon{dd, rest}}}}, Pull.S{Pull.MUni{3n, 0, bf},
+    stack, Pull.GNext{}, done, False{}}), Pull.next.go(1n+ff, SCon{bb, SCon{cc, SCon{dd, rest}}}, Pull.S{Pull.MUni{2n,
+    Laws.hex.acc(0, aa), bf}, stack, Pull.GNext{}, done, False{}}), Pull.next.go(1n+ff, rest,
+    Pull.S{Pull.MCopy{Laws.piece.char(Laws.PU{aa, bb, cc, dd}) <> bf}, stack, Pull.GNext{}, done, False{}}), dig_u(aa,
+    and4_1(Laws.hexd(aa), Laws.hexd(bb), Laws.hexd(cc), Laws.hexd(dd), hh), SCon{bb, SCon{cc, SCon{dd, rest}}}, 3n, 0,
+    bf, stack, done, ff),
+    Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{bb, SCon{cc, SCon{dd, rest}}}, Pull.S{Pull.MUni{2n, Laws.hex.acc(0,
+      aa), bf}, stack, Pull.GNext{}, done, False{}}), Pull.next.go(1n+ff, SCon{cc, SCon{dd, rest}},
+      Pull.S{Pull.MUni{1n, Laws.hex.acc(Laws.hex.acc(0, aa), bb), bf}, stack, Pull.GNext{}, done, False{}}),
+      Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PU{aa, bb, cc, dd}) <> bf}, stack, Pull.GNext{},
+      done, False{}}), dig_u(bb, and4_2(Laws.hexd(aa), Laws.hexd(bb), Laws.hexd(cc), Laws.hexd(dd), hh), SCon{cc,
+      SCon{dd, rest}}, 2n, Laws.hex.acc(0, aa), bf, stack, done, ff),
+    Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{cc, SCon{dd, rest}}, Pull.S{Pull.MUni{1n,
+      Laws.hex.acc(Laws.hex.acc(0, aa), bb), bf}, stack, Pull.GNext{}, done, False{}}), Pull.next.go(1n+ff, SCon{dd,
+      rest}, Pull.S{Pull.MUni{0n, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc), bf}, stack, Pull.GNext{},
+      done, False{}}), Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PU{aa, bb, cc, dd}) <> bf},
+      stack, Pull.GNext{}, done, False{}}), dig_u(cc, and4_3(Laws.hexd(aa), Laws.hexd(bb), Laws.hexd(cc),
+      Laws.hexd(dd), hh), SCon{dd, rest}, 1n, Laws.hex.acc(Laws.hex.acc(0, aa), bb), bf, stack, done, ff),
+    Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{dd, rest}, Pull.S{Pull.MUni{0n,
+      Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc), bf}, stack, Pull.GNext{}, done, False{}}),
+      Pull.next.go(1n+ff, rest, Pull.uni.put(rest, 0n, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc),
+      Lex.hex(dd), bf, stack, Pull.GNext{}, done)), Pull.next.go(1n+ff, rest,
+      Pull.S{Pull.MCopy{Laws.piece.char(Laws.PU{aa, bb, cc, dd}) <> bf}, stack, Pull.GNext{}, done, False{}}),
+      dig_u(dd, and4_4(Laws.hexd(aa), Laws.hexd(bb), Laws.hexd(cc), Laws.hexd(dd), hh), rest, 0n,
+      Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc), bf, stack, done, ff), fin))))
+
+# a surrogate pair's escapes, once the first backslash is in: its character is copied
+law et_pair:
+  for +h1: Char
+  for +h2: Char
+  for +h3: Char
+  for +h4: Char
+  for +l1: Char
+  for +l2: Char
+  for +l3: Char
+  for +l4: Char
+  for +h: {Laws.piece.ok(Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}) == True{} : Bool}
+  for +rest: String
+  for +bf: List<&2, Char>
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  {Pull.next.go(1n+ff, SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3,
+    SCon{l4, rest}}}}}}}}}}}, Pull.S{Pull.MEsc{bf}, stack, Pull.GNext{},
+    done, False{}})
+    == Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}) <> bf},
+      stack, Pull.GNext{}, done, False{}}) : Pull.Out}
+
+def et_pair(h1, h2, h3, h4, l1, l2, l3, l4, h, rest, bf, stack, done, ff):
+  +hh = and_left(Bool.and(Laws.hexd(h1), Bool.and(Laws.hexd(h2), Bool.and(Laws.hexd(h3), Laws.hexd(h4)))),
+    Bool.and(Bool.and(Laws.hexd(l1), Bool.and(Laws.hexd(l2), Bool.and(Laws.hexd(l3), Laws.hexd(l4)))),
+    Bool.and(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(l1, l2, l3, l4)))), h)
+  +r1 = and_right(Bool.and(Laws.hexd(h1), Bool.and(Laws.hexd(h2), Bool.and(Laws.hexd(h3), Laws.hexd(h4)))),
+    Bool.and(Bool.and(Laws.hexd(l1), Bool.and(Laws.hexd(l2), Bool.and(Laws.hexd(l3), Laws.hexd(l4)))),
+    Bool.and(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(l1, l2, l3, l4)))), h)
+  +hl = and_left(Bool.and(Laws.hexd(l1), Bool.and(Laws.hexd(l2), Bool.and(Laws.hexd(l3), Laws.hexd(l4)))),
+    Bool.and(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(l1, l2, l3, l4))), r1)
+  +r2 = and_right(Bool.and(Laws.hexd(l1), Bool.and(Laws.hexd(l2), Bool.and(Laws.hexd(l3), Laws.hexd(l4)))),
+    Bool.and(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(l1, l2, l3, l4))), r1)
+  hhi = and_left(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(l1, l2, l3, l4)), r2)
+  hlo = and_right(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(l1, l2, l3, l4)), r2)
+  +fin = Equal.cong(Lex.Sur, Pull.Out, zz => Pull.next.go(1n+ff, rest, Pull.lo.end.go(rest, Laws.hex4(l1, l2, l3, l4),
+    Laws.hex4(h1, h2, h3, h4), bf, stack,
+    Pull.GNext{}, done, zz)), Lex.unicode.sur(Laws.hex4(l1, l2, l3, l4)), Lex.SLo{}, sur_lo(Laws.hex4(l1, l2, l3, l4),
+      hlo))
+  +mid = Equal.cong(Lex.Sur, Pull.Out, zz => Pull.next.go(1n+ff, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3,
+    SCon{l4, rest}}}}}}, Pull.uni.end.go(SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, rest}}}}}},
+    Laws.hex4(h1, h2, h3, h4), bf, stack,
+    Pull.GNext{}, done, zz)), Lex.unicode.sur(Laws.hex4(h1, h2, h3, h4)), Lex.SHi{}, sur_hi(Laws.hex4(h1, h2, h3, h4),
+      hhi))
+  Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2,
+    SCon{l3, SCon{l4, rest}}}}}}}}}}, Pull.S{Pull.MUni{3n, 0, bf}, stack, Pull.GNext{}, done, False{}}),
+    Pull.next.go(1n+ff, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4,
+    rest}}}}}}}}}, Pull.S{Pull.MUni{2n, Laws.hex.acc(0, h1), bf}, stack, Pull.GNext{}, done, False{}}),
+    Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}) <> bf},
+    stack, Pull.GNext{}, done, False{}}), dig_u(h1, and4_1(Laws.hexd(h1), Laws.hexd(h2), Laws.hexd(h3), Laws.hexd(h4),
+    hh), SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, rest}}}}}}}}}, 3n, 0, bf,
+    stack, done, ff),
+    Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2,
+      SCon{l3, SCon{l4, rest}}}}}}}}}, Pull.S{Pull.MUni{2n, Laws.hex.acc(0, h1), bf}, stack, Pull.GNext{}, done,
+      False{}}), Pull.next.go(1n+ff, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4,
+      rest}}}}}}}}, Pull.S{Pull.MUni{1n, Laws.hex.acc(Laws.hex.acc(0, h1), h2), bf}, stack, Pull.GNext{}, done,
+      False{}}), Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PPair{h1, h2, h3, h4, l1, l2, l3,
+      l4}) <> bf}, stack, Pull.GNext{}, done, False{}}), dig_u(h2, and4_2(Laws.hexd(h1), Laws.hexd(h2), Laws.hexd(h3),
+      Laws.hexd(h4), hh), SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, rest}}}}}}}}, 2n,
+      Laws.hex.acc(0, h1), bf, stack, done, ff),
+    Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3,
+      SCon{l4, rest}}}}}}}}, Pull.S{Pull.MUni{1n, Laws.hex.acc(Laws.hex.acc(0, h1), h2), bf}, stack, Pull.GNext{},
+      done, False{}}), Pull.next.go(1n+ff, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4,
+      rest}}}}}}}, Pull.S{Pull.MUni{0n, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, h1), h2), h3), bf}, stack,
+      Pull.GNext{}, done, False{}}), Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PPair{h1, h2, h3,
+      h4, l1, l2, l3, l4}) <> bf}, stack, Pull.GNext{}, done, False{}}), dig_u(h3, and4_3(Laws.hexd(h1), Laws.hexd(h2),
+      Laws.hexd(h3), Laws.hexd(h4), hh), SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, rest}}}}}}},
+      1n, Laws.hex.acc(Laws.hex.acc(0, h1), h2), bf, stack, done, ff),
+    Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4,
+      rest}}}}}}}, Pull.S{Pull.MUni{0n, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, h1), h2), h3), bf}, stack,
+      Pull.GNext{}, done, False{}}), Pull.next.go(1n+ff, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4,
+      rest}}}}}}, Pull.uni.put(SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, rest}}}}}}, 0n,
+      Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, h1), h2), h3), Lex.hex(h4), bf, stack, Pull.GNext{}, done)),
+      Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}) <> bf},
+      stack, Pull.GNext{}, done, False{}}), dig_u(h4, and4_4(Laws.hexd(h1), Laws.hexd(h2), Laws.hexd(h3),
+      Laws.hexd(h4), hh), SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, rest}}}}}}, 0n,
+      Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, h1), h2), h3), bf, stack, done, ff),
+    Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, rest}}}}}},
+      Pull.uni.put(SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, rest}}}}}}, 0n,
+      Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, h1), h2), h3), Lex.hex(h4), bf, stack, Pull.GNext{}, done)),
+      Pull.next.go(1n+ff, SCon{l1, SCon{l2, SCon{l3, SCon{l4, rest}}}}, Pull.S{Pull.MLo{3n, 0, Laws.hex4(h1, h2, h3,
+      h4), bf}, stack, Pull.GNext{}, done, False{}}), Pull.next.go(1n+ff, rest,
+      Pull.S{Pull.MCopy{Laws.piece.char(Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}) <> bf}, stack, Pull.GNext{}, done,
+      False{}}), mid,
+    Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{l1, SCon{l2, SCon{l3, SCon{l4, rest}}}}, Pull.S{Pull.MLo{3n, 0,
+      Laws.hex4(h1, h2, h3, h4), bf}, stack, Pull.GNext{}, done, False{}}), Pull.next.go(1n+ff, SCon{l2, SCon{l3,
+      SCon{l4, rest}}}, Pull.S{Pull.MLo{2n, Laws.hex.acc(0, l1), Laws.hex4(h1, h2, h3, h4), bf}, stack, Pull.GNext{},
+      done, False{}}), Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PPair{h1, h2, h3, h4, l1, l2,
+      l3, l4}) <> bf}, stack, Pull.GNext{}, done, False{}}), dig_l(l1, and4_1(Laws.hexd(l1), Laws.hexd(l2),
+      Laws.hexd(l3), Laws.hexd(l4), hl), SCon{l2, SCon{l3, SCon{l4, rest}}}, 3n, 0, Laws.hex4(h1, h2, h3, h4), bf,
+      stack, done, ff),
+    Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{l2, SCon{l3, SCon{l4, rest}}}, Pull.S{Pull.MLo{2n, Laws.hex.acc(0,
+      l1), Laws.hex4(h1, h2, h3, h4), bf}, stack, Pull.GNext{}, done, False{}}), Pull.next.go(1n+ff, SCon{l3, SCon{l4,
+      rest}}, Pull.S{Pull.MLo{1n, Laws.hex.acc(Laws.hex.acc(0, l1), l2), Laws.hex4(h1, h2, h3, h4), bf}, stack,
+      Pull.GNext{}, done, False{}}), Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PPair{h1, h2, h3,
+      h4, l1, l2, l3, l4}) <> bf}, stack, Pull.GNext{}, done, False{}}), dig_l(l2, and4_2(Laws.hexd(l1), Laws.hexd(l2),
+      Laws.hexd(l3), Laws.hexd(l4), hl), SCon{l3, SCon{l4, rest}}, 2n, Laws.hex.acc(0, l1), Laws.hex4(h1, h2, h3, h4),
+      bf, stack, done, ff),
+    Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{l3, SCon{l4, rest}}, Pull.S{Pull.MLo{1n,
+      Laws.hex.acc(Laws.hex.acc(0, l1), l2), Laws.hex4(h1, h2, h3, h4), bf}, stack, Pull.GNext{}, done, False{}}),
+      Pull.next.go(1n+ff, SCon{l4, rest}, Pull.S{Pull.MLo{0n, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, l1), l2), l3),
+      Laws.hex4(h1, h2, h3, h4), bf}, stack, Pull.GNext{}, done, False{}}), Pull.next.go(1n+ff, rest,
+      Pull.S{Pull.MCopy{Laws.piece.char(Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}) <> bf}, stack, Pull.GNext{}, done,
+      False{}}), dig_l(l3, and4_3(Laws.hexd(l1), Laws.hexd(l2), Laws.hexd(l3), Laws.hexd(l4), hl), SCon{l4, rest}, 1n,
+      Laws.hex.acc(Laws.hex.acc(0, l1), l2), Laws.hex4(h1, h2, h3, h4), bf, stack, done, ff),
+    Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{l4, rest}, Pull.S{Pull.MLo{0n,
+      Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, l1), l2), l3), Laws.hex4(h1, h2, h3, h4), bf}, stack, Pull.GNext{},
+      done, False{}}), Pull.next.go(1n+ff, rest, Pull.lo.put(rest, 0n, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, l1),
+      l2), l3), Laws.hex4(h1, h2, h3, h4), Lex.hex(l4), bf, stack, Pull.GNext{}, done)), Pull.next.go(1n+ff, rest,
+      Pull.S{Pull.MCopy{Laws.piece.char(Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}) <> bf}, stack, Pull.GNext{}, done,
+      False{}}), dig_l(l4, and4_4(Laws.hexd(l1), Laws.hexd(l2), Laws.hexd(l3), Laws.hexd(l4), hl), rest, 0n,
+      Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, l1), l2), l3), Laws.hex4(h1, h2, h3, h4), bf, stack, done, ff),
+      fin)))))))))
+
+# what a string mode holds, with `x` left to read: the characters decoded so
+# far, reversed as `bb`. After the opening quote nothing is held; a span holds
+# the characters it covers; a copy holds its buffer
+def hold(m: Pull.Mode, x: String, bb: List<&2, Char>) -> Type:
+  match m:
+    case Pull.MQuote{}:
+      ({bb == [] : List<&2, Char>} & {Laws.short(x) == True{} : Bool})
+    case Pull.MSpan{+cut, +nn}:
+      ({sdrop(cut, nn, U32.is_zero(nn)) == x : String}
+        & ({Lex.tokens.rev(cut, nn, U32.is_zero(nn), []) == bb : List<&2, Char>} & {Laws.short(cut) == True{} : Bool}))
+    case Pull.MCopy{buf}:
+      {buf == bb : List<&2, Char>}
+    case _:
+      Empty
+
+# the string mode after one piece, read from `x`
+def pstep(m: Pull.Mode, pc: Laws.Piece, bb: List<&2, Char>, x: String) -> Pull.Mode:
+  match m pc:
+    case Pull.MQuote{} Laws.PRaw{_}:
+      Pull.MSpan{x, 1}
+    case Pull.MSpan{cut, nn} Laws.PRaw{_}:
+      Pull.MSpan{cut, U32.add(nn, 1)}
+    case _ _:
+      Pull.MCopy{Laws.piece.char(pc) <> bb}
+
+# what piece_go says: the walk over a piece, and what the next mode holds
+def pg_ty(
+  m: Pull.Mode,
+  pc: Laws.Piece,
+  bb: List<&2, Char>,
+  rest: String,
+  stack: List<&2, Pull.Frame>,
+  done: Bool,
+  ff: Nat
+) -> Type:
+  ({Pull.next.go(1n+ff, Laws.piece.text(pc) ++ rest, Pull.S{m, stack, Pull.GNext{}, done, False{}})
+    == Pull.next.go(1n+ff, rest, Pull.S{pstep(m, pc, bb, Laws.piece.text(pc) ++ rest), stack, Pull.GNext{}, done,
+      False{}}) : Pull.Out}
+    & hold(pstep(m, pc, bb, Laws.piece.text(pc) ++ rest), rest, Laws.piece.char(pc) <> bb))
+
+# a piece that is a raw character
+def is_raw(pc: Laws.Piece) -> Bool:
+  match pc:
+    case Laws.PRaw{_}:
+      True{}
+    case _:
+      False{}
+
+# a piece's text after its backslash, then `rest`
+def etail(pc: Laws.Piece, rest: String) -> String:
+  match pc:
+    case Laws.PRaw{ch}:
+      SCon{ch, rest}
+    case Laws.PEsc{ch}:
+      SCon{ch, rest}
+    case Laws.PU{aa, bb, cc, dd}:
+      SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, rest}}}}}
+    case Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}:
+      SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4,
+        rest}}}}}}}}}}}
+
+# a piece other than a raw character, once its backslash has put the walk in
+# the escape mode holding `bb`
+law pg_esc:
+  for +pc: Laws.Piece
+  for +h_ok: {Laws.piece.ok(pc) == True{} : Bool}
+  for +bb: List<&2, Char>
+  for +rest: String
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  for h_raw: {is_raw(pc) == False{} : Bool}
+  {Pull.next.go(1n+ff, etail(pc, rest), Pull.S{Pull.MEsc{bb}, stack, Pull.GNext{}, done, False{}})
+    == Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(pc) <> bb}, stack, Pull.GNext{}, done, False{}})
+    : Pull.Out}
+
+def pg_esc(pc, h_ok, bb, rest, stack, done, ff, h_raw):
+  match pc:
+    case Laws.PRaw{+ch}:
+      no({Pull.next.go(1n+ff, etail(Laws.PRaw{ch}, rest), Pull.S{Pull.MEsc{bb}, stack, Pull.GNext{}, done, False{}})
+        == Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(Laws.PRaw{ch}) <> bb}, stack, Pull.GNext{}, done,
+          False{}}) : Pull.Out}, Equal.sym(Bool, True{}, False{}, h_raw))
+    case Laws.PEsc{+ch}:
+      et_esc(ch, h_ok, rest, bb, stack, done, ff)
+    case Laws.PU{+aa, +b2, +cc, +dd}:
+      et_u(aa, b2, cc, dd, h_ok, rest, bb, stack, done, ff)
+    case Laws.PPair{+h1, +h2, +h3, +h4, +l1, +l2, +l3, +l4}:
+      et_pair(h1, h2, h3, h4, l1, l2, l3, l4, h_ok, rest, bb, stack, done, ff)
+
+# a piece read in a copy
+law pg_copy:
+  for +buf: List<&2, Char>
+  for +pc: Laws.Piece
+  for +bb: List<&2, Char>
+  for +rest: String
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  for +h_ok: {Laws.piece.ok(pc) == True{} : Bool}
+  for e: {buf == bb : List<&2, Char>}
+  pg_ty(Pull.MCopy{buf}, pc, bb, rest, stack, done, ff)
+
+def pg_copy(buf, pc, bb, rest, stack, done, ff, h_ok, e):
+  match pc:
+    case Laws.PRaw{+ch}:
+      es = Equal.sym(List<&2, Char>, buf, bb, e)
+      %es : pg_ty(Pull.MCopy{_}, Laws.PRaw{ch}, bb, rest, stack, done, ff)
+      (Equal.cong(Pull.St, Pull.Out, zz => Pull.next.go(1n+ff, rest, zz), Pull.copy.hit.go(ch, rest, bb, stack,
+        Pull.GNext{}, done, Lex.classify(ch), U32.is_lt(Char.to_u32(ch), 32)), Pull.S{Pull.MCopy{ch <> bb}, stack,
+        Pull.GNext{}, done, False{}}, copy_raw(ch, h_ok, rest, bb, stack, done)), {==})
+    case Laws.PEsc{+ch}:
+      es = Equal.sym(List<&2, Char>, buf, bb, e)
+      %es : pg_ty(Pull.MCopy{_}, Laws.PEsc{ch}, bb, rest, stack, done, ff)
+      (pg_esc(Laws.PEsc{ch}, h_ok, bb, rest, stack, done, ff, {==}), {==})
+    case Laws.PU{+aa, +b2, +cc, +dd}:
+      es = Equal.sym(List<&2, Char>, buf, bb, e)
+      %es : pg_ty(Pull.MCopy{_}, Laws.PU{aa, b2, cc, dd}, bb, rest, stack, done, ff)
+      (pg_esc(Laws.PU{aa, b2, cc, dd}, h_ok, bb, rest, stack, done, ff, {==}), {==})
+    case Laws.PPair{+h1, +h2, +h3, +h4, +l1, +l2, +l3, +l4}:
+      es = Equal.sym(List<&2, Char>, buf, bb, e)
+      %es : pg_ty(Pull.MCopy{_}, Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}, bb, rest, stack, done, ff)
+      (pg_esc(Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}, h_ok, bb, rest, stack, done, ff, {==}), {==})
+
+# a piece other than a raw character, read in a span: the span is copied
+law pg_span.esc:
+  for +cut: String
+  for +nn: U32
+  for +pc: Laws.Piece
+  for +bb: List<&2, Char>
+  for +rest: String
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  for +h_ok: {Laws.piece.ok(pc) == True{} : Bool}
+  for e_r: {Lex.tokens.rev(cut, nn, U32.is_zero(nn), []) == bb : List<&2, Char>}
+  for h_raw: {is_raw(pc) == False{} : Bool}
+  {Pull.next.go(1n+ff, etail(pc, rest), Pull.S{Pull.MEsc{Pull.copy.rev(cut, nn, U32.is_zero(nn), [])}, stack,
+    Pull.GNext{}, done, False{}})
+    == Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(pc) <> bb}, stack, Pull.GNext{}, done, False{}})
+    : Pull.Out}
+
+def pg_span.esc(cut, nn, pc, bb, rest, stack, done, ff, h_ok, e_r, h_raw):
+  eb = Equal.sym(List<&2, Char>, Pull.copy.rev(cut, nn, U32.is_zero(nn), []), bb, Equal.trans(List<&2, Char>,
+    Pull.copy.rev(cut, nn, U32.is_zero(nn), []), Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), bb,
+    crev(cut, nn, U32.is_zero(nn), []), e_r))
+  %eb : {Pull.next.go(1n+ff, etail(pc, rest), Pull.S{Pull.MEsc{_}, stack, Pull.GNext{}, done, False{}})
+    == Pull.next.go(1n+ff, rest, Pull.S{Pull.MCopy{Laws.piece.char(pc) <> bb}, stack, Pull.GNext{}, done, False{}})
+    : Pull.Out}
+  pg_esc(pc, h_ok, bb, rest, stack, done, ff, h_raw)
+
+law pg_span:
+  for +cut: String
+  for +nn: U32
+  for +pc: Laws.Piece
+  for +bb: List<&2, Char>
+  for +rest: String
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  for +h_ok: {Laws.piece.ok(pc) == True{} : Bool}
+  for +e_d: {sdrop(cut, nn, U32.is_zero(nn)) == Laws.piece.text(pc) ++ rest : String}
+  for +e_r: {Lex.tokens.rev(cut, nn, U32.is_zero(nn), []) == bb : List<&2, Char>}
+  for +e_s: {Laws.short(cut) == True{} : Bool}
+  pg_ty(Pull.MSpan{cut, nn}, pc, bb, rest, stack, done, ff)
+
+def pg_span(cut, nn, pc, bb, rest, stack, done, ff, h_ok, e_d, e_r, e_s):
+  match pc:
+    case Laws.PRaw{+ch}:
+      +top = pos_ne(cut, nn, 4294967295, U32.is_zero(nn), {==}, e_s, ch, rest, e_d)
+      (Equal.cong(Pull.Skind, Pull.Out, zz => Pull.next.go(1n+ff, rest, Pull.span.advance(zz, cut, nn, stack,
+        Pull.GNext{}, done)), Pull.span.kind.of(ch), Pull.KGo{}, kind_raw(ch, h_ok)),
+        (sdrop_grow(cut, nn, U32.is_zero(nn), {==}, top, ch, rest, e_d),
+          (Equal.trans(List<&2, Char>, Lex.tokens.rev(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), []),
+            ch <> Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), ch <> bb,
+            rev_grow(cut, nn, U32.is_zero(nn), {==}, top, ch, rest, e_d, []),
+            Equal.cong(List<&2, Char>, List<&2, Char>, xx => ch <> xx, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), bb,
+              e_r)), e_s)))
+    case Laws.PEsc{+ch}:
+      (pg_span.esc(cut, nn, Laws.PEsc{ch}, bb, rest, stack, done, ff, h_ok, e_r, {==}), {==})
+    case Laws.PU{+aa, +b2, +cc, +dd}:
+      (pg_span.esc(cut, nn, Laws.PU{aa, b2, cc, dd}, bb, rest, stack, done, ff, h_ok, e_r, {==}), {==})
+    case Laws.PPair{+h1, +h2, +h3, +h4, +l1, +l2, +l3, +l4}:
+      (pg_span.esc(cut, nn, Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}, bb, rest, stack, done, ff, h_ok, e_r, {==}),
+        {==})
+
+# a piece read just after the opening quote
+law pg_quote:
+  for +pc: Laws.Piece
+  for +bb: List<&2, Char>
+  for +rest: String
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  for +h_ok: {Laws.piece.ok(pc) == True{} : Bool}
+  for e_b: {bb == [] : List<&2, Char>}
+  for +e_s: {Laws.short(Laws.piece.text(pc) ++ rest) == True{} : Bool}
+  pg_ty(Pull.MQuote{}, pc, bb, rest, stack, done, ff)
+
+def pg_quote(pc, bb, rest, stack, done, ff, h_ok, e_b, e_s):
+  match pc:
+    case Laws.PRaw{+ch}:
+      es = Equal.sym(List<&2, Char>, bb, [], e_b)
+      %es : pg_ty(Pull.MQuote{}, Laws.PRaw{ch}, _, rest, stack, done, ff)
+      (Equal.cong(Pull.Skind, Pull.Out, zz => Pull.next.go(1n+ff, rest, Pull.quote.go(zz, ch, rest, stack,
+        Pull.GNext{}, done)), Pull.span.kind.of(ch), Pull.KGo{}, kind_raw(ch, h_ok)),
+        (sdrop_zero(rest, rest, {==}), (rev_zero(rest, 0, [ch]), e_s)))
+    case Laws.PEsc{+ch}:
+      es = Equal.sym(List<&2, Char>, bb, [], e_b)
+      %es : pg_ty(Pull.MQuote{}, Laws.PEsc{ch}, _, rest, stack, done, ff)
+      (pg_esc(Laws.PEsc{ch}, h_ok, [], rest, stack, done, ff, {==}), {==})
+    case Laws.PU{+aa, +b2, +cc, +dd}:
+      es = Equal.sym(List<&2, Char>, bb, [], e_b)
+      %es : pg_ty(Pull.MQuote{}, Laws.PU{aa, b2, cc, dd}, _, rest, stack, done, ff)
+      (pg_esc(Laws.PU{aa, b2, cc, dd}, h_ok, [], rest, stack, done, ff, {==}), {==})
+    case Laws.PPair{+h1, +h2, +h3, +h4, +l1, +l2, +l3, +l4}:
+      es = Equal.sym(List<&2, Char>, bb, [], e_b)
+      %es : pg_ty(Pull.MQuote{}, Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}, _, rest, stack, done, ff)
+      (pg_esc(Laws.PPair{h1, h2, h3, h4, l1, l2, l3, l4}, h_ok, [], rest, stack, done, ff, {==}), {==})
+
+# a piece, read in whatever string mode holds the characters so far
+law piece_go:
+  for +m: Pull.Mode
+  for +pc: Laws.Piece
+  for +bb: List<&2, Char>
+  for +rest: String
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  for +h_ok: {Laws.piece.ok(pc) == True{} : Bool}
+  for h_h: hold(m, Laws.piece.text(pc) ++ rest, bb)
+  pg_ty(m, pc, bb, rest, stack, done, ff)
+
+def piece_go(m, pc, bb, rest, stack, done, ff, h_ok, h_h):
+  match m:
+    case Pull.MQuote{}:
+      (e_b, e_s) = h_h
+      pg_quote(pc, bb, rest, stack, done, ff, h_ok, e_b, e_s)
+    case Pull.MSpan{+cut, +nn}:
+      (e_d, (e_r, e_s)) = h_h
+      pg_span(cut, nn, pc, bb, rest, stack, done, ff, h_ok, e_d, e_r, e_s)
+    case Pull.MCopy{+buf}:
+      pg_copy(buf, pc, bb, rest, stack, done, ff, h_ok, h_h)
+    case Pull.MIdle{}:
+      Empty.absurd(pg_ty(Pull.MIdle{}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MWord{a1, a2, a3}:
+      Empty.absurd(pg_ty(Pull.MWord{a1, a2, a3}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MEsc{a1}:
+      Empty.absurd(pg_ty(Pull.MEsc{a1}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MUni{a1, a2, a3}:
+      Empty.absurd(pg_ty(Pull.MUni{a1, a2, a3}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MHi{a1, a2}:
+      Empty.absurd(pg_ty(Pull.MHi{a1, a2}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MHiEsc{a1, a2}:
+      Empty.absurd(pg_ty(Pull.MHiEsc{a1, a2}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MLo{a1, a2, a3, a4}:
+      Empty.absurd(pg_ty(Pull.MLo{a1, a2, a3, a4}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MSkStr{}:
+      Empty.absurd(pg_ty(Pull.MSkStr{}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MSkEsc{}:
+      Empty.absurd(pg_ty(Pull.MSkEsc{}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MSkUni{a1, a2}:
+      Empty.absurd(pg_ty(Pull.MSkUni{a1, a2}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MSkHi{a1}:
+      Empty.absurd(pg_ty(Pull.MSkHi{a1}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MSkHiEsc{a1}:
+      Empty.absurd(pg_ty(Pull.MSkHiEsc{a1}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MSkLo{a1, a2, a3}:
+      Empty.absurd(pg_ty(Pull.MSkLo{a1, a2, a3}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MDone{a1, a2}:
+      Empty.absurd(pg_ty(Pull.MDone{a1, a2}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MRest{a1}:
+      Empty.absurd(pg_ty(Pull.MRest{a1}, pc, bb, rest, stack, done, ff), h_h)
+    case Pull.MJump{a1, a2}:
+      Empty.absurd(pg_ty(Pull.MJump{a1, a2}, pc, bb, rest, stack, done, ff), h_h)
+
+# a character in front of a buffer
+def ccons(ch: Char, bb: List<&2, Char>) -> List<&2, Char>:
+  ch <> bb
+
+# the string mode after pieces, read in front of `tail`
+def psteps(ps: List<&2, Laws.Piece>, m: Pull.Mode, +bb: List<&2, Char>, +tail: String) -> Pull.Mode:
+  match ps:
+    case Nil{}:
+      m
+    case +pc <> +tl:
+      psteps(tl, pstep(m, pc, bb, sp(pc <> tl, tail)), Laws.piece.char(pc) <> bb, tail)
+
+# the characters pieces stand for, reversed onto bb
+def pcs(ps: List<&2, Laws.Piece>, bb: List<&2, Char>) -> List<&2, Char>:
+  match ps:
+    case Nil{}:
+      bb
+    case +pc <> tl:
+      pcs(tl, Laws.piece.char(pc) <> bb)
+
+# what pieces_go says: the walk over pieces, and what the mode after them holds
+def pcs_ty(
+  ps: List<&2, Laws.Piece>,
+  m: Pull.Mode,
+  bb: List<&2, Char>,
+  tail: String,
+  stack: List<&2, Pull.Frame>,
+  done: Bool,
+  ff: Nat
+) -> Type:
+  ({Pull.next.go(1n+ff, sp(ps, tail), Pull.S{m, stack, Pull.GNext{}, done, False{}})
+    == Pull.next.go(1n+ff, tail, Pull.S{psteps(ps, m, bb, tail), stack, Pull.GNext{}, done, False{}}) : Pull.Out}
+    & hold(psteps(ps, m, bb, tail), tail, pcs(ps, bb)))
+
+# pcs_ty's first half
+law pcs_fst:
+  for ps: List<&2, Laws.Piece>
+  for m: Pull.Mode
+  for bb: List<&2, Char>
+  for tail: String
+  for stack: List<&2, Pull.Frame>
+  for done: Bool
+  for ff: Nat
+  for h: pcs_ty(ps, m, bb, tail, stack, done, ff)
+  {Pull.next.go(1n+ff, sp(ps, tail), Pull.S{m, stack, Pull.GNext{}, done, False{}})
+    == Pull.next.go(1n+ff, tail, Pull.S{psteps(ps, m, bb, tail), stack, Pull.GNext{}, done, False{}}) : Pull.Out}
+
+def pcs_fst(_ps, _m, _bb, _tail, _stack, _done, _ff, h):
+  (aa, _hh) = h
+  aa
+
+# pcs_ty's second half
+law pcs_snd:
+  for ps: List<&2, Laws.Piece>
+  for m: Pull.Mode
+  for bb: List<&2, Char>
+  for tail: String
+  for stack: List<&2, Pull.Frame>
+  for done: Bool
+  for ff: Nat
+  for h: pcs_ty(ps, m, bb, tail, stack, done, ff)
+  hold(psteps(ps, m, bb, tail), tail, pcs(ps, bb))
+
+def pcs_snd(_ps, _m, _bb, _tail, _stack, _done, _ff, h):
+  (_aa, hh) = h
+  hh
+
+# pieces_go, once the first piece's walk and the rest's are in hand
+law pieces_go.fin:
+  for +pc: Laws.Piece
+  for +tl: List<&2, Laws.Piece>
+  for +m: Pull.Mode
+  for +bb: List<&2, Char>
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  for e1: {Pull.next.go(1n+ff, Laws.piece.text(pc) ++ sp(tl, tail), Pull.S{m, stack, Pull.GNext{}, done, False{}})
+    == Pull.next.go(1n+ff, sp(tl, tail), Pull.S{pstep(m, pc, bb, sp(pc <> tl, tail)), stack, Pull.GNext{}, done,
+      False{}}) : Pull.Out}
+  for rr: pcs_ty(tl, pstep(m, pc, bb, sp(pc <> tl, tail)), Laws.piece.char(pc) <> bb, tail, stack, done, ff)
+  pcs_ty(pc <> tl, m, bb, tail, stack, done, ff)
+
+def pieces_go.fin(pc, tl, m, bb, tail, stack, done, ff, e1, rr):
+  (e2, hh) = rr
+  +m2 = pstep(m, pc, bb, sp(pc <> tl, tail))
+  +b2 = ccons(Laws.piece.char(pc), bb)
+  (Equal.trans(Pull.Out, Pull.next.go(1n+ff, sp(pc <> tl, tail), Pull.S{m, stack, Pull.GNext{}, done, False{}}),
+    Pull.next.go(1n+ff, sp(tl, tail), Pull.S{m2, stack, Pull.GNext{}, done, False{}}),
+    Pull.next.go(1n+ff, tail, Pull.S{psteps(tl, m2, b2, tail), stack, Pull.GNext{}, done, False{}}), e1, e2), hh)
+
+# pieces_go, one piece on, the rest given
+law pieces_go.cons:
+  for +pc: Laws.Piece
+  for +tl: List<&2, Laws.Piece>
+  for +m: Pull.Mode
+  for +bb: List<&2, Char>
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  for gg: pg_ty(m, pc, bb, sp(tl, tail), stack, done, ff)
+  for ih: hold(pstep(m, pc, bb, sp(pc <> tl, tail)), sp(tl, tail), Laws.piece.char(pc) <> bb)
+    -> pcs_ty(tl, pstep(m, pc, bb, sp(pc <> tl, tail)), Laws.piece.char(pc) <> bb, tail, stack, done, ff)
+  pcs_ty(pc <> tl, m, bb, tail, stack, done, ff)
+
+def pieces_go.cons(pc, tl, m, bb, tail, stack, done, ff, gg, ih):
+  (e1, hh) = gg
+  pieces_go.fin(pc, tl, m, bb, tail, stack, done, ff, e1, ih(hh))
+
+# pieces, read in whatever string mode holds the characters so far
+law pieces_go:
+  for +ps: List<&2, Laws.Piece>
+  for +m: Pull.Mode
+  for +bb: List<&2, Char>
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +done: Bool
+  for +ff: Nat
+  for +h_ok: {Laws.spell_ok(ps) == True{} : Bool}
+  for h_h: hold(m, sp(ps, tail), bb)
+  pcs_ty(ps, m, bb, tail, stack, done, ff)
+
+def pieces_go(ps, m, bb, tail, stack, done, ff, h_ok, h_h):
+  match ps:
+    case Nil{}:
+      ({==}, h_h)
+    case +pc <> +tl:
+      +hp = and_left(Laws.piece.ok(pc), Laws.spell_ok(tl), h_ok)
+      +ht = and_right(Laws.piece.ok(pc), Laws.spell_ok(tl), h_ok)
+      pieces_go.cons(pc, tl, m, bb, tail, stack, done, ff, piece_go(m, pc, bb, sp(tl, tail), stack, done, ff, hp, h_h),
+        hh => pieces_go(tl, pstep(m, pc, bb, sp(pc <> tl, tail)), Laws.piece.char(pc) <> bb, tail, stack, done, ff, ht,
+          hh))
+
+# pieces' characters reversed onto a buffer, read back
+law text_pcs.go:
+  for +ps: List<&2, Laws.Piece>
+  for +acc: List<&2, Char>
+  for +ss: String
+  {Lex.text.go(pcs(ps, acc), ss) == Lex.text.go(acc, Laws.spelled(ps) ++ ss) : String}
+
+def text_pcs.go(ps, acc, ss):
+  match ps:
+    case Nil{}:
+      {==}
+    case +pc <> +tl:
+      text_pcs.go(tl, Laws.piece.char(pc) <> acc, ss)
+
+# pieces' characters, reversed, read back, are the characters they stand for
+law text_pcs:
+  for +ps: List<&2, Laws.Piece>
+  {Lex.text(pcs(ps, [])) == Laws.spelled(ps) : String}
+
+def text_pcs(ps):
+  Equal.trans(String, Lex.text(pcs(ps, [])), Laws.spelled(ps) ++ "", Laws.spelled(ps), text_pcs.go(ps, [], ""),
+    append_nil(Laws.spelled(ps)))
+
+# a value slot is a slot a string may go
+law val_str:
+  for +stack: List<&2, Pull.Frame>
+  for h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  {Pull.expect.str.go(stack) == True{} : Bool}
+
+def val_str(stack, h_v):
+  match stack:
+    case Nil{}:
+      {==}
+    case Pull.FArr{Pull.SVal{}, _} <> _:
+      {==}
+    case Pull.FObj{Pull.SVal{}, _} <> _:
+      {==}
+    case Pull.FArr{Pull.SCom{}, _} <> _:
+      h_v
+    case Pull.FArr{Pull.SKey{}, _} <> _:
+      h_v
+    case Pull.FArr{Pull.SCol{}, _} <> _:
+      h_v
+    case Pull.FObj{Pull.SCom{}, _} <> _:
+      h_v
+    case Pull.FObj{Pull.SKey{}, _} <> _:
+      no({True{} == True{} : Bool}, h_v)
+    case Pull.FObj{Pull.SCol{}, _} <> _:
+      h_v
+
+# JSON-PULL-1, a string's closing quote
+
+# a string closed on the suffix in hand lands where a value may go
+law sph_v:
+  for +pc: Pull.Piece
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  for +ff: Nat
+  {Pull.next.go(1n+ff, tail, Pull.str.place.here(pc, stack, Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc,
+    False{})}, aft(tail, stack))} : Pull.Out}
+
+def sph_v(pc, tail, stack, h_v, ff):
+  match stack:
+    case Nil{}:
+      go_rest(ff, tail, Pull.SEv{Pull.str.ev(pc, False{})}, [], Pull.GNext{}, True{}, False{})
+    case Pull.FArr{Pull.SVal{}, fr} <> +oo:
+      go_rest(ff, tail, Pull.SEv{Pull.str.ev(pc, False{})}, Pull.FArr{Pull.SCom{}, False{}} <> oo, Pull.GNext{},
+        False{}, False{})
+    case Pull.FObj{Pull.SVal{}, fr} <> +oo:
+      go_rest(ff, tail, Pull.SEv{Pull.str.ev(pc, False{})}, Pull.FObj{Pull.SCom{}, False{}} <> oo, Pull.GNext{},
+        False{}, False{})
+    case Pull.FArr{Pull.SCom{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, tail, Pull.str.place.here(pc, Pull.FArr{Pull.SCom{}, fr} <> oo,
+        Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc, False{})}, aft(tail, Pull.FArr{Pull.SCom{},
+        fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FArr{Pull.SKey{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, tail, Pull.str.place.here(pc, Pull.FArr{Pull.SKey{}, fr} <> oo,
+        Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc, False{})}, aft(tail, Pull.FArr{Pull.SKey{},
+        fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FArr{Pull.SCol{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, tail, Pull.str.place.here(pc, Pull.FArr{Pull.SCol{}, fr} <> oo,
+        Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc, False{})}, aft(tail, Pull.FArr{Pull.SCol{},
+        fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FObj{Pull.SCom{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, tail, Pull.str.place.here(pc, Pull.FObj{Pull.SCom{}, fr} <> oo,
+        Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc, False{})}, aft(tail, Pull.FObj{Pull.SCom{},
+        fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FObj{Pull.SKey{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, tail, Pull.str.place.here(pc, Pull.FObj{Pull.SKey{}, fr} <> oo,
+        Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc, False{})}, aft(tail, Pull.FObj{Pull.SKey{},
+        fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FObj{Pull.SCol{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, tail, Pull.str.place.here(pc, Pull.FObj{Pull.SCol{}, fr} <> oo,
+        Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc, False{})}, aft(tail, Pull.FObj{Pull.SCol{},
+        fr} <> oo))} : Pull.Out}, h_v)
+
+# a decoded string closed lands where a value may go
+law sp_v:
+  for +pc: Pull.Piece
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  for +ff: Nat
+  {Pull.next.go(1n+ff, tail, Pull.str.place(pc, tail, stack, Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc,
+    False{})}, aft(tail, stack))} : Pull.Out}
+
+def sp_v(pc, tail, stack, h_v, ff):
+  match stack:
+    case Nil{}:
+      go_done(ff, tail, Pull.SEv{Pull.str.ev(pc, False{})}, tail, [], Pull.GNext{}, True{}, False{})
+    case Pull.FArr{Pull.SVal{}, fr} <> +oo:
+      go_done(ff, tail, Pull.SEv{Pull.str.ev(pc, False{})}, tail, Pull.FArr{Pull.SCom{}, False{}} <> oo, Pull.GNext{},
+        False{}, False{})
+    case Pull.FObj{Pull.SVal{}, fr} <> +oo:
+      go_done(ff, tail, Pull.SEv{Pull.str.ev(pc, False{})}, tail, Pull.FObj{Pull.SCom{}, False{}} <> oo, Pull.GNext{},
+        False{}, False{})
+    case Pull.FArr{Pull.SCom{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, tail, Pull.str.place(pc, tail, Pull.FArr{Pull.SCom{}, fr} <> oo,
+        Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc, False{})}, aft(tail, Pull.FArr{Pull.SCom{},
+        fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FArr{Pull.SKey{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, tail, Pull.str.place(pc, tail, Pull.FArr{Pull.SKey{}, fr} <> oo,
+        Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc, False{})}, aft(tail, Pull.FArr{Pull.SKey{},
+        fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FArr{Pull.SCol{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, tail, Pull.str.place(pc, tail, Pull.FArr{Pull.SCol{}, fr} <> oo,
+        Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc, False{})}, aft(tail, Pull.FArr{Pull.SCol{},
+        fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FObj{Pull.SCom{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, tail, Pull.str.place(pc, tail, Pull.FObj{Pull.SCom{}, fr} <> oo,
+        Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc, False{})}, aft(tail, Pull.FObj{Pull.SCom{},
+        fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FObj{Pull.SKey{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, tail, Pull.str.place(pc, tail, Pull.FObj{Pull.SKey{}, fr} <> oo,
+        Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc, False{})}, aft(tail, Pull.FObj{Pull.SKey{},
+        fr} <> oo))} : Pull.Out}, h_v)
+    case Pull.FObj{Pull.SCol{}, fr} <> oo:
+      no({Pull.next.go(1n+ff, tail, Pull.str.place(pc, tail, Pull.FObj{Pull.SCol{}, fr} <> oo,
+        Pull.GNext{})) == Pull.Fin{(Pull.SEv{Pull.str.ev(pc, False{})}, aft(tail, Pull.FObj{Pull.SCol{},
+        fr} <> oo))} : Pull.Out}, h_v)
+
+# a string's closing quote, from whatever string mode holds its characters
+law str_fin_v:
+  for +mm: Pull.Mode
+  for +bb: List<&2, Char>
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  for +xx: String
+  for e0: {Pull.next.go(4n, SCon{'"', xx}, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, False{}, False{}})
+    == Pull.next.go(4n, SCon{'"', tail}, Pull.S{mm, stack, Pull.GNext{}, False{}, False{}}) : Pull.Out}
+  for hh: hold(mm, SCon{'"', tail}, bb)
+  strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack))
+
+def str_fin_v(mm, bb, tail, stack, h_v, xx, e0, hh):
+  match mm:
+    case Pull.MQuote{}:
+      (e_b, _e_s) = hh
+      es = Equal.sym(List<&2, Char>, bb, [], e_b)
+      %es : strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(_)}], aft(tail, stack))
+      strm_one(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, Pull.EStrS{"", 0}, aft(tail, stack),
+        next_fin(SCon{'"', xx}, stack, False{}, (Pull.SEv{Pull.EStrS{"", 0}}, aft(tail, stack)),
+        Equal.trans(Pull.Out, Pull.next.go(4n, SCon{'"', xx}, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, False{},
+          False{}}),
+          Pull.next.go(4n, SCon{'"', tail}, Pull.S{Pull.MQuote{}, stack, Pull.GNext{}, False{}, False{}}),
+            Pull.Fin{(Pull.SEv{Pull.EStrS{"", 0}}, aft(tail, stack))}, e0, sph_v(Pull.PSpan{"", 0}, tail, stack, h_v,
+            3n))))
+    case Pull.MSpan{+cut, +nn}:
+      (_e_d, (e_r, _e_s)) = hh
+      et = Equal.trans(String, Laws.take(cut, U32.to_nat(nn)), V.span.str(cut, nn, U32.is_zero(nn)), Lex.text(bb),
+        Equal.sym(String, V.span.str(cut, nn, U32.is_zero(nn)), Laws.take(cut, U32.to_nat(nn)), span_take(cut, nn)),
+        Equal.trans(String, V.span.str(cut, nn, U32.is_zero(nn)), Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+          [])),
+          Lex.text(bb), Equal.sym(String, Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), [])),
+          V.span.str(cut, nn, U32.is_zero(nn)), text_span(cut, nn, U32.is_zero(nn))),
+          Equal.cong(List<&2, Char>, String, zz => Lex.text(zz), Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), bb,
+            e_r)))
+      %et : strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{_}], aft(tail, stack))
+      strm_one(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, Pull.EStrS{cut, nn}, aft(tail, stack),
+        next_fin(SCon{'"', xx}, stack, False{}, (Pull.SEv{Pull.EStrS{cut, nn}}, aft(tail, stack)),
+        Equal.trans(Pull.Out, Pull.next.go(4n, SCon{'"', xx}, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, False{},
+          False{}}),
+          Pull.next.go(4n, SCon{'"', tail}, Pull.S{Pull.MSpan{cut, nn}, stack, Pull.GNext{}, False{}, False{}}),
+            Pull.Fin{(Pull.SEv{Pull.EStrS{cut, nn}}, aft(tail, stack))}, e0, sph_v(Pull.PSpan{cut, nn}, tail, stack,
+            h_v, 3n))))
+    case Pull.MCopy{+buf}:
+      et = Equal.cong(List<&2, Char>, String, zz => Lex.text(zz), buf, bb, hh)
+      %et : strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{_}], aft(tail, stack))
+      strm_one(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, Pull.EStr{Lex.text(buf)}, aft(tail, stack),
+        next_fin(SCon{'"', xx}, stack, False{}, (Pull.SEv{Pull.EStr{Lex.text(buf)}}, aft(tail, stack)),
+        Equal.trans(Pull.Out, Pull.next.go(4n, SCon{'"', xx}, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, False{},
+          False{}}),
+          Pull.next.go(4n, SCon{'"', tail}, Pull.S{Pull.MCopy{buf}, stack, Pull.GNext{}, False{}, False{}}),
+            Pull.Fin{(Pull.SEv{Pull.EStr{Lex.text(buf)}}, aft(tail, stack))}, e0, sp_v(Pull.POwn{Lex.text(buf)}, tail,
+            stack, h_v, 3n))))
+    case Pull.MIdle{}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MWord{a1, a2, a3}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MEsc{a1}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MUni{a1, a2, a3}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MHi{a1, a2}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MHiEsc{a1, a2}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MLo{a1, a2, a3, a4}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MSkStr{}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MSkEsc{}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MSkUni{a1, a2}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MSkHi{a1}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MSkHiEsc{a1}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MSkLo{a1, a2, a3}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MDone{a1, a2}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MRest{a1}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+    case Pull.MJump{a1, a2}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{Lex.text(bb)}], aft(tail, stack)),
+        hh)
+
+# a string's closing quote, from whatever string mode holds its characters
+law str_fin_k:
+  for +mm: Pull.Mode
+  for +bb: List<&2, Char>
+  for +tail: String
+  for +fr: Bool
+  for +frames: List<&2, Pull.Frame>
+  for +xx: String
+  for e0: {Pull.next.go(4n, SCon{'"', xx}, Pull.S{Pull.MIdle{}, Pull.FObj{Pull.SKey{}, fr} <> frames, Pull.GNext{},
+    False{}, False{}})
+    == Pull.next.go(4n, SCon{'"', tail}, Pull.S{mm, Pull.FObj{Pull.SKey{}, fr} <> frames, Pull.GNext{}, False{},
+      False{}}) : Pull.Out}
+  for hh: hold(mm, SCon{'"', tail}, bb)
+  strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}}, [Laws.VKey{Lex.text(bb)}],
+    Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}})
+
+def str_fin_k(mm, bb, tail, fr, frames, xx, e0, hh):
+  match mm:
+    case Pull.MQuote{}:
+      (e_b, _e_s) = hh
+      es = Equal.sym(List<&2, Char>, bb, [], e_b)
+      %es : strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(_)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}})
+      strm_one(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}}, Pull.EKeyS{"", 0},
+        Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}, next_fin(SCon{'"', xx},
+        Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, (Pull.SEv{Pull.EKeyS{"", 0}}, Pull.Cur{tail,
+        Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}),
+        Equal.trans(Pull.Out, Pull.next.go(4n, SCon{'"', xx}, Pull.S{Pull.MIdle{}, Pull.FObj{Pull.SKey{},
+          fr} <> frames, Pull.GNext{}, False{}, False{}}),
+          Pull.next.go(4n, SCon{'"', tail}, Pull.S{Pull.MQuote{}, Pull.FObj{Pull.SKey{}, fr} <> frames, Pull.GNext{},
+            False{}, False{}}), Pull.Fin{(Pull.SEv{Pull.EKeyS{"", 0}}, Pull.Cur{tail, Pull.FObj{Pull.SCol{},
+            False{}} <> frames, False{}, False{}})}, e0, go_rest(3n, tail, Pull.SEv{Pull.EKeyS{"", 0}},
+            Pull.FObj{Pull.SCol{}, False{}} <> frames, Pull.GNext{}, False{}, False{}))))
+    case Pull.MSpan{+cut, +nn}:
+      (_e_d, (e_r, _e_s)) = hh
+      et = Equal.trans(String, Laws.take(cut, U32.to_nat(nn)), V.span.str(cut, nn, U32.is_zero(nn)), Lex.text(bb),
+        Equal.sym(String, V.span.str(cut, nn, U32.is_zero(nn)), Laws.take(cut, U32.to_nat(nn)), span_take(cut, nn)),
+        Equal.trans(String, V.span.str(cut, nn, U32.is_zero(nn)), Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+          [])),
+          Lex.text(bb), Equal.sym(String, Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), [])),
+          V.span.str(cut, nn, U32.is_zero(nn)), text_span(cut, nn, U32.is_zero(nn))),
+          Equal.cong(List<&2, Char>, String, zz => Lex.text(zz), Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), bb,
+            e_r)))
+      %et : strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}}, [Laws.VKey{_}],
+        Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}})
+      strm_one(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}}, Pull.EKeyS{cut, nn},
+        Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}, next_fin(SCon{'"', xx},
+        Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, (Pull.SEv{Pull.EKeyS{cut, nn}}, Pull.Cur{tail,
+        Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}),
+        Equal.trans(Pull.Out, Pull.next.go(4n, SCon{'"', xx}, Pull.S{Pull.MIdle{}, Pull.FObj{Pull.SKey{},
+          fr} <> frames, Pull.GNext{}, False{}, False{}}),
+          Pull.next.go(4n, SCon{'"', tail}, Pull.S{Pull.MSpan{cut, nn}, Pull.FObj{Pull.SKey{}, fr} <> frames,
+            Pull.GNext{}, False{}, False{}}), Pull.Fin{(Pull.SEv{Pull.EKeyS{cut, nn}}, Pull.Cur{tail,
+            Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}})}, e0, go_rest(3n, tail,
+            Pull.SEv{Pull.EKeyS{cut, nn}}, Pull.FObj{Pull.SCol{}, False{}} <> frames, Pull.GNext{}, False{}, False{}))))
+    case Pull.MCopy{+buf}:
+      et = Equal.cong(List<&2, Char>, String, zz => Lex.text(zz), buf, bb, hh)
+      %et : strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}}, [Laws.VKey{_}],
+        Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}})
+      strm_one(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        Pull.EKey{Lex.text(buf)}, Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}},
+        next_fin(SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, (Pull.SEv{Pull.EKey{Lex.text(buf)}},
+        Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}),
+        Equal.trans(Pull.Out, Pull.next.go(4n, SCon{'"', xx}, Pull.S{Pull.MIdle{}, Pull.FObj{Pull.SKey{},
+          fr} <> frames, Pull.GNext{}, False{}, False{}}),
+          Pull.next.go(4n, SCon{'"', tail}, Pull.S{Pull.MCopy{buf}, Pull.FObj{Pull.SKey{}, fr} <> frames, Pull.GNext{},
+            False{}, False{}}), Pull.Fin{(Pull.SEv{Pull.EKey{Lex.text(buf)}}, Pull.Cur{tail, Pull.FObj{Pull.SCol{},
+            False{}} <> frames, False{}, False{}})}, e0, go_done(3n, tail, Pull.SEv{Pull.EKey{Lex.text(buf)}}, tail,
+            Pull.FObj{Pull.SCol{}, False{}} <> frames, Pull.GNext{}, False{}, False{}))))
+    case Pull.MIdle{}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MWord{a1, a2, a3}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MEsc{a1}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MUni{a1, a2, a3}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MHi{a1, a2}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MHiEsc{a1, a2}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MLo{a1, a2, a3, a4}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MSkStr{}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MSkEsc{}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MSkUni{a1, a2}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MSkHi{a1}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MSkHiEsc{a1}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MSkLo{a1, a2, a3}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MDone{a1, a2}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MRest{a1}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+    case Pull.MJump{a1, a2}:
+      Empty.absurd(strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+        [Laws.VKey{Lex.text(bb)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}}), hh)
+
+# a string where a value may go: its opening quote
+law open_str_v:
+  for +xx: String
+  for +stack: List<&2, Pull.Frame>
+  for h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  {Pull.next.go(4n, SCon{'"', xx}, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, False{}, False{}})
+    == Pull.next.go(4n, xx, Pull.S{Pull.MQuote{}, stack, Pull.GNext{}, False{}, False{}}) : Pull.Out}
+
+def open_str_v(xx, stack, h_v):
+  es = Equal.sym(Bool, Pull.expect.str.go(stack), True{}, val_str(stack, h_v))
+  %es : {Pull.next.go(4n, xx, Pull.look.quote(stack, Pull.GNext{}, False{}, _))
+    == Pull.next.go(4n, xx, Pull.S{Pull.MQuote{}, stack, Pull.GNext{}, False{}, False{}}) : Pull.Out}
+  {==}
+
+# a string where a value may go, once its pieces' walk is in hand
+law next_str_v.go:
+  for +ps: List<&2, Laws.Piece>
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  for pg: pcs_ty(ps, Pull.MQuote{}, [], SCon{'"', tail}, stack, False{}, 3n)
+  strm(Pull.Cur{SCon{'"', sp(ps, SCon{'"', tail})}, stack, False{}, False{}}, [Laws.VStr{Laws.spelled(ps)}],
+    aft(tail, stack))
+
+def next_str_v.go(ps, tail, stack, h_v, pg):
+  (e1, hh) = pg
+  +xx = sp(ps, SCon{'"', tail})
+  +mf = psteps(ps, Pull.MQuote{}, [], SCon{'"', tail})
+  et = text_pcs(ps)
+  %et : strm(Pull.Cur{SCon{'"', xx}, stack, False{}, False{}}, [Laws.VStr{_}], aft(tail, stack))
+  str_fin_v(mf, pcs(ps, []), tail, stack, h_v, xx,
+    Equal.trans(Pull.Out, Pull.next.go(4n, SCon{'"', xx}, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, False{}, False{}}),
+      Pull.next.go(4n, xx, Pull.S{Pull.MQuote{}, stack, Pull.GNext{}, False{}, False{}}),
+      Pull.next.go(4n, SCon{'"', tail}, Pull.S{mf, stack, Pull.GNext{}, False{}, False{}}), open_str_v(xx, stack, h_v),
+      e1), hh)
+
+# the cursor reads a string where a value may go, and moves on past its
+# closing quote
+law next_str_v:
+  for +ps: List<&2, Laws.Piece>
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +h_ok: {Laws.spell_ok(ps) == True{} : Bool}
+  for +h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  for +h_s: {Laws.short(sp(ps, SCon{'"', tail})) == True{} : Bool}
+  strm(Pull.Cur{SCon{'"', sp(ps, SCon{'"', tail})}, stack, False{}, False{}}, [Laws.VStr{Laws.spelled(ps)}],
+    aft(tail, stack))
+
+def next_str_v(ps, tail, stack, h_ok, h_v, h_s):
+  next_str_v.go(ps, tail, stack, h_v, pieces_go(ps, Pull.MQuote{}, [], SCon{'"', tail}, stack, False{}, 3n, h_ok,
+    ({==}, h_s)))
+
+# a member's name, once its pieces' walk is in hand
+law next_str_k.go:
+  for +ps: List<&2, Laws.Piece>
+  for +tail: String
+  for +fr: Bool
+  for +frames: List<&2, Pull.Frame>
+  for pg: pcs_ty(ps, Pull.MQuote{}, [], SCon{'"', tail}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, 3n)
+  strm(Pull.Cur{SCon{'"', sp(ps, SCon{'"', tail})}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+    [Laws.VKey{Laws.spelled(ps)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}})
+
+def next_str_k.go(ps, tail, fr, frames, pg):
+  (e1, hh) = pg
+  +xx = sp(ps, SCon{'"', tail})
+  +mf = psteps(ps, Pull.MQuote{}, [], SCon{'"', tail})
+  et = text_pcs(ps)
+  %et : strm(Pull.Cur{SCon{'"', xx}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}}, [Laws.VKey{_}],
+    Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}})
+  str_fin_k(mf, pcs(ps, []), tail, fr, frames, xx, e1, hh)
+
+# the cursor reads a member's name, and moves on past its closing quote
+law next_str_k:
+  for +ps: List<&2, Laws.Piece>
+  for +tail: String
+  for +fr: Bool
+  for +frames: List<&2, Pull.Frame>
+  for +h_ok: {Laws.spell_ok(ps) == True{} : Bool}
+  for +h_s: {Laws.short(sp(ps, SCon{'"', tail})) == True{} : Bool}
+  strm(Pull.Cur{SCon{'"', sp(ps, SCon{'"', tail})}, Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, False{}},
+    [Laws.VKey{Laws.spelled(ps)}], Pull.Cur{tail, Pull.FObj{Pull.SCol{}, False{}} <> frames, False{}, False{}})
+
+def next_str_k(ps, tail, fr, frames, h_ok, h_s):
+  next_str_k.go(ps, tail, fr, frames, pieces_go(ps, Pull.MQuote{}, [], SCon{'"', tail},
+    Pull.FObj{Pull.SKey{}, fr} <> frames, False{}, 3n, h_ok, ({==}, h_s)))
+
+# JSON-PULL-1: the cursor on a derivation's text
+
+# the rest of a short text is short
+law short_app:
+  for +aa: String
+  for +bb: String
+  for h: {Laws.short(aa ++ bb) == True{} : Bool}
+  {Laws.short(bb) == True{} : Bool}
+
+def short_app(aa, bb, h):
+  match aa:
+    case SNil{}:
+      h
+    case SCon{+hd, +tl}:
+      short_app(tl, bb, short_tail(hd, tl ++ bb, h))
+
+# what follows a derivation's text in a short text is short
+law short_gt:
+  for +gg: Laws.Gv
+  for +tail: String
+  for h: {Laws.short(gt(gg, tail)) == True{} : Bool}
+  {Laws.short(tail) == True{} : Bool}
+
+def short_gt(gg, tail, h):
+  short_app(Laws.g.text(gg), tail, Equal.trans(Bool, Laws.short(Laws.g.text(gg) ++ tail), Laws.short(gt(gg, tail)),
+    True{}, Equal.cong(String, Bool, xx => Laws.short(xx), Laws.g.text(gg) ++ tail, gt(gg, tail), gt_eq(gg, tail)), h))
+
+# what follows pieces in a short text is short
+law short_sp:
+  for +ps: List<&2, Laws.Piece>
+  for +tail: String
+  for h: {Laws.short(sp(ps, tail)) == True{} : Bool}
+  {Laws.short(tail) == True{} : Bool}
+
+def short_sp(ps, tail, h):
+  short_app(Laws.spell(ps), tail, Equal.trans(Bool, Laws.short(Laws.spell(ps) ++ tail), Laws.short(sp(ps, tail)),
+    True{}, Equal.cong(String, Bool, xx => Laws.short(xx), Laws.spell(ps) ++ tail, sp(ps, tail), sp_eq(ps, tail)), h))
+
+# whitespace in front of a text that ends a word ends a word
+law stops_ws:
+  for +ws: String
+  for +xx: String
+  for h_w: {Laws.all_ws(ws) == True{} : Bool}
+  for h_x: {stops(xx) == True{} : Bool}
+  {stops(ws ++ xx) == True{} : Bool}
+
+def stops_ws(ws, _xx, h_w, h_x):
+  match ws:
+    case SNil{}:
+      h_x
+    case SCon{Chr{+uu}, +tl}:
+      ec = Equal.sym(Lex.Class, Lex.classify(Chr{uu}), Lex.CSpace{}, ws_a(uu, U32.is_eq(uu, 32), {==},
+        and_left(Laws.is_ws(Chr{uu}), Laws.all_ws(tl), h_w)))
+      %ec : {Bool.not(is_other(_)) == True{} : Bool}
+      {==}
+
+# an array's or object's cells, then its closing bracket, end a word
+law stops_ca:
+  for +rr: Laws.Gv
+  for +tail: String
+  for h_ok: {Laws.g.ok(rr, Laws.GKArr{}) == True{} : Bool}
+  {stops(gt(rr, SCon{']', tail})) == True{} : Bool}
+
+def stops_ca(rr, tail, h_ok):
+  match rr:
+    case Laws.GWord{+w}:
+      no({stops(gt(Laws.GWord{w}, SCon{']', tail})) == True{} : Bool}, h_ok)
+    case Laws.GStr{+ps}:
+      no({stops(gt(Laws.GStr{ps}, SCon{']', tail})) == True{} : Bool}, h_ok)
+    case Laws.GArr0{+w0}:
+      no({stops(gt(Laws.GArr0{w0}, SCon{']', tail})) == True{} : Bool}, h_ok)
+    case Laws.GArr{+w0, +vv, +w1, +rr}:
+      no({stops(gt(Laws.GArr{w0, vv, w1, rr}, SCon{']', tail})) == True{} : Bool}, h_ok)
+    case Laws.GObj0{+w0}:
+      no({stops(gt(Laws.GObj0{w0}, SCon{']', tail})) == True{} : Bool}, h_ok)
+    case Laws.GObj{+w0, +ps, +w1, +w2, +vv, +w3, +rr}:
+      no({stops(gt(Laws.GObj{w0, ps, w1, w2, vv, w3, rr}, SCon{']', tail})) == True{} : Bool}, h_ok)
+    case Laws.GEnd{}:
+      {==}
+    case Laws.GNext{+w2, +vv, +w1, +rr}:
+      {==}
+    case Laws.GNextM{+w4, +ps, +w1, +w2, +vv, +w3, +rr}:
+      no({stops(gt(Laws.GNextM{w4, ps, w1, w2, vv, w3, rr}, SCon{']', tail})) == True{} : Bool}, h_ok)
+
+# an array's or object's cells, then its closing bracket, end a word
+law stops_co:
+  for +rr: Laws.Gv
+  for +tail: String
+  for h_ok: {Laws.g.ok(rr, Laws.GKObj{}) == True{} : Bool}
+  {stops(gt(rr, SCon{'}', tail})) == True{} : Bool}
+
+def stops_co(rr, tail, h_ok):
+  match rr:
+    case Laws.GWord{+w}:
+      no({stops(gt(Laws.GWord{w}, SCon{'}', tail})) == True{} : Bool}, h_ok)
+    case Laws.GStr{+ps}:
+      no({stops(gt(Laws.GStr{ps}, SCon{'}', tail})) == True{} : Bool}, h_ok)
+    case Laws.GArr0{+w0}:
+      no({stops(gt(Laws.GArr0{w0}, SCon{'}', tail})) == True{} : Bool}, h_ok)
+    case Laws.GArr{+w0, +vv, +w1, +rr}:
+      no({stops(gt(Laws.GArr{w0, vv, w1, rr}, SCon{'}', tail})) == True{} : Bool}, h_ok)
+    case Laws.GObj0{+w0}:
+      no({stops(gt(Laws.GObj0{w0}, SCon{'}', tail})) == True{} : Bool}, h_ok)
+    case Laws.GObj{+w0, +ps, +w1, +w2, +vv, +w3, +rr}:
+      no({stops(gt(Laws.GObj{w0, ps, w1, w2, vv, w3, rr}, SCon{'}', tail})) == True{} : Bool}, h_ok)
+    case Laws.GEnd{}:
+      {==}
+    case Laws.GNext{+w2, +vv, +w1, +rr}:
+      no({stops(gt(Laws.GNext{w2, vv, w1, rr}, SCon{'}', tail})) == True{} : Bool}, h_ok)
+    case Laws.GNextM{+w4, +ps, +w1, +w2, +vv, +w3, +rr}:
+      {==}
+
+# the text a derivation stands for where it stands, whitespace first for cells
+def gtx(kk: Laws.GK, gg: Laws.Gv, w1: String, tail: String) -> String:
+  match kk:
+    case Laws.GKVal{}:
+      gt(gg, tail)
+    case Laws.GKArr{}:
+      w1 ++ gt(gg, SCon{']', tail})
+    case Laws.GKObj{}:
+      w1 ++ gt(gg, SCon{'}', tail})
+
+# what a value's cursor must satisfy: its next step is the one on the value's text
+def gcond(kk: Laws.GK, gg: Laws.Gv, tail: String, stack: List<&2, Pull.Frame>, c0: Pull.Cur) -> Type:
+  match kk:
+    case Laws.GKVal{}:
+      {Ezjson.next(c0) == Ezjson.next(Pull.Cur{gt(gg, tail), stack, False{}, False{}}) : (Pull.Ev & Pull.Cur)}
+    case _:
+      Unit
+
+# what gv_go says: the events of a value, or of cells and their closing bracket
+def gv_ty(
+  kk: Laws.GK,
+  +gg: Laws.Gv,
+  +w1: String,
+  +tail: String,
+  +stack: List<&2, Pull.Frame>,
+  +fr: Bool,
+  +c0: Pull.Cur
+) -> Type:
+  match kk:
+    case Laws.GKVal{}:
+      strm(c0, Laws.events(Laws.g.val(gg)), aft(tail, stack))
+    case Laws.GKArr{}:
+      strm(Pull.Cur{w1 ++ gt(gg, SCon{']', tail}), Pull.FArr{Pull.SCom{}, fr} <> stack, False{}, False{}},
+        List.append(&2, Laws.Evt, Laws.events(Laws.g.val(gg)), [Laws.VEndArr{}]), aft(tail, stack))
+    case Laws.GKObj{}:
+      strm(Pull.Cur{w1 ++ gt(gg, SCon{'}', tail}), Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, False{}},
+        List.append(&2, Laws.Evt, Laws.events(Laws.g.val(gg)), [Laws.VEndObj{}]), aft(tail, stack))
+
+# the cursor's events on a derivation's text: a value's events, or cells'
+# events and the closing bracket's, where the cursor starts at the text or at
+# a step that is the text's
+law gv_go:
+  for +gg: Laws.Gv
+  for +kk: Laws.GK
+  for +w1: String
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +fr: Bool
+  for +c0: Pull.Cur
+  for +h_ok: {Laws.g.ok(gg, kk) == True{} : Bool}
+  for +h_w: {Laws.all_ws(w1) == True{} : Bool}
+  for +h_v: {Pull.expect.val.go(stack) == True{} : Bool}
+  for +h_t: {stops(tail) == True{} : Bool}
+  for +h_s: {Laws.short(gtx(kk, gg, w1, tail)) == True{} : Bool}
+  for h_c: gcond(kk, gg, tail, stack, c0)
+  gv_ty(kk, gg, w1, tail, stack, fr, c0)
+
+def gv_go(gg, kk, w1, tail, stack, fr, c0, h_ok, h_w, h_v, h_t, h_s, h_c):
+  match gg kk:
+    case Laws.GWord{+xw} Laws.GKVal{}:
+      next_word(xw, tail, stack, h_ok, h_t, h_v, h_s, c0, h_c)
+    case Laws.GWord{+xw} Laws.GKArr{}:
+      no(gv_ty(Laws.GKArr{}, Laws.GWord{xw}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GWord{+xw} Laws.GKObj{}:
+      no(gv_ty(Laws.GKObj{}, Laws.GWord{xw}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GStr{+xps} Laws.GKVal{}:
+      strm_same(c0, Pull.Cur{gt(Laws.GStr{xps}, tail), stack, False{}, False{}}, Laws.VStr{Laws.spelled(xps)}, [],
+        aft(tail, stack), h_c, next_str_v(xps, tail, stack, h_ok, h_v, short_tail('"', sp(xps, SCon{'"', tail}), h_s)))
+    case Laws.GStr{+xps} Laws.GKArr{}:
+      no(gv_ty(Laws.GKArr{}, Laws.GStr{xps}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GStr{+xps} Laws.GKObj{}:
+      no(gv_ty(Laws.GKObj{}, Laws.GStr{xps}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GArr0{+xw0} Laws.GKVal{}:
+      strm_cons(c0, Pull.EBeginArr{}, Pull.Cur{xw0 ++ SCon{']', tail}, Pull.FArr{Pull.SVal{}, True{}} <> stack,
+        False{}, False{}}, [Laws.view(Pull.EEndArr{})], aft(tail, stack),
+        Equal.trans((Pull.Ev & Pull.Cur), Ezjson.next(c0), Ezjson.next(Pull.Cur{gt(Laws.GArr0{xw0}, tail), stack,
+          False{},
+          False{}}), (Pull.EBeginArr{}, Pull.Cur{xw0 ++ SCon{']', tail}, Pull.FArr{Pull.SVal{}, True{}} <> stack,
+            False{}, False{}}), h_c, next_oarr(xw0 ++ SCon{']', tail}, stack, h_v)),
+        strm_one(Pull.Cur{xw0 ++ SCon{']', tail}, Pull.FArr{Pull.SVal{}, True{}} <> stack, False{}, False{}},
+          Pull.EEndArr{}, aft(tail, stack), Equal.trans((Pull.Ev & Pull.Cur), Ezjson.next(Pull.Cur{xw0 ++ SCon{']',
+          tail}, Pull.FArr{Pull.SVal{}, True{}} <> stack, False{}, False{}}),
+          Ezjson.next(Pull.Cur{SCon{']', tail}, Pull.FArr{Pull.SVal{}, True{}} <> stack, False{}, False{}}),
+            (Pull.EEndArr{}, aft(tail, stack)),
+          next_ws(xw0, SCon{']', tail}, Pull.FArr{Pull.SVal{}, True{}} <> stack, False{}, h_ok), next_carr0(tail,
+            stack, h_v))))
+    case Laws.GArr0{+xw0} Laws.GKArr{}:
+      no(gv_ty(Laws.GKArr{}, Laws.GArr0{xw0}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GArr0{+xw0} Laws.GKObj{}:
+      no(gv_ty(Laws.GKObj{}, Laws.GArr0{xw0}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GArr{+xw0, +xvv, +xw1, +xrr} Laws.GKVal{}:
+      +hw0 = and_left(Laws.all_ws(xw0), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw1),
+        Laws.g.ok(xrr, Laws.GKArr{}))), h_ok)
+      +r0 = and_right(Laws.all_ws(xw0), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw1),
+        Laws.g.ok(xrr, Laws.GKArr{}))), h_ok)
+      +hvv = and_left(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw1), Laws.g.ok(xrr, Laws.GKArr{})), r0)
+      +r1 = and_right(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw1), Laws.g.ok(xrr, Laws.GKArr{})), r0)
+      +hw1 = and_left(Laws.all_ws(xw1), Laws.g.ok(xrr, Laws.GKArr{}), r1)
+      +hrr = and_right(Laws.all_ws(xw1), Laws.g.ok(xrr, Laws.GKArr{}), r1)
+      +sv = short_app(xw0, gt(xvv, xw1 ++ gt(xrr, SCon{']', tail})), short_tail('[', xw0 ++ gt(xvv, xw1 ++ gt(xrr,
+        SCon{']', tail})), h_s))
+      ea = Equal.sym(List<&2, Laws.Evt>, List.append(&2, Laws.Evt, List.append(&2, Laws.Evt,
+        Laws.events(Laws.g.val(xvv)), Laws.events(Laws.g.val(xrr))), [Laws.VEndArr{}]), List.append(&2, Laws.Evt,
+        Laws.events(Laws.g.val(xvv)), List.append(&2, Laws.Evt, Laws.events(Laws.g.val(xrr)), [Laws.VEndArr{}])),
+        eapp_assoc(Laws.events(Laws.g.val(xvv)), Laws.events(Laws.g.val(xrr)), [Laws.VEndArr{}]))
+      %ea : strm(c0, Laws.VBeginArr{} <> _, aft(tail, stack))
+      strm_cons(c0, Pull.EBeginArr{}, Pull.Cur{xw0 ++ gt(xvv, xw1 ++ gt(xrr, SCon{']', tail})), Pull.FArr{Pull.SVal{},
+        True{}} <> stack, False{}, False{}}, List.append(&2, Laws.Evt, Laws.events(Laws.g.val(xvv)), List.append(&2,
+        Laws.Evt, Laws.events(Laws.g.val(xrr)), [Laws.VEndArr{}])), aft(tail, stack),
+        Equal.trans((Pull.Ev & Pull.Cur), Ezjson.next(c0), Ezjson.next(Pull.Cur{gt(Laws.GArr{xw0, xvv, xw1, xrr},
+          tail), stack, False{},
+          False{}}), (Pull.EBeginArr{}, Pull.Cur{xw0 ++ gt(xvv, xw1 ++ gt(xrr, SCon{']', tail})),
+            Pull.FArr{Pull.SVal{}, True{}} <> stack, False{}, False{}}), h_c, next_oarr(xw0 ++ gt(xvv, xw1 ++ gt(xrr,
+            SCon{']', tail})), stack, h_v)),
+        strm_app(Pull.Cur{xw0 ++ gt(xvv, xw1 ++ gt(xrr, SCon{']', tail})), Pull.FArr{Pull.SVal{}, True{}} <> stack,
+          False{}, False{}}, Laws.events(Laws.g.val(xvv)), Pull.Cur{xw1 ++ gt(xrr, SCon{']', tail}),
+          Pull.FArr{Pull.SCom{}, False{}} <> stack, False{}, False{}}, List.append(&2, Laws.Evt,
+          Laws.events(Laws.g.val(xrr)), [Laws.VEndArr{}]), aft(tail, stack),
+          gv_go(xvv, Laws.GKVal{}, "", xw1 ++ gt(xrr, SCon{']', tail}), Pull.FArr{Pull.SVal{}, True{}} <> stack,
+            False{}, Pull.Cur{xw0 ++ gt(xvv, xw1 ++ gt(xrr, SCon{']', tail})), Pull.FArr{Pull.SVal{}, True{}} <> stack,
+            False{}, False{}}, hvv, {==}, {==},
+            stops_ws(xw1, gt(xrr, SCon{']', tail}), hw1, stops_ca(xrr, tail, hrr)), sv,
+            next_ws(xw0, gt(xvv, xw1 ++ gt(xrr, SCon{']', tail})), Pull.FArr{Pull.SVal{}, True{}} <> stack, False{},
+              hw0)),
+          gv_go(xrr, Laws.GKArr{}, xw1, tail, stack, False{}, c0, hrr, hw1, h_v, h_t, short_gt(xvv, xw1 ++ gt(xrr,
+            SCon{']', tail}), sv), Unit{})))
+    case Laws.GArr{+xw0, +xvv, +xw1, +xrr} Laws.GKArr{}:
+      no(gv_ty(Laws.GKArr{}, Laws.GArr{xw0, xvv, xw1, xrr}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GArr{+xw0, +xvv, +xw1, +xrr} Laws.GKObj{}:
+      no(gv_ty(Laws.GKObj{}, Laws.GArr{xw0, xvv, xw1, xrr}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GObj0{+xw0} Laws.GKVal{}:
+      strm_cons(c0, Pull.EBeginObj{}, Pull.Cur{xw0 ++ SCon{'}', tail}, Pull.FObj{Pull.SKey{}, True{}} <> stack,
+        False{}, False{}}, [Laws.view(Pull.EEndObj{})], aft(tail, stack),
+        Equal.trans((Pull.Ev & Pull.Cur), Ezjson.next(c0), Ezjson.next(Pull.Cur{gt(Laws.GObj0{xw0}, tail), stack,
+          False{},
+          False{}}), (Pull.EBeginObj{}, Pull.Cur{xw0 ++ SCon{'}', tail}, Pull.FObj{Pull.SKey{}, True{}} <> stack,
+            False{}, False{}}), h_c, next_oobj(xw0 ++ SCon{'}', tail}, stack, h_v)),
+        strm_one(Pull.Cur{xw0 ++ SCon{'}', tail}, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, False{}},
+          Pull.EEndObj{}, aft(tail, stack), Equal.trans((Pull.Ev & Pull.Cur), Ezjson.next(Pull.Cur{xw0 ++ SCon{'}',
+          tail}, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, False{}}),
+          Ezjson.next(Pull.Cur{SCon{'}', tail}, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, False{}}),
+            (Pull.EEndObj{}, aft(tail, stack)),
+          next_ws(xw0, SCon{'}', tail}, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, h_ok), next_cobj0(tail,
+            stack, h_v))))
+    case Laws.GObj0{+xw0} Laws.GKArr{}:
+      no(gv_ty(Laws.GKArr{}, Laws.GObj0{xw0}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GObj0{+xw0} Laws.GKObj{}:
+      no(gv_ty(Laws.GKObj{}, Laws.GObj0{xw0}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GObj{+xw0, +xps, +xw1, +xw2, +xvv, +xw3, +xrr} Laws.GKVal{}:
+      +hw0 = and_left(Laws.all_ws(xw0), Bool.and(Laws.spell_ok(xps), Bool.and(Laws.all_ws(xw1),
+        Bool.and(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr,
+        Laws.GKObj{})))))), h_ok)
+      +r0 = and_right(Laws.all_ws(xw0), Bool.and(Laws.spell_ok(xps), Bool.and(Laws.all_ws(xw1),
+        Bool.and(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr,
+        Laws.GKObj{})))))), h_ok)
+      +hps = and_left(Laws.spell_ok(xps), Bool.and(Laws.all_ws(xw1), Bool.and(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv,
+        Laws.GKVal{}), Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{}))))), r0)
+      +r1 = and_right(Laws.spell_ok(xps), Bool.and(Laws.all_ws(xw1), Bool.and(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv,
+        Laws.GKVal{}), Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{}))))), r0)
+      +hw1 = and_left(Laws.all_ws(xw1), Bool.and(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}),
+        Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{})))), r1)
+      +r2 = and_right(Laws.all_ws(xw1), Bool.and(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}),
+        Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{})))), r1)
+      +hw2 = and_left(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw3),
+        Laws.g.ok(xrr, Laws.GKObj{}))), r2)
+      +r3 = and_right(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw3),
+        Laws.g.ok(xrr, Laws.GKObj{}))), r2)
+      +hvv = and_left(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{})), r3)
+      +r4 = and_right(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{})), r3)
+      +hw3 = and_left(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{}), r4)
+      +hrr = and_right(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{}), r4)
+      +s1 = short_app(xw0, SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}',
+        tail}))}})}, short_tail('{', xw0 ++ SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr,
+        SCon{'}', tail}))}})}, h_s))
+      +s2 = short_tail('"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}}), s1)
+      +sk = short_tail('"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}, short_sp(xps, SCon{'"',
+        xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}}, s2))
+      +sv = short_app(xw2, gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail})), short_tail(':', xw2 ++ gt(xvv, xw3 ++ gt(xrr,
+        SCon{'}', tail})), short_app(xw1, SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}, sk)))
+      ea = Equal.sym(List<&2, Laws.Evt>, List.append(&2, Laws.Evt, List.append(&2, Laws.Evt,
+        Laws.events(Laws.g.val(xvv)), Laws.events(Laws.g.val(xrr))), [Laws.VEndObj{}]), List.append(&2, Laws.Evt,
+        Laws.events(Laws.g.val(xvv)), List.append(&2, Laws.Evt, Laws.events(Laws.g.val(xrr)), [Laws.VEndObj{}])),
+        eapp_assoc(Laws.events(Laws.g.val(xvv)), Laws.events(Laws.g.val(xrr)), [Laws.VEndObj{}]))
+      %ea : strm(c0, Laws.VBeginObj{} <> Laws.VKey{Laws.spelled(xps)} <> _, aft(tail, stack))
+      strm_cons(c0, Pull.EBeginObj{}, Pull.Cur{xw0 ++ SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv,
+        xw3 ++ gt(xrr, SCon{'}', tail}))}})}, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, False{}},
+        Laws.VKey{Laws.spelled(xps)} <> List.append(&2, Laws.Evt, Laws.events(Laws.g.val(xvv)), List.append(&2,
+        Laws.Evt, Laws.events(Laws.g.val(xrr)), [Laws.VEndObj{}])), aft(tail, stack),
+        Equal.trans((Pull.Ev & Pull.Cur), Ezjson.next(c0), Ezjson.next(Pull.Cur{gt(Laws.GObj{xw0, xps, xw1, xw2, xvv,
+          xw3, xrr}, tail), stack, False{},
+          False{}}), (Pull.EBeginObj{}, Pull.Cur{xw0 ++ SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv,
+            xw3 ++ gt(xrr, SCon{'}', tail}))}})}, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, False{}}), h_c,
+            next_oobj(xw0 ++ SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}',
+            tail}))}})}, stack, h_v)),
+        strm_app(Pull.Cur{xw0 ++ SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}',
+          tail}))}})}, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, False{}}, [Laws.VKey{Laws.spelled(xps)}],
+          Pull.Cur{xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}, Pull.FObj{Pull.SCol{},
+          False{}} <> stack, False{}, False{}}, List.append(&2, Laws.Evt, Laws.events(Laws.g.val(xvv)), List.append(&2,
+          Laws.Evt, Laws.events(Laws.g.val(xrr)), [Laws.VEndObj{}])), aft(tail, stack),
+          strm_same(Pull.Cur{xw0 ++ SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr,
+            SCon{'}', tail}))}})}, Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, False{}}, Pull.Cur{SCon{'"',
+            sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}})},
+            Pull.FObj{Pull.SKey{}, True{}} <> stack, False{}, False{}}, Laws.VKey{Laws.spelled(xps)}, [],
+            Pull.Cur{xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}, Pull.FObj{Pull.SCol{},
+            False{}} <> stack, False{}, False{}}, next_ws(xw0, SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':',
+            xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}})}, Pull.FObj{Pull.SKey{}, True{}} <> stack,
+            False{}, hw0), next_str_k(xps, xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}, True{},
+              stack, hps, s2)),
+          strm_app(Pull.Cur{xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}, Pull.FObj{Pull.SCol{},
+            False{}} <> stack, False{}, False{}}, Laws.events(Laws.g.val(xvv)), Pull.Cur{xw3 ++ gt(xrr, SCon{'}',
+            tail}), Pull.FObj{Pull.SCom{}, False{}} <> stack, False{}, False{}}, List.append(&2, Laws.Evt,
+            Laws.events(Laws.g.val(xrr)), [Laws.VEndObj{}]), aft(tail, stack),
+            gv_go(xvv, Laws.GKVal{}, "", xw3 ++ gt(xrr, SCon{'}', tail}), Pull.FObj{Pull.SVal{}, False{}} <> stack,
+              False{}, Pull.Cur{xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))},
+              Pull.FObj{Pull.SCol{}, False{}} <> stack, False{}, False{}}, hvv, {==},
+              {==}, stops_ws(xw3, gt(xrr, SCon{'}', tail}), hw3, stops_co(xrr, tail, hrr)), sv,
+              next_colon(xw1, xw2, gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail})), False{}, stack, hw1, hw2)),
+            gv_go(xrr, Laws.GKObj{}, xw3, tail, stack, False{}, c0, hrr, hw3, h_v, h_t, short_gt(xvv, xw3 ++ gt(xrr,
+              SCon{'}', tail}), sv),
+              Unit{}))))
+    case Laws.GObj{+xw0, +xps, +xw1, +xw2, +xvv, +xw3, +xrr} Laws.GKArr{}:
+      no(gv_ty(Laws.GKArr{}, Laws.GObj{xw0, xps, xw1, xw2, xvv, xw3, xrr}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GObj{+xw0, +xps, +xw1, +xw2, +xvv, +xw3, +xrr} Laws.GKObj{}:
+      no(gv_ty(Laws.GKObj{}, Laws.GObj{xw0, xps, xw1, xw2, xvv, xw3, xrr}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GEnd{} Laws.GKVal{}:
+      no(gv_ty(Laws.GKVal{}, Laws.GEnd{}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GEnd{} Laws.GKArr{}:
+      strm_one(Pull.Cur{w1 ++ SCon{']', tail}, Pull.FArr{Pull.SCom{}, fr} <> stack, False{}, False{}}, Pull.EEndArr{},
+        aft(tail, stack),
+        Equal.trans((Pull.Ev & Pull.Cur), Ezjson.next(Pull.Cur{w1 ++ SCon{']', tail}, Pull.FArr{Pull.SCom{},
+          fr} <> stack, False{},
+          False{}}), Ezjson.next(Pull.Cur{SCon{']', tail}, Pull.FArr{Pull.SCom{}, fr} <> stack, False{}, False{}}),
+            (Pull.EEndArr{}, aft(tail, stack)),
+          next_ws(w1, SCon{']', tail}, Pull.FArr{Pull.SCom{}, fr} <> stack, False{}, h_w), next_carr(tail, fr, stack,
+            h_v)))
+    case Laws.GEnd{} Laws.GKObj{}:
+      strm_one(Pull.Cur{w1 ++ SCon{'}', tail}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, False{}}, Pull.EEndObj{},
+        aft(tail, stack),
+        Equal.trans((Pull.Ev & Pull.Cur), Ezjson.next(Pull.Cur{w1 ++ SCon{'}', tail}, Pull.FObj{Pull.SCom{},
+          fr} <> stack, False{},
+          False{}}), Ezjson.next(Pull.Cur{SCon{'}', tail}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, False{}}),
+            (Pull.EEndObj{}, aft(tail, stack)),
+          next_ws(w1, SCon{'}', tail}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, h_w), next_cobj(tail, fr, stack,
+            h_v)))
+    case Laws.GNext{+xw2, +xvv, +xw1, +xrr} Laws.GKVal{}:
+      no(gv_ty(Laws.GKVal{}, Laws.GNext{xw2, xvv, xw1, xrr}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GNext{+xw2, +xvv, +xw1, +xrr} Laws.GKArr{}:
+      +hw2 = and_left(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw1),
+        Laws.g.ok(xrr, Laws.GKArr{}))), h_ok)
+      +r0 = and_right(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw1),
+        Laws.g.ok(xrr, Laws.GKArr{}))), h_ok)
+      +hvv = and_left(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw1), Laws.g.ok(xrr, Laws.GKArr{})), r0)
+      +r1 = and_right(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw1), Laws.g.ok(xrr, Laws.GKArr{})), r0)
+      +hw1 = and_left(Laws.all_ws(xw1), Laws.g.ok(xrr, Laws.GKArr{}), r1)
+      +hrr = and_right(Laws.all_ws(xw1), Laws.g.ok(xrr, Laws.GKArr{}), r1)
+      +sv = short_app(xw2, gt(xvv, xw1 ++ gt(xrr, SCon{']', tail})), short_tail(',', xw2 ++ gt(xvv, xw1 ++ gt(xrr,
+        SCon{']', tail})), short_app(w1, SCon{',', xw2 ++ gt(xvv, xw1 ++ gt(xrr, SCon{']', tail}))}, h_s)))
+      ea = Equal.sym(List<&2, Laws.Evt>, List.append(&2, Laws.Evt, List.append(&2, Laws.Evt,
+        Laws.events(Laws.g.val(xvv)), Laws.events(Laws.g.val(xrr))), [Laws.VEndArr{}]), List.append(&2, Laws.Evt,
+        Laws.events(Laws.g.val(xvv)), List.append(&2, Laws.Evt, Laws.events(Laws.g.val(xrr)), [Laws.VEndArr{}])),
+        eapp_assoc(Laws.events(Laws.g.val(xvv)), Laws.events(Laws.g.val(xrr)), [Laws.VEndArr{}]))
+      %ea : strm(Pull.Cur{w1 ++ SCon{',', xw2 ++ gt(xvv, xw1 ++ gt(xrr, SCon{']', tail}))}, Pull.FArr{Pull.SCom{},
+        fr} <> stack, False{}, False{}}, _, aft(tail, stack))
+      strm_app(Pull.Cur{w1 ++ SCon{',', xw2 ++ gt(xvv, xw1 ++ gt(xrr, SCon{']', tail}))}, Pull.FArr{Pull.SCom{},
+        fr} <> stack, False{}, False{}}, Laws.events(Laws.g.val(xvv)), Pull.Cur{xw1 ++ gt(xrr, SCon{']', tail}),
+        Pull.FArr{Pull.SCom{}, False{}} <> stack, False{}, False{}}, List.append(&2, Laws.Evt,
+        Laws.events(Laws.g.val(xrr)), [Laws.VEndArr{}]), aft(tail, stack),
+        gv_go(xvv, Laws.GKVal{}, "", xw1 ++ gt(xrr, SCon{']', tail}), Pull.FArr{Pull.SVal{}, False{}} <> stack,
+          False{}, Pull.Cur{w1 ++ SCon{',', xw2 ++ gt(xvv, xw1 ++ gt(xrr, SCon{']', tail}))}, Pull.FArr{Pull.SCom{},
+          fr} <> stack, False{}, False{}}, hvv, {==}, {==},
+          stops_ws(xw1, gt(xrr, SCon{']', tail}), hw1, stops_ca(xrr, tail, hrr)), sv,
+          next_comma_arr(w1, xw2, gt(xvv, xw1 ++ gt(xrr, SCon{']', tail})), fr, stack, h_w, hw2)),
+        gv_go(xrr, Laws.GKArr{}, xw1, tail, stack, False{}, c0, hrr, hw1, h_v, h_t, short_gt(xvv, xw1 ++ gt(xrr,
+          SCon{']', tail}), sv), Unit{}))
+    case Laws.GNext{+xw2, +xvv, +xw1, +xrr} Laws.GKObj{}:
+      no(gv_ty(Laws.GKObj{}, Laws.GNext{xw2, xvv, xw1, xrr}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GNextM{+xw4, +xps, +xw1, +xw2, +xvv, +xw3, +xrr} Laws.GKVal{}:
+      no(gv_ty(Laws.GKVal{}, Laws.GNextM{xw4, xps, xw1, xw2, xvv, xw3, xrr}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GNextM{+xw4, +xps, +xw1, +xw2, +xvv, +xw3, +xrr} Laws.GKArr{}:
+      no(gv_ty(Laws.GKArr{}, Laws.GNextM{xw4, xps, xw1, xw2, xvv, xw3, xrr}, w1, tail, stack, fr, c0), h_ok)
+    case Laws.GNextM{+xw4, +xps, +xw1, +xw2, +xvv, +xw3, +xrr} Laws.GKObj{}:
+      +hw4 = and_left(Laws.all_ws(xw4), Bool.and(Laws.spell_ok(xps), Bool.and(Laws.all_ws(xw1),
+        Bool.and(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr,
+        Laws.GKObj{})))))), h_ok)
+      +r0 = and_right(Laws.all_ws(xw4), Bool.and(Laws.spell_ok(xps), Bool.and(Laws.all_ws(xw1),
+        Bool.and(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr,
+        Laws.GKObj{})))))), h_ok)
+      +hps = and_left(Laws.spell_ok(xps), Bool.and(Laws.all_ws(xw1), Bool.and(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv,
+        Laws.GKVal{}), Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{}))))), r0)
+      +r1 = and_right(Laws.spell_ok(xps), Bool.and(Laws.all_ws(xw1), Bool.and(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv,
+        Laws.GKVal{}), Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{}))))), r0)
+      +hw1 = and_left(Laws.all_ws(xw1), Bool.and(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}),
+        Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{})))), r1)
+      +r2 = and_right(Laws.all_ws(xw1), Bool.and(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}),
+        Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{})))), r1)
+      +hw2 = and_left(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw3),
+        Laws.g.ok(xrr, Laws.GKObj{}))), r2)
+      +r3 = and_right(Laws.all_ws(xw2), Bool.and(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw3),
+        Laws.g.ok(xrr, Laws.GKObj{}))), r2)
+      +hvv = and_left(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{})), r3)
+      +r4 = and_right(Laws.g.ok(xvv, Laws.GKVal{}), Bool.and(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{})), r3)
+      +hw3 = and_left(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{}), r4)
+      +hrr = and_right(Laws.all_ws(xw3), Laws.g.ok(xrr, Laws.GKObj{}), r4)
+      +s1 = short_app(xw4, SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}',
+        tail}))}})}, short_tail(',', xw4 ++ SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr,
+        SCon{'}', tail}))}})}, short_app(w1, SCon{',', xw4 ++ SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':',
+        xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}})}}, h_s)))
+      +s2 = short_tail('"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}}), s1)
+      +sk = short_tail('"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}, short_sp(xps, SCon{'"',
+        xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}}, s2))
+      +sv = short_app(xw2, gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail})), short_tail(':', xw2 ++ gt(xvv, xw3 ++ gt(xrr,
+        SCon{'}', tail})), short_app(xw1, SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}, sk)))
+      ea = Equal.sym(List<&2, Laws.Evt>, List.append(&2, Laws.Evt, List.append(&2, Laws.Evt,
+        Laws.events(Laws.g.val(xvv)), Laws.events(Laws.g.val(xrr))), [Laws.VEndObj{}]), List.append(&2, Laws.Evt,
+        Laws.events(Laws.g.val(xvv)), List.append(&2, Laws.Evt, Laws.events(Laws.g.val(xrr)), [Laws.VEndObj{}])),
+        eapp_assoc(Laws.events(Laws.g.val(xvv)), Laws.events(Laws.g.val(xrr)), [Laws.VEndObj{}]))
+      %ea : strm(Pull.Cur{w1 ++ SCon{',', xw4 ++ SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv,
+        xw3 ++ gt(xrr, SCon{'}', tail}))}})}}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, False{}},
+        Laws.VKey{Laws.spelled(xps)} <> _, aft(tail, stack))
+      strm_app(Pull.Cur{w1 ++ SCon{',', xw4 ++ SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv,
+        xw3 ++ gt(xrr, SCon{'}', tail}))}})}}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, False{}},
+        [Laws.VKey{Laws.spelled(xps)}], Pull.Cur{xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))},
+        Pull.FObj{Pull.SCol{}, False{}} <> stack, False{}, False{}}, List.append(&2, Laws.Evt,
+        Laws.events(Laws.g.val(xvv)), List.append(&2, Laws.Evt, Laws.events(Laws.g.val(xrr)), [Laws.VEndObj{}])),
+        aft(tail, stack),
+        strm_same(Pull.Cur{w1 ++ SCon{',', xw4 ++ SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv,
+          xw3 ++ gt(xrr, SCon{'}', tail}))}})}}, Pull.FObj{Pull.SCom{}, fr} <> stack, False{}, False{}},
+          Pull.Cur{SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}})},
+          Pull.FObj{Pull.SKey{}, False{}} <> stack, False{}, False{}}, Laws.VKey{Laws.spelled(xps)}, [],
+          Pull.Cur{xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}, Pull.FObj{Pull.SCol{},
+          False{}} <> stack, False{}, False{}},
+          next_comma_obj(w1, xw4, SCon{'"', sp(xps, SCon{'"', xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}',
+            tail}))}})}, fr, stack, h_w, hw4), next_str_k(xps, xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}',
+            tail}))}, False{}, stack, hps, s2)),
+        strm_app(Pull.Cur{xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}, Pull.FObj{Pull.SCol{},
+          False{}} <> stack, False{}, False{}}, Laws.events(Laws.g.val(xvv)), Pull.Cur{xw3 ++ gt(xrr, SCon{'}', tail}),
+          Pull.FObj{Pull.SCom{}, False{}} <> stack, False{}, False{}}, List.append(&2, Laws.Evt,
+          Laws.events(Laws.g.val(xrr)), [Laws.VEndObj{}]), aft(tail, stack),
+          gv_go(xvv, Laws.GKVal{}, "", xw3 ++ gt(xrr, SCon{'}', tail}), Pull.FObj{Pull.SVal{}, False{}} <> stack,
+            False{}, Pull.Cur{xw1 ++ SCon{':', xw2 ++ gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail}))}, Pull.FObj{Pull.SCol{},
+            False{}} <> stack, False{}, False{}}, hvv, {==}, {==},
+            stops_ws(xw3, gt(xrr, SCon{'}', tail}), hw3, stops_co(xrr, tail, hrr)), sv,
+            next_colon(xw1, xw2, gt(xvv, xw3 ++ gt(xrr, SCon{'}', tail})), False{}, stack, hw1, hw2)),
+          gv_go(xrr, Laws.GKObj{}, xw3, tail, stack, False{}, c0, hrr, hw3, h_v, h_t, short_gt(xvv, xw3 ++ gt(xrr,
+            SCon{'}', tail}), sv),
+            Unit{})))
+
+# JSON-PULL-1: from a parse to the cursor's events
+
+# a value's events do not see spans
+law ev_own:
+  for +val: V.Json
+  {Laws.events(Laws.own(val)) == Laws.events(val) : List<&2, Laws.Evt>}
+
+def ev_own(val):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{_}:
+      {==}
+    case V.JNum{_}:
+      {==}
+    case V.JStr{_}:
+      {==}
+    case V.JArr{+items}:
+      Equal.cong(List<&2, Laws.Evt>, List<&2, Laws.Evt>, xx => Laws.VBeginArr{} <> List.append(&2, Laws.Evt, xx,
+        [Laws.VEndArr{}]), Laws.events(Laws.own(items)), Laws.events(items), ev_own(items))
+    case V.JObj{+pairs}:
+      Equal.cong(List<&2, Laws.Evt>, List<&2, Laws.Evt>, xx => Laws.VBeginObj{} <> List.append(&2, Laws.Evt, xx,
+        [Laws.VEndObj{}]), Laws.events(Laws.own(pairs)), Laws.events(pairs), ev_own(pairs))
+    case V.JNil{}:
+      {==}
+    case V.JCons{+hd, +tl}:
+      Equal.trans(List<&2, Laws.Evt>, List.append(&2, Laws.Evt, Laws.events(Laws.own(hd)), Laws.events(Laws.own(tl))),
+        List.append(&2, Laws.Evt, Laws.events(hd), Laws.events(Laws.own(tl))),
+        List.append(&2, Laws.Evt, Laws.events(hd), Laws.events(tl)),
+        Equal.cong(List<&2, Laws.Evt>, List<&2, Laws.Evt>, xx => List.append(&2, Laws.Evt, xx,
+          Laws.events(Laws.own(tl))), Laws.events(Laws.own(hd)), Laws.events(hd), ev_own(hd)),
+        Equal.cong(List<&2, Laws.Evt>, List<&2, Laws.Evt>, xx => List.append(&2, Laws.Evt, Laws.events(hd), xx),
+          Laws.events(Laws.own(tl)), Laws.events(tl), ev_own(tl)))
+    case V.JPair{+kk, +vv, +rr}:
+      Equal.trans(List<&2, Laws.Evt>, Laws.VKey{kk} <> List.append(&2, Laws.Evt, Laws.events(Laws.own(vv)),
+        Laws.events(Laws.own(rr))), Laws.VKey{kk} <> List.append(&2, Laws.Evt, Laws.events(vv),
+        Laws.events(Laws.own(rr))), Laws.VKey{kk} <> List.append(&2, Laws.Evt, Laws.events(vv), Laws.events(rr)),
+        Equal.cong(List<&2, Laws.Evt>, List<&2, Laws.Evt>, xx => Laws.VKey{kk} <> List.append(&2, Laws.Evt, xx,
+          Laws.events(Laws.own(rr))), Laws.events(Laws.own(vv)), Laws.events(vv), ev_own(vv)),
+        Equal.cong(List<&2, Laws.Evt>, List<&2, Laws.Evt>, xx => Laws.VKey{kk} <> List.append(&2, Laws.Evt,
+          Laws.events(vv), xx), Laws.events(Laws.own(rr)), Laws.events(rr), ev_own(rr)))
+    case V.JSpan{+src, +nn}:
+      Equal.cong(String, List<&2, Laws.Evt>, xx => [Laws.VStr{xx}], V.span.str(src, nn, U32.is_zero(nn)),
+        Laws.take(src, U32.to_nat(nn)), span_take(src, nn))
+    case V.JBind{+src, +nn, +vv, +rr}:
+      +ka = V.span.str(src, nn, U32.is_zero(nn))
+      +kb = Laws.take(src, U32.to_nat(nn))
+      Equal.trans(List<&2, Laws.Evt>, Laws.VKey{ka} <> List.append(&2, Laws.Evt, Laws.events(Laws.own(vv)),
+        Laws.events(Laws.own(rr))), Laws.VKey{kb} <> List.append(&2, Laws.Evt, Laws.events(Laws.own(vv)),
+        Laws.events(Laws.own(rr))), Laws.VKey{kb} <> List.append(&2, Laws.Evt, Laws.events(vv), Laws.events(rr)),
+        Equal.cong(String, List<&2, Laws.Evt>, xx => Laws.VKey{xx} <> List.append(&2, Laws.Evt,
+          Laws.events(Laws.own(vv)), Laws.events(Laws.own(rr))), ka, kb, span_take(src, nn)),
+        Equal.trans(List<&2, Laws.Evt>, Laws.VKey{kb} <> List.append(&2, Laws.Evt, Laws.events(Laws.own(vv)),
+          Laws.events(Laws.own(rr))), Laws.VKey{kb} <> List.append(&2, Laws.Evt, Laws.events(vv),
+          Laws.events(Laws.own(rr))), Laws.VKey{kb} <> List.append(&2, Laws.Evt, Laws.events(vv), Laws.events(rr)),
+          Equal.cong(List<&2, Laws.Evt>, List<&2, Laws.Evt>, xx => Laws.VKey{kb} <> List.append(&2, Laws.Evt, xx,
+            Laws.events(Laws.own(rr))), Laws.events(Laws.own(vv)), Laws.events(vv), ev_own(vv)),
+          Equal.cong(List<&2, Laws.Evt>, List<&2, Laws.Evt>, xx => Laws.VKey{kb} <> List.append(&2, Laws.Evt,
+            Laws.events(vv), xx), Laws.events(Laws.own(rr)), Laws.events(rr), ev_own(rr))))
+
+# whitespace ends a word
+law stops_allws:
+  for +ws: String
+  for h_w: {Laws.all_ws(ws) == True{} : Bool}
+  {stops(ws) == True{} : Bool}
+
+def stops_allws(ws, h_w):
+  ea = append_nil(ws)
+  %ea : {stops(_) == True{} : Bool}
+  stops_ws(ws, "", h_w, {==})
+
+# the events from a derived text's cursor: the value's, then the end
+law pull_der:
+  for +wa: String
+  for +gg: Laws.Gv
+  for +wb: String
+  for +h_a: {Laws.all_ws(wa) == True{} : Bool}
+  for +h_g: {Laws.g.ok(gg, Laws.GKVal{}) == True{} : Bool}
+  for +h_b: {Laws.all_ws(wb) == True{} : Bool}
+  for +h_s: {Laws.short(wa ++ gt(gg, wb)) == True{} : Bool}
+  {Laws.pulled(1n+List.length(&2, Laws.Evt, Laws.events(Laws.g.val(gg))), Ezjson.cursor(wa ++ gt(gg, wb)))
+    == List.append(&2, Laws.Evt, Laws.events(Laws.g.val(gg)), [Laws.VEnd{}]) : List<&2, Laws.Evt>}
+
+def pull_der(wa, gg, wb, h_a, h_g, h_b, h_s):
+  +ee = Laws.events(Laws.g.val(gg))
+  +ll = List.length(&2, Laws.Evt, ee)
+  +c0 = Ezjson.cursor(wa ++ gt(gg, wb))
+  ss = gv_go(gg, Laws.GKVal{}, "", wb, [], False{}, c0, h_g, {==}, {==}, stops_allws(wb, h_b),
+    short_app(wa, gt(gg, wb), h_s), next_ws(wa, gt(gg, wb), [], False{}, h_a))
+  Equal.trans(List<&2, Laws.Evt>, Laws.pulled(1n+ll, c0), Laws.pulled(Nat.add(ll, 1n), c0),
+    List.append(&2, Laws.Evt, ee, [Laws.VEnd{}]),
+    Equal.cong(Nat, List<&2, Laws.Evt>, xx => Laws.pulled(xx, c0), 1n+ll, Nat.add(ll, 1n),
+      Equal.sym(Nat, Nat.add(ll, 1n), 1n+ll, add_one(ll))),
+    Equal.trans(List<&2, Laws.Evt>, Laws.pulled(Nat.add(ll, 1n), c0),
+      List.append(&2, Laws.Evt, ee, Laws.pulled(1n, Pull.Cur{wb, [], True{}, False{}})),
+      List.append(&2, Laws.Evt, ee, [Laws.VEnd{}]), ss(1n),
+      Equal.cong((Pull.Ev & Pull.Cur), List<&2, Laws.Evt>, xx => List.append(&2, Laws.Evt, ee,
+        [Laws.view(Laws.ev_of(xx))]), Ezjson.next(Pull.Cur{wb, [], True{}, False{}}),
+        (Pull.EEnd{}, Pull.Cur{"", [], True{}, False{}}), next_eof(wb, [], h_b))))
+
+# the cursor's events on a text that parses, once its derivation is in hand
+law pull_events.at:
+  for +txt: String
+  for +jj: V.Json
+  for +h_s: {Laws.short(txt) == True{} : Bool}
+  for +h_p: {Ezjson.parse(txt) == Some{jj} : Maybe<&2, V.Json>}
+  for dd: (&wa: String -> &gg: Laws.Gv -> &wb: String -> ({txt == wa ++ Laws.g.text(gg) ++ wb : String}
+    & {Laws.derived(wa, gg, wb) == True{} : Bool}))
+  {Laws.pulled(1n+List.length(&2, Laws.Evt, Laws.events(jj)), Ezjson.cursor(txt))
+    == List.append(&2, Laws.Evt, Laws.events(jj), [Laws.VEnd{}]) : List<&2, Laws.Evt>}
+
+def pull_events.at(txt, jj, h_s, h_p, dd):
+  (+wa, (+gg, (+wb, (+e_t, +h_d)))) = dd
+  +ha = and_left(Laws.all_ws(wa), Bool.and(Laws.g.ok(gg, Laws.GKVal{}), Laws.all_ws(wb)), h_d)
+  +rr = and_right(Laws.all_ws(wa), Bool.and(Laws.g.ok(gg, Laws.GKVal{}), Laws.all_ws(wb)), h_d)
+  +hg = and_left(Laws.g.ok(gg, Laws.GKVal{}), Laws.all_ws(wb), rr)
+  +hb = and_right(Laws.g.ok(gg, Laws.GKVal{}), Laws.all_ws(wb), rr)
+  +tx = wa ++ Laws.g.text(gg) ++ wb
+  +et = Equal.sym(String, txt, tx, e_t)
+  +st = Equal.trans(Bool, Laws.short(tx), Laws.short(txt), True{}, Equal.cong(String, Bool, xx => Laws.short(xx), tx,
+    txt,
+    et), h_s)
+  +ts = Laws.text_some(gg, wa, wb, hg, ha, hb, st)
+  +e1 = Equal.trans(Maybe<&2, V.Json>, Some{Laws.own(jj)}, Laws.own_m(Ezjson.parse(tx)), Some{Laws.g.val(gg)},
+    Equal.sym(Maybe<&2, V.Json>, Laws.own_m(Ezjson.parse(tx)), Some{Laws.own(jj)}, Equal.trans(Maybe<&2, V.Json>,
+      Laws.own_m(Ezjson.parse(tx)), Laws.own_m(Ezjson.parse(txt)), Some{Laws.own(jj)},
+      Equal.cong(String, Maybe<&2, V.Json>, xx => Laws.own_m(Ezjson.parse(xx)), tx, txt, et),
+      Equal.cong(Maybe<&2, V.Json>, Maybe<&2, V.Json>, xx => Laws.own_m(xx), Ezjson.parse(txt), Some{jj}, h_p))), ts)
+  +eo = Equal.cong(Maybe<&2, V.Json>, V.Json, xx => unsome(xx), Some{Laws.own(jj)}, Some{Laws.g.val(gg)}, e1)
+  evs = Equal.trans(List<&2, Laws.Evt>, Laws.events(Laws.g.val(gg)), Laws.events(Laws.own(jj)), Laws.events(jj),
+    Equal.cong(V.Json, List<&2, Laws.Evt>, xx => Laws.events(xx), Laws.g.val(gg), Laws.own(jj),
+      Equal.sym(V.Json, Laws.own(jj), Laws.g.val(gg), eo)), ev_own(jj))
+  %evs : {Laws.pulled(1n+List.length(&2, Laws.Evt, _), Ezjson.cursor(txt)) == List.append(&2, Laws.Evt, _,
+    [Laws.VEnd{}]) : List<&2, Laws.Evt>}
+  %et : {Laws.pulled(1n+List.length(&2, Laws.Evt, Laws.events(Laws.g.val(gg))), Ezjson.cursor(_))
+    == List.append(&2, Laws.Evt, Laws.events(Laws.g.val(gg)), [Laws.VEnd{}]) : List<&2, Laws.Evt>}
+  eg = Equal.sym(String, Laws.g.text(gg) ++ wb, gt(gg, wb), gt_eq(gg, wb))
+  %eg : {Laws.pulled(1n+List.length(&2, Laws.Evt, Laws.events(Laws.g.val(gg))), Ezjson.cursor(wa ++ _))
+    == List.append(&2, Laws.Evt, Laws.events(Laws.g.val(gg)), [Laws.VEnd{}]) : List<&2, Laws.Evt>}
+  pull_der(wa, gg, wb, ha, hg, hb, Equal.trans(Bool, Laws.short(wa ++ gt(gg, wb)), Laws.short(tx), True{},
+    Equal.cong(String, Bool, xx => Laws.short(wa ++ xx), gt(gg, wb), Laws.g.text(gg) ++ wb,
+      Equal.sym(String, Laws.g.text(gg) ++ wb, gt(gg, wb), gt_eq(gg, wb))), st))
+
+# the cursor's events on a text that parses are the value's events, then the end
+law pull_events:
+  for +txt: String
+  for +jj: V.Json
+  for +h_s: {Laws.short(txt) == True{} : Bool}
+  for +h_p: {Ezjson.parse(txt) == Some{jj} : Maybe<&2, V.Json>}
+  {Laws.pulled(1n+List.length(&2, Laws.Evt, Laws.events(jj)), Ezjson.cursor(txt))
+    == List.append(&2, Laws.Evt, Laws.events(jj), [Laws.VEnd{}]) : List<&2, Laws.Evt>}
+
+def pull_events(txt, jj, h_s, h_p):
+  pull_events.at(txt, jj, h_s, h_p, Laws.text_derives(txt, h_s, Equal.cong(Maybe<&2, V.Json>, Bool,
+    xx => Laws.is_some(xx), Ezjson.parse(txt), Some{jj}, h_p)))
