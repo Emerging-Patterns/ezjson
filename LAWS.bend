@@ -998,6 +998,71 @@ def nexts(left: Nat, cur: Pull.Cur) -> Pull.Cur:
     case 1n+pp:
       nexts(pp, cur_of(Ezjson.next(cur)))
 
+# the unread suffix of a cursor
+def rest_of(cur: Pull.Cur) -> String:
+  match cur:
+    case Pull.Cur{rest, _, _, _}:
+      rest
+
+# one more event than a count, if there is one
+def one_more(nn: Maybe<&2, Nat>) -> Maybe<&2, Nat>:
+  match nn:
+    case Some{kk}:
+      Some{1n+kk}
+    case None{}:
+      None{}
+
+# how many events finish the value that starts the events, with `depth`
+# containers of it already open: Some{n} when the first n events are exactly
+# that. None when the events run out first, or an end, a failure, or a close
+# or a key where no container of the value is open comes first
+def val_len(es: List<&2, Evt>, depth: Nat) -> Maybe<&2, Nat>:
+  match es:
+    case Nil{}:
+      None{}
+    case Con{ev, tl}:
+      match ev:
+        case VBeginArr{}:
+          one_more(val_len(tl, 1n+depth))
+        case VBeginObj{}:
+          one_more(val_len(tl, 1n+depth))
+        case VEndArr{}:
+          match depth:
+            case 0n:
+              None{}
+            case 1n+kk:
+              match kk:
+                case 0n:
+                  Some{1n}
+                case 1n+jj:
+                  one_more(val_len(tl, 1n+jj))
+        case VEndObj{}:
+          match depth:
+            case 0n:
+              None{}
+            case 1n+kk:
+              match kk:
+                case 0n:
+                  Some{1n}
+                case 1n+jj:
+                  one_more(val_len(tl, 1n+jj))
+        case VKey{_}:
+          match depth:
+            case 0n:
+              None{}
+            case 1n+kk:
+              one_more(val_len(tl, 1n+kk))
+        case VEnd{}:
+          None{}
+        case VErr{}:
+          None{}
+        case _:
+          match depth:
+            case 0n:
+              Some{1n}
+            case 1n+kk:
+              one_more(val_len(tl, 1n+kk))
+
 # LAW: as_bool reads back the boolean bool built
 # JSON-TREE-1
 law as_bool_bool:
@@ -1868,3 +1933,24 @@ law pull_ends:
   for +h_s: {short(txt) == True{} : Bool}
   for h_e: {is_end(ev_of(Ezjson.next(nexts(kk, Ezjson.cursor(txt))))) == True{} : Bool}
   {is_some(Ezjson.parse(txt)) == True{} : Bool}
+
+# LAW: skip drops one whole value: when the first mm events next yields from a
+# cursor are exactly one value, skip leaves the cursor where mm calls of next
+# leave it
+# JSON-PULL-4
+law pull_skip:
+  for +cur: Pull.Cur
+  for +mm: Nat
+  for +h_s: {short(rest_of(cur)) == True{} : Bool}
+  for +h_v: {val_len(pulled(mm, cur), 0n) == Some{mm} : Maybe<&2, Nat>}
+  {Ezjson.skip(cur) == nexts(mm, cur) : Pull.Cur}
+
+# LAW: after skip, next yields the event that follows the value's last event
+# in the events from the same cursor
+# JSON-PULL-4
+law pull_skip_next:
+  for +cur: Pull.Cur
+  for +mm: Nat
+  for +h_s: {short(rest_of(cur)) == True{} : Bool}
+  for +h_v: {val_len(pulled(mm, cur), 0n) == Some{mm} : Maybe<&2, Nat>}
+  {ev_of(Ezjson.next(Ezjson.skip(cur))) == ev_of(Ezjson.next(nexts(mm, cur))) : Pull.Ev}

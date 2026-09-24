@@ -83,13 +83,13 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | JSON-PULL-1 | For every text `t` shorter than 2^32 characters, the events `next` yields from `cursor(t)` end in `EEnd` exactly when `parse(t)` is `Some{j}`, and then they are `events(j)`: the value's scalars, keys and container begins and ends in document order, with no event for a comma or a colon | Proved | proved | LAWS.bend pull_events; LAWS.bend pull_ends |
 | JSON-PULL-2 | Once `next` yields `EErr`, every later `next` on the returned cursor yields `EErr`, and `skip` returns a failed cursor | Proved | proved | LAWS.bend pull_err_fails; LAWS.bend pull_failed_next; LAWS.bend pull_failed_skip |
 | JSON-PULL-3 | Once `next` yields `EEnd`, every later `next` on the returned cursor yields `EEnd` | Proved | proved | LAWS.bend pull_end_ends; LAWS.bend pull_ended_next |
-| JSON-PULL-4 | For every cursor at a position where a value may start, `next(skip(c))` yields the event that follows that value's last event in the full stream from `c` | Proved | pending |  |
+| JSON-PULL-4 | For every cursor at a position where a value may start, `next(skip(c))` yields the event that follows that value's last event in the full stream from `c` | Proved | pending | LAWS.bend pull_skip; LAWS.bend pull_skip_next |
 | JSON-PULL-5 | `skip` at a position where no value may start (before an object key, at a close bracket, after the root, or on a failed cursor) returns a failed cursor | Proved | proved | LAWS.bend pull_failed_skip; LAWS.bend pull_over_skip; LAWS.bend skip_key; LAWS.bend skip_close_arr; LAWS.bend skip_close_obj |
 | JSON-PULL-6 | `text(ev)` is `Some` of the decoded characters for a string or key event, span or owned, and of the spelling for a number event, and `None` for every other event | Proved | proved | LAWS.bend text_str; LAWS.bend text_key; LAWS.bend text_str_span; LAWS.bend text_key_span; LAWS.bend text_num; LAWS.bend text_none |
 
 ## Left to prove
 
-Every pending row is unproved in full; the RFC's Rollout says in which phase its laws land. No pending row has partial laws.
+Every pending row but JSON-PULL-4 is unproved in full; the RFC's Rollout says in which phase its laws land. JSON-PULL-4's laws (`pull_skip`, `pull_skip_next`) prove it for every cursor whose unread text is shorter than 2^32 characters. As worded, the row also covers longer texts, and there it fails: `skip` walks a whole value on one budget of 4 × (2^33 − 1) jumps and spends two on each bare word, so an array of about 2^34 numbers, a text of about 2^35 characters, uses the budget up, and `skip` returns a failed cursor where `next` would read on. The row stays pending until it is bounded like JSON-PULL-1 or `skip`'s budget changes.
 
 ## Trust boundary
 
