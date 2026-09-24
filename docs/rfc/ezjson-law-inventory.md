@@ -367,7 +367,7 @@ requirement depends on.
 | Cursor, WP-C | done | JSON-PULL-1 proved (`pull_events`, `pull_ends`): the events `next` yields from `cursor(t)`, for a text shorter than 2^32 characters, reach the end exactly when `parse(t)` is `Some{j}`, and then they are `events(j)` followed by the end. One direction is an induction on the parse derivation (`gv_go`), the other walks the cursor in step with the character lexer and the parser (`frel`, `cminv`). The fuel is a budget of nested levels and no lemma normalizes it (REVIEW-P4). JSON-PULL-4 has laws (`pull_skip`, `pull_skip_next`): when the first m events from a cursor are exactly one value, `skip` leaves the cursor where m calls of `next` do, so `next(skip(c))` is the event after the value's last. They need the unread text shorter than 2^32 characters, and the row now carries that bound, so it is proved. Without the bound it is false for texts of about 2^35 characters or more, where `skip`'s budget runs out (SPEC.md, Left to prove). |
 | Three to five | open | see the RFC's Rollout |
 
-Laws now: 61, all quantified, 0 closed. `coverage` warnings: 93.
+Every law is quantified: bolt's `closed` rule, at error in CI, keeps it so.
 Every new proof was broken on purpose (an absurd case replaced by `{==}`,
 a rewrite removed, a statement changed) and the gate failed each time.
 
