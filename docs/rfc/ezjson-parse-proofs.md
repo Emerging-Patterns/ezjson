@@ -106,14 +106,18 @@ four-state scan written from RFC 8259 §7 in LAWS.bend (`cs.step`), and the
 proof keeps it in step with the character lexer's mode (`okm`, `tr_m`): once
 the scan meets a raw control inside a string, the lexer is rejecting, so its
 tokens hold the error token, which the parser never gets past.
-JSON-STR-2 in part: the two-character escapes decode inside a string of
+JSON-STR-2: the two-character escapes decode inside a string of
 raw characters, and a backslash before anything else but `u` rejects the
 text whatever follows (`esc_decodes`, `esc_bad`); `\u` and four hex digits
 of a non-surrogate decode to that code point (`esc_u`), and a high then low
 surrogate escape to the code point UTF-16 pairs them to (`esc_pair`). The
 escape table, hex digits and the pair rule are written in LAWS.bend from
-RFC 8259 §7 (`unesc`, `hexd`, `hex4`, `pair`). Left: the `\u` cases that
-reject a text.
+RFC 8259 §7 (`unesc`, `hexd`, `hex4`, `pair`). A `\u` not followed by four
+hex digits (`esc_u_bad`), a low surrogate escape with no high one before it
+(`esc_lo_bad`), and a high surrogate escape not followed by a low one
+(`esc_hi_bad`) reject the text. Each leaves the lexer rejecting or inside an
+escape when the text ends, so its tokens hold the error token (`uni_rej`,
+`lo_rej`, `hi_rej`, `lex_none`).
 
 ## What parse does
 

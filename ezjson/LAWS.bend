@@ -511,6 +511,18 @@ def hexv(+ch: Char) -> U32:
 def hex.acc(acc: U32, +ch: Char) -> U32:
   (acc * 16 + hexv(ch) : U32)
 
+# whether a text starts with nn hexadecimal digits
+def hexn(nn: Nat, cs: List<&2, Char>) -> Bool:
+  match nn:
+    case 0n:
+      True{}
+    case 1n+p:
+      match cs:
+        case Nil{}:
+          False{}
+        case hd <> tl:
+          Bool.and(hexd(hd), hexn(p, tl))
+
 # the code point four hexadecimal digits spell
 def hex4(+aa: Char, +bb: Char, +cc: Char, +dd: Char) -> U32:
   hex.acc(hex.acc(hex.acc(hex.acc(0, aa), bb), cc), dd)
@@ -534,6 +546,35 @@ def non_sur(+cp: U32) -> Bool:
 # the code point a high and a low surrogate stand for, UTF-16's rule
 def pair(hi: U32, lo: U32) -> U32:
   U32.add(65536, U32.add(U32.mul(U32.sub(hi, 55296), 1024), U32.sub(lo, 56320)))
+
+# whether a text starts with nn + 1 more hexadecimal digits that, added in
+# base 16 to acc, spell a low surrogate
+def lo_tail(cs: List<&2, Char>, nn: Nat, acc: U32) -> Bool:
+  match cs:
+    case Nil{}:
+      False{}
+    case +hd <> tl:
+      match nn:
+        case 0n:
+          Bool.and(hexd(hd), lo_sur(hex.acc(acc, hd)))
+        case 1n+p:
+          Bool.and(hexd(hd), lo_tail(tl, p, hex.acc(acc, hd)))
+
+# whether a text starts with u and a low surrogate's four hexadecimal digits
+def lo_next.u(cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      False{}
+    case hd <> tl:
+      Bool.and(is_cp(hd, 117), lo_tail(tl, 3n, 0))
+
+# whether a text starts with a low surrogate's \u escape
+def lo_next(cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      False{}
+    case hd <> tl:
+      Bool.and(is_cp(hd, 92), lo_next.u(tl))
 
 # where a scan for raw controls in strings is: outside strings, inside one,
 # just after a backslash inside one, or past a raw control inside one (§7)
@@ -1017,6 +1058,52 @@ law esc_pair:
   {str_of(Ezjson.parse("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u',
     SCon{l1, SCon{l2, SCon{l3, SCon{l4, post}}}}}}}}}}}} ++ "\"")) ==
     Some{pre ++ SCon{Char.from_u32(pair(hex4(h1, h2, h3, h4), hex4(l1, l2, l3, l4))), post}} : Maybe<&2, String>}
+
+# LAW: inside a string, \u not followed by four hexadecimal digits makes
+# parse None, whatever follows
+# JSON-STR-2
+law esc_u_bad:
+  for +pre: String
+  for +rest: String
+  for h_p: {raw_ok(String.to_list(pre)) == True{} : Bool}
+  for h_x: {hexn(4n, String.to_list(rest)) == False{} : Bool}
+  for h_s: {short("\"" ++ pre ++ SCon{'\\', SCon{'u', rest}}) == True{} : Bool}
+  {Ezjson.parse("\"" ++ pre ++ SCon{'\\', SCon{'u', rest}}) == None{} : Maybe<&2, V.Json>}
+
+# LAW: inside a string, a low surrogate escape with no high one before it
+# makes parse None, whatever follows
+# JSON-STR-2
+law esc_lo_bad:
+  for +pre: String
+  for +aa: Char
+  for +bb: Char
+  for +cc: Char
+  for +dd: Char
+  for +rest: String
+  for h_p: {raw_ok(String.to_list(pre)) == True{} : Bool}
+  for +h_h: {Bool.and(hexd(aa), Bool.and(hexd(bb), Bool.and(hexd(cc), hexd(dd)))) == True{} : Bool}
+  for h_lo: {lo_sur(hex4(aa, bb, cc, dd)) == True{} : Bool}
+  for h_s: {short("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, rest}}}}}}) == True{} : Bool}
+  {Ezjson.parse("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, rest}}}}}}) == None{} :
+    Maybe<&2, V.Json>}
+
+# LAW: inside a string, a high surrogate escape not followed by a low
+# surrogate escape makes parse None
+# JSON-STR-2
+law esc_hi_bad:
+  for +pre: String
+  for +aa: Char
+  for +bb: Char
+  for +cc: Char
+  for +dd: Char
+  for +rest: String
+  for h_p: {raw_ok(String.to_list(pre)) == True{} : Bool}
+  for +h_h: {Bool.and(hexd(aa), Bool.and(hexd(bb), Bool.and(hexd(cc), hexd(dd)))) == True{} : Bool}
+  for h_hi: {in_hi(hex4(aa, bb, cc, dd)) == True{} : Bool}
+  for h_n: {lo_next(String.to_list(rest)) == False{} : Bool}
+  for h_s: {short("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, rest}}}}}}) == True{} : Bool}
+  {Ezjson.parse("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, rest}}}}}}) == None{} :
+    Maybe<&2, V.Json>}
 
 # LAW: inside a string, a raw character other than a control, a quotation
 # mark or a reverse solidus is kept as itself

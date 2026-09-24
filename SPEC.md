@@ -49,7 +49,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | ID | Requirement | Level | Status | Law |
 | :---- | :---- | :---- | :---- | :---- |
 | JSON-STR-1 | For texts shorter than 2^32 - 1 characters: for every string `s` of Unicode scalar values, `parse(quote(s))` is a string value whose characters are `s` (§7) | Proved | proved | ezjson/LAWS.bend str_back |
-| JSON-STR-2 | For texts shorter than 2^32 - 1 characters: inside a string, `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t` decode to their characters; `\uXXXX` of a non-surrogate decodes to that code point; a high then low surrogate escape decodes to one code point; any other escape, and an unpaired surrogate escape, make `parse` `None` (§7, §8.2) | Proved | pending | ezjson/LAWS.bend esc_decodes; ezjson/LAWS.bend esc_bad; ezjson/LAWS.bend esc_u; ezjson/LAWS.bend esc_pair |
+| JSON-STR-2 | For texts shorter than 2^32 - 1 characters: inside a string, `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t` decode to their characters; `\uXXXX` of a non-surrogate decodes to that code point; a high then low surrogate escape decodes to one code point; any other escape, and an unpaired surrogate escape, make `parse` `None` (§7, §8.2) | Proved | proved | ezjson/LAWS.bend esc_decodes; ezjson/LAWS.bend esc_bad; ezjson/LAWS.bend esc_u; ezjson/LAWS.bend esc_pair; ezjson/LAWS.bend esc_u_bad; ezjson/LAWS.bend esc_lo_bad; ezjson/LAWS.bend esc_hi_bad |
 | JSON-STR-3 | For texts shorter than 2^32 - 1 characters: inside a string, a raw U+0000 to U+001F makes `parse` `None`, and every other raw code point except `"` and `\` is kept as itself (§7) | Proved | proved | ezjson/LAWS.bend raw_kept; ezjson/LAWS.bend ctl_none |
 | JSON-STR-4 | For texts shorter than 2^32 - 1 characters: two object names compare equal in `get` exactly when their decoded characters are equal, whatever escapes spelled them (§8.3) | Proved | pending |  |
 | JSON-STR-5 | `quote(s)` escapes exactly `"`, `\` and U+0000 to U+001F, using the two-character form where one exists and `\u00xx` otherwise, and writes every other scalar value as itself, and writes U+FFFD for every code point that is not a Unicode scalar value (a surrogate, or past U+10FFFF) (§7, §8.1) | Proved | proved | ezjson/LAWS.bend print_non_scalar; ezjson/LAWS.bend esc_quote; ezjson/LAWS.bend esc_backslash; ezjson/LAWS.bend esc_b; ezjson/LAWS.bend esc_f; ezjson/LAWS.bend esc_n; ezjson/LAWS.bend esc_r; ezjson/LAWS.bend esc_t; ezjson/LAWS.bend esc_plain; ezjson/LAWS.bend esc_ctl |
@@ -89,11 +89,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 
 ## Left to prove
 
-Every pending row with no Law entry is unproved in full; the RFC's Rollout says in which phase its laws land. Pending rows with partial laws:
-
-| ID | Proved so far | Missing |
-| :---- | :---- | :---- |
-| JSON-STR-2 | the eight two-character escapes decode to their characters, and a backslash before any other character but `u` makes `parse` `None` (`esc_decodes`, `esc_bad`); `\u` and four hex digits of a non-surrogate decode to that code point (`esc_u`); a high then low surrogate escape decode to the one code point they stand for (`esc_pair`) | `\u` followed by a non-hex digit, a lone low surrogate escape, and a high surrogate escape not followed by a low one, make `parse` `None` |
+Every pending row is unproved in full; the RFC's Rollout says in which phase its laws land. No pending row has partial laws.
 
 ## Trust boundary
 
