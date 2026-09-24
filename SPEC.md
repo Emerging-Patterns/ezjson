@@ -98,6 +98,6 @@ These assumptions sit outside the proofs. They are the complete list of Trusted 
 | ID | Assumption | Why it is trusted |
 | :---- | :---- | :---- |
 | JSON-TRUST-1 | The Bend checker is sound: a proof it accepts proves its law. | It cannot be checked from inside Bend; this is EZ-TRUST-1. ezjson pins bend 2.0.25 through the flake. |
-| JSON-TRUST-2 | `U32.read` and `F32.read` in Bend's base library read a decimal spelling as documented, rounding to nearest for F32. | Foreign to this project; `as_u32` and `as_f32` forward to them. |
+| JSON-TRUST-2 | `F32.read` in Bend's base library reads a decimal spelling as documented, rounding to nearest. | Foreign to this project; `as_f32` forwards to it. `U32.read` is no longer trusted: JSON-TREE-6's `as_u32_num` is proved through it as written. |
 | JSON-TRUST-3 | The cursor does not keep a parse tree or the text it has passed: memory while walking a large text stays proportional to the open containers and the events the caller holds. | A law sees values, not heap shape. The `scale` flake check walks a 563 KiB and a 615 KiB text with the cursor as an integration check. |
 | JSON-TRUST-4 | The proof-gate runner fails the build unless the first line of `bend PROOF.bend` is `All terms check.` | It is ez's `mkProofs`, run by `nix flake check` in CI; this is EZ-TRUST-4. |
