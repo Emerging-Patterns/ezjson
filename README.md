@@ -15,7 +15,10 @@ ez add Emerging-Patterns/ezjson
 
 `parse` reads JSON text into `Maybe Json`: null, booleans, numbers, strings,
 arrays, and objects. `print` writes that value back as compact text, and
-writes U+FFFD for a code point no UTF-8 text can hold (a lone surrogate). A number
+writes U+FFFD for a code point no UTF-8 text can hold (a lone surrogate).
+`pretty` writes the same tokens indented two spaces a level, one element or
+member a line and a space after each colon, as JavaScript's
+`JSON.stringify(v, null, 2)` does, with no newline at the end. A number
 keeps the spelling it was parsed with. `num` builds one from that text, and
 builds null when the text is not a JSON number.
 

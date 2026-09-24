@@ -61,6 +61,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | JSON-PRINT-1 | For texts shorter than 2^32 - 1 characters: for every well-formed value `j`, `parse(print(j))` is `Some` of a value `same` as `j` with every code point that is not a Unicode scalar value replaced by U+FFFD | Proved | proved | LAWS.bend print_parse |
 | JSON-PRINT-2 | For texts shorter than 2^32 - 1 characters: for every text `t` with `parse(t) == Some{j}`, `print(j)` holds no whitespace outside strings, and `print(j) == print(j2)` where `parse(print(j)) == Some{j2}` | Proved | proved | LAWS.bend print_compact; LAWS.bend print_stable |
 | JSON-PRINT-3 | For every value built only from `null`, `bool`, `str`, `num`, `arr` and `obj`, or returned by `parse`, `wf` holds | Proved | proved | LAWS.bend wf_scalars; LAWS.bend wf_num; LAWS.bend wf_arr; LAWS.bend wf_obj; LAWS.bend parse_wf |
+| JSON-PRINT-4 | For texts shorter than 2^32 - 1 characters: for every well-formed value `j`, `parse(pretty(j))` is `Some` of a value `same` as `j` with every code point that is not a Unicode scalar value replaced by U+FFFD, as for `print` | Proved | proved | LAWS.bend pretty_parse |
 
 ### The tree interface (JSON-TREE)
 

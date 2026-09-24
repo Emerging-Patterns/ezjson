@@ -1293,6 +1293,15 @@ law print_parse:
   for h_s: {short(Ezjson.print(val)) == True{} : Bool}
   {own_m(Ezjson.parse(Ezjson.print(val))) == Some{fixv(own(val))} : Maybe<&2, V.Json>}
 
+# LAW: pretty's text parses back to the value, as print's does: owned, with
+# every code point that is not a Unicode scalar value as U+FFFD
+# JSON-PRINT-4
+law pretty_parse:
+  for +val: V.Json
+  for +h_wf: {V.wf(val) == True{} : Bool}
+  for h_s: {short(Ezjson.pretty(val)) == True{} : Bool}
+  {own_m(Ezjson.parse(Ezjson.pretty(val))) == Some{fixv(own(val))} : Maybe<&2, V.Json>}
+
 # LAW: a parsed value prints with no whitespace outside strings
 # JSON-PRINT-2
 law print_compact:
