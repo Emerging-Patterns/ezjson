@@ -5,6 +5,7 @@ import Base
 import ./value.bend as V
 import ./main.bend as Ezjson
 import ./print.bend as Print
+import ./pull.bend as Pull
 
 # a boolean
 def is_bool(val: V.Json) -> Bool:
@@ -190,6 +191,34 @@ def nth(+xs: List<&2, V.Json>, left: Nat) -> V.Json:
           hd
         case 1n+pp:
           nth(tl, pp)
+
+# a string, a key, or a number event, span or owned: the events with text
+def has_text(ev: Pull.Ev) -> Bool:
+  match ev:
+    case Pull.EStr{_}:
+      True{}
+    case Pull.EStrS{_, _}:
+      True{}
+    case Pull.EKey{_}:
+      True{}
+    case Pull.EKeyS{_, _}:
+      True{}
+    case Pull.ENum{_, _}:
+      True{}
+    case _:
+      False{}
+
+# the first `left` characters of a string, or all of it when shorter
+def take(+txt: String, left: Nat) -> String:
+  match txt:
+    case SNil{}:
+      ""
+    case SCon{hd, tl}:
+      match left:
+        case 0n:
+          ""
+        case 1n+pp:
+          SCon{hd, take(tl, pp)}
 
 # LAW: as_bool reads back the boolean bool built
 # JSON-TREE-1
@@ -425,7 +454,6 @@ law num_grammar:
   for +txt: String
   {V.num.ok(txt) == number(String.to_list(txt)) : Bool}
 
-
 # LAW: print escapes a quotation mark as backslash, quotation mark
 # JSON-STR-5
 law esc_quote:
@@ -484,3 +512,70 @@ law esc_plain:
   for h_quote: {ch != '"' : Char}
   for h_back: {ch != '\\' : Char}
   {Print.escape.char(ch) == String.from_list([ch]) : String}
+
+# LAW: next on a failed cursor is an error and a failed cursor
+# JSON-PULL-2
+law pull_failed_next:
+  for rest: String
+  for stack: List<&2, Pull.Frame>
+  for done: Bool
+  {Ezjson.next(Pull.Cur{rest, stack, done, True{}}) == (Pull.EErr{}, Pull.Cur{"", [], False{}, True{}})
+    : (Pull.Ev & Pull.Cur)}
+
+# LAW: skip on a failed cursor is the failed cursor
+# JSON-PULL-2
+# JSON-PULL-5
+law pull_failed_skip:
+  for rest: String
+  for stack: List<&2, Pull.Frame>
+  for +done: Bool
+  {Ezjson.skip(Pull.Cur{rest, stack, done, True{}}) == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
+
+# LAW: skip after the root is the failed cursor
+# JSON-PULL-5
+law pull_over_skip:
+  for rest: String
+  for stack: List<&2, Pull.Frame>
+  for +bad: Bool
+  {Ezjson.skip(Pull.Cur{rest, stack, True{}, bad}) == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
+
+# LAW: text of an owned string is its characters
+# JSON-PULL-6
+law text_str:
+  for body: String
+  {Ezjson.text(Pull.EStr{body}) == Some{body} : Maybe<&2, String>}
+
+# LAW: text of an owned key is its characters
+# JSON-PULL-6
+law text_key:
+  for body: String
+  {Ezjson.text(Pull.EKey{body}) == Some{body} : Maybe<&2, String>}
+
+# LAW: text of a string span is the first nn characters of its source
+# JSON-PULL-6
+law text_str_span:
+  for +src: String
+  for +nn: U32
+  {Ezjson.text(Pull.EStrS{src, nn}) == Some{take(src, U32.to_nat(nn))} : Maybe<&2, String>}
+
+# LAW: text of a key span is the first nn characters of its source
+# JSON-PULL-6
+law text_key_span:
+  for +src: String
+  for +nn: U32
+  {Ezjson.text(Pull.EKeyS{src, nn}) == Some{take(src, U32.to_nat(nn))} : Maybe<&2, String>}
+
+# LAW: text of a number is the first nn characters of its source, its spelling
+# JSON-PULL-6
+law text_num:
+  for +src: String
+  for +nn: U32
+  {Ezjson.text(Pull.ENum{src, nn}) == Some{take(src, U32.to_nat(nn))} : Maybe<&2, String>}
+
+# LAW: text of every other event is none
+# JSON-PULL-6
+law text_none:
+  for +ev: Pull.Ev
+  for h_kind: {has_text(ev) == False{} : Bool}
+  {Ezjson.text(ev) == None{} : Maybe<&2, String>}
+

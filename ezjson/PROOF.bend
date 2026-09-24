@@ -4,6 +4,7 @@ import ./value.bend as V
 import ./main.bend as Ezjson
 import ./lazy.bend as Lazy
 import ./print.bend as Print
+import ./pull.bend as Pull
 import ./LAWS.bend as Laws
 
 # Unit for True, Empty for False: tells them apart
@@ -1312,3 +1313,125 @@ def Laws.esc_plain(ch, h_scalar, h_ctl, h_quote, h_back):
       ct = Equal.sym(Bool, U32.is_lt(u, 32), False{}, h_ctl)
       %ct : {Print.escape.rest.go(u, Chr{u}, _) == String.from_list([Chr{u}]) : String}
       {==}
+
+# span.str of no characters, whatever the count
+law span_take.nil:
+  for +nn: U32
+  for bz: Bool
+  {V.span.str(SNil{}, nn, bz) == Laws.take(SNil{}, U32.to_nat(nn)) : String}
+
+def span_take.nil(_nn, bz):
+  match bz:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# span.str of a character and the rest, once the zero test's answer is named
+law span_take.cons:
+  for +hd: Char
+  for +tl: String
+  for +nn: U32
+  for bz: Bool
+  for ez: {U32.is_zero(nn) == bz : Bool}
+  for ih: {V.span.str(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)))
+    == Laws.take(tl, U32.to_nat(U32.sub(nn, 1))) : String}
+  {V.span.str(SCon{hd, tl}, nn, bz) == Laws.take(SCon{hd, tl}, U32.to_nat(nn)) : String}
+
+def span_take.cons(hd, tl, nn, bz, ez, ih):
+  match bz:
+    case True{}:
+      e0 = Equal.sym(U32, nn, 0, ueq(nn, 0, ez))
+      %e0 : {V.span.str(SCon{hd, tl}, nn, True{}) == Laws.take(SCon{hd, tl}, U32.to_nat(_)) : String}
+      {==}
+    case False{}:
+      en = Equal.sym(Nat, U32.to_nat(nn), 1n+U32.to_nat(U32.sub(nn, 1)), u32_dec(nn, ez))
+      %en : {SCon{hd, V.span.str(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)))}
+        == Laws.take(SCon{hd, tl}, _) : String}
+      Equal.cong(String, String, xx => SCon{hd, xx}, V.span.str(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))),
+        Laws.take(tl, U32.to_nat(U32.sub(nn, 1))), ih)
+
+# a span's characters are the first nn characters of its source
+law span_take:
+  for +src: String
+  for +nn: U32
+  {V.span.str(src, nn, U32.is_zero(nn)) == Laws.take(src, U32.to_nat(nn)) : String}
+
+def span_take(src, nn):
+  match src:
+    case SNil{}:
+      span_take.nil(nn, U32.is_zero(nn))
+    case SCon{hd, tl}:
+      span_take.cons(hd, tl, nn, U32.is_zero(nn), {==}, span_take(tl, U32.sub(nn, 1)))
+
+# Some of a span's characters is Some of the first nn characters of its source
+law some_span:
+  for +src: String
+  for +nn: U32
+  {Some{V.span.str(src, nn, U32.is_zero(nn))} == Some{Laws.take(src, U32.to_nat(nn))} : Maybe<&2, String>}
+
+def some_span(src, nn):
+  Equal.cong(String, Maybe<&2, String>, xx => Some{xx}, V.span.str(src, nn, U32.is_zero(nn)),
+    Laws.take(src, U32.to_nat(nn)), span_take(src, nn))
+
+def Laws.text_str(_body):
+  {==}
+
+def Laws.text_key(_body):
+  {==}
+
+def Laws.text_str_span(src, nn):
+  some_span(src, nn)
+
+def Laws.text_key_span(src, nn):
+  some_span(src, nn)
+
+def Laws.text_num(src, nn):
+  some_span(src, nn)
+
+def Laws.text_none(ev, h_kind):
+  match ev:
+    case Pull.ENull{}:
+      {==}
+    case Pull.EBool{_}:
+      {==}
+    case Pull.ENum{aa, bb}:
+      Empty.absurd({Ezjson.text(Pull.ENum{aa, bb}) == None{} : Maybe<&2, String>}, true_false(h_kind))
+    case Pull.EStr{aa}:
+      Empty.absurd({Ezjson.text(Pull.EStr{aa}) == None{} : Maybe<&2, String>}, true_false(h_kind))
+    case Pull.EStrS{aa, bb}:
+      Empty.absurd({Ezjson.text(Pull.EStrS{aa, bb}) == None{} : Maybe<&2, String>}, true_false(h_kind))
+    case Pull.EKey{aa}:
+      Empty.absurd({Ezjson.text(Pull.EKey{aa}) == None{} : Maybe<&2, String>}, true_false(h_kind))
+    case Pull.EKeyS{aa, bb}:
+      Empty.absurd({Ezjson.text(Pull.EKeyS{aa, bb}) == None{} : Maybe<&2, String>}, true_false(h_kind))
+    case Pull.EBeginArr{}:
+      {==}
+    case Pull.EEndArr{}:
+      {==}
+    case Pull.EBeginObj{}:
+      {==}
+    case Pull.EEndObj{}:
+      {==}
+    case Pull.EEnd{}:
+      {==}
+    case Pull.EErr{}:
+      {==}
+
+def Laws.pull_failed_next(_rest, _stack, _done):
+  {==}
+
+def Laws.pull_failed_skip(_rest, _stack, done):
+  match done:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+def Laws.pull_over_skip(_rest, _stack, bad):
+  match bad:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+

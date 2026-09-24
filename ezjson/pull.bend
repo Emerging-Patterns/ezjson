@@ -1517,10 +1517,21 @@ def next.go(fuel: Nat, txt: String, st: St) -> (Stop & Cur):
       next.go(1n+left, tl, sk.lo.go(ch, tl, left2, acc, hi, stack, goal, done,
         Lex.hex.ok(Char.to_u32(ch))))
 
-# an event from a step. A skip that surfaces here is a broken reader
+# the cursor after an end: nothing left to read, and the root is over
+def next.ended(cur: Cur) -> Cur:
+  Cur{_, stack, _, _} = cur
+  Cur{"", stack, True{}, False{}}
+
+# an event from a step. A skip that surfaces here is a broken reader. An
+# error always comes with the failed cursor, and an end with an ended one, so
+# both stick: the steps build them that way, and this says so where it is used
 def next.use(got: (Stop & Cur)) -> (Ev & Cur):
   (stop, cur) = got
   match stop:
+    case SEv{EErr{}}:
+      (EErr{}, Cur{"", Nil{}, False{}, True{}})
+    case SEv{EEnd{}}:
+      (EEnd{}, next.ended(cur))
     case SEv{ev}:
       (ev, cur)
     case SSkip{}:

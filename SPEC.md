@@ -81,11 +81,11 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | ID | Requirement | Level | Status | Law |
 | :---- | :---- | :---- | :---- | :---- |
 | JSON-PULL-1 | For every text `t` shorter than 2^32 characters, the events `next` yields from `cursor(t)` end in `EEnd` exactly when `parse(t)` is `Some{j}`, and then they are `events(j)`: the value's scalars, keys and container begins and ends in document order, with no event for a comma or a colon | Proved | pending |  |
-| JSON-PULL-2 | Once `next` yields `EErr`, every later `next` on the returned cursor yields `EErr`, and `skip` returns a failed cursor | Proved | pending |  |
+| JSON-PULL-2 | Once `next` yields `EErr`, every later `next` on the returned cursor yields `EErr`, and `skip` returns a failed cursor | Proved | pending | ezjson/LAWS.bend pull_failed_next; ezjson/LAWS.bend pull_failed_skip |
 | JSON-PULL-3 | Once `next` yields `EEnd`, every later `next` on the returned cursor yields `EEnd` | Proved | pending |  |
 | JSON-PULL-4 | For every cursor at a position where a value may start, `next(skip(c))` yields the event that follows that value's last event in the full stream from `c` | Proved | pending |  |
-| JSON-PULL-5 | `skip` at a position where no value may start (before an object key, at a close bracket, after the root, or on a failed cursor) returns a failed cursor | Proved | pending |  |
-| JSON-PULL-6 | `text(ev)` is `Some` of the decoded characters for a string or key event, span or owned, and of the spelling for a number event, and `None` for every other event | Proved | pending |  |
+| JSON-PULL-5 | `skip` at a position where no value may start (before an object key, at a close bracket, after the root, or on a failed cursor) returns a failed cursor | Proved | pending | ezjson/LAWS.bend pull_failed_skip; ezjson/LAWS.bend pull_over_skip |
+| JSON-PULL-6 | `text(ev)` is `Some` of the decoded characters for a string or key event, span or owned, and of the spelling for a number event, and `None` for every other event | Proved | proved | ezjson/LAWS.bend text_str; ezjson/LAWS.bend text_key; ezjson/LAWS.bend text_str_span; ezjson/LAWS.bend text_key_span; ezjson/LAWS.bend text_num; ezjson/LAWS.bend text_none |
 
 ## Left to prove
 
@@ -95,6 +95,8 @@ Every pending row with no Law entry is unproved in full; the RFC's Rollout says 
 | :---- | :---- | :---- |
 | JSON-STR-5 | a non-scalar code point is written as U+FFFD (`print_non_scalar`); `"` and `\` are escaped (`esc_quote`, `esc_backslash`); backspace, form feed, line feed, carriage return and tab get their two-character escapes (`esc_b` to `esc_t`); every other scalar value at or above U+0020 is written as itself (`esc_plain`) | the other controls below U+0020 as `\u00` and two lowercase hex digits |
 | JSON-PRINT-3 | `null`, `bool`, `str` and `num` build well-formed values, and `arr` and `obj` do from well-formed values (`wf_scalars`, `wf_num`, `wf_arr`, `wf_obj`) | every value `parse` returns is well-formed |
+| JSON-PULL-2 | `next` on a failed cursor is `EErr` and the failed cursor, and `skip` of it is the failed cursor (`pull_failed_next`, `pull_failed_skip`) | that the cursor `next` returns with `EErr` is the failed one: a law about `next` on a live cursor, which the checker cannot hold yet (docs/rfc/ezjson-parse-proofs.md, REVIEW-P4) |
+| JSON-PULL-5 | `skip` on a failed cursor or after the root is the failed cursor (`pull_failed_skip`, `pull_over_skip`) | before an object key and at a close bracket, which need `next` on a live cursor (REVIEW-P4) |
 
 ## Trust boundary
 
