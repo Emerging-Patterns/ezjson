@@ -64,6 +64,18 @@ The parse half of JSON-PRINT-3 landed with it (`parse_wf`): every value
 parser's state (`pinv`: the root and every open frame's cells are
 well-formed) that every token keeps (`step_inv`).
 
+JSON-PRINT-1 has landed as `print_parse`, the first part of WP-H. Parsing
+commutes with reading spans out: `ownp` of the parser's state after a token is
+the parser's state, owned, after that token with its span read out
+(`step_own`), so `own` of `parse(print(j))` is the parser on `dens` of the
+tokens, which WP-L2 and WP-P1 finish. `canon` is then the spec's
+`fixv(own(j))` (`canon_fix`). One refactor made a word span provably act as
+its word: `span.eq` now agrees with `span.str` when a span's count runs past
+the end of its source (`span_eq_go`). `parse` never builds such a span, and
+the harness and the interface probe print the same bytes; for a hand-built
+value with one, `get` now finds the key the value prints. WP-H has
+JSON-PRINT-2 and JSON-TREE-5 left.
+
 ## What parse does
 
 | |

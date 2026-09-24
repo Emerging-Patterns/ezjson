@@ -204,15 +204,16 @@ value. JSON-STR-1 and JSON-STR-5 are stated over scalar values either way.
 | JSON-PRINT-2 | For texts shorter than 2^32 - 1 characters: for every text `t` with `parse(t) == Some{j}`, `print(j)` holds no whitespace outside strings, and `print(j) == print(j2)` where `parse(print(j)) == Some{j2}` | Proved | pending | |
 | JSON-PRINT-3 | For every value built only from `null`, `bool`, `str`, `num`, `arr` and `obj`, or returned by `parse`, `wf` holds | Proved | pending | |
 
-JSON-PRINT-1 is the headline (REVIEW-2). Its law, in sketch:
+JSON-PRINT-1 is the headline (REVIEW-2). Its law, as it landed (`own` is `same`, `fixv` is REVIEW-P6's U+FFFD):
 
 ```
 # LAW: print then parse is the same value
 # JSON-PRINT-1
 law print_parse:
-  for j: V.Json
-  for w: {V.wf(j) == True{} : Bool}
-  {same.m(Parse.parse(Print.print(j)), Some{j}) == True{} : Bool}
+  for +val: V.Json
+  for +h_wf: {V.wf(val) == True{} : Bool}
+  for h_s: {short(Ezjson.print(val)) == True{} : Bool}
+  {own_m(Ezjson.parse(Ezjson.print(val))) == Some{fixv(own(val))} : Maybe<&2, V.Json>}
 ```
 
 JSON-PRINT-3 is what makes the precondition harmless: nothing a caller can

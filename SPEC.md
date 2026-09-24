@@ -4,7 +4,7 @@ This is the list of every behavior ezjson guarantees, each under a stable requir
 
 Every requirement has one of two levels. A **Proved** requirement holds for every input, and is backed by a quantified law (a `for` or `exs` binder) in `ezjson/LAWS.bend` that passes the proof gate. A **Trusted** requirement is an assumption ezjson cannot check from inside its own gate, and it is listed in the trust boundary below. A Proved requirement whose laws have not all landed has status **pending**: we intend to prove it, and until then it is not guaranteed. The proof gate is this check: the first line `bend ezjson/PROOF.bend` prints is exactly `All terms check.` Tests and fixtures are never evidence for a requirement.
 
-A value is **well-formed** when `V.wf` holds of it: its arrays and objects are chains of cells ending in `JNil`, no cell stands where a value belongs, and every number's text is a JSON number. Every value built through `main.bend` or returned by `parse` is well-formed (JSON-PRINT-3). `same` is the specification relation "the same JSON value", which ignores whether a string or key is owned or a span of the source.
+A value is **well-formed** when `V.wf` holds of it: its arrays and objects are chains of cells ending in `JNil`, no cell stands where a value belongs, and every number's text is a JSON number. Every value built through `main.bend` or returned by `parse` is well-formed (JSON-PRINT-3). `same` is the specification relation "the same JSON value", which ignores whether a string or key is owned or a span of the source. `ezjson/LAWS.bend` decides it with `own`, which reads every span out into its own string: two values are `same` when their `own` forms are equal.
 
 The reasoning behind each requirement, the verdict of each against the code at `089d520`, and the decisions that shaped them are in [docs/rfc/ezjson-spec.md](docs/rfc/ezjson-spec.md). Every law as it stood then, and the progress of the rollout, is in [docs/rfc/ezjson-law-inventory.md](docs/rfc/ezjson-law-inventory.md).
 
@@ -58,7 +58,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 
 | ID | Requirement | Level | Status | Law |
 | :---- | :---- | :---- | :---- | :---- |
-| JSON-PRINT-1 | For texts shorter than 2^32 - 1 characters: for every well-formed value `j`, `parse(print(j))` is `Some` of a value `same` as `j` with every code point that is not a Unicode scalar value replaced by U+FFFD | Proved | pending |  |
+| JSON-PRINT-1 | For texts shorter than 2^32 - 1 characters: for every well-formed value `j`, `parse(print(j))` is `Some` of a value `same` as `j` with every code point that is not a Unicode scalar value replaced by U+FFFD | Proved | proved | ezjson/LAWS.bend print_parse |
 | JSON-PRINT-2 | For texts shorter than 2^32 - 1 characters: for every text `t` with `parse(t) == Some{j}`, `print(j)` holds no whitespace outside strings, and `print(j) == print(j2)` where `parse(print(j)) == Some{j2}` | Proved | pending |  |
 | JSON-PRINT-3 | For every value built only from `null`, `bool`, `str`, `num`, `arr` and `obj`, or returned by `parse`, `wf` holds | Proved | proved | ezjson/LAWS.bend wf_scalars; ezjson/LAWS.bend wf_num; ezjson/LAWS.bend wf_arr; ezjson/LAWS.bend wf_obj; ezjson/LAWS.bend parse_wf |
 

@@ -94,6 +94,80 @@ def wf_m(mb: Maybe<&2, V.Json>) -> Bool:
     case Some{jj}:
       V.wf(jj)
 
+# a value with every span read out into its own string: two values are `same`
+# exactly when their owned forms are equal
+def own(val: V.Json) -> V.Json:
+  match val:
+    case V.JNull{}:
+      V.JNull{}
+    case V.JBool{bb}:
+      V.JBool{bb}
+    case V.JNum{raw}:
+      V.JNum{raw}
+    case V.JStr{txt}:
+      V.JStr{txt}
+    case V.JArr{items}:
+      V.JArr{own(items)}
+    case V.JObj{pairs}:
+      V.JObj{own(pairs)}
+    case V.JNil{}:
+      V.JNil{}
+    case V.JCons{hd, tl}:
+      V.JCons{own(hd), own(tl)}
+    case V.JPair{kk, vv, rr}:
+      V.JPair{kk, own(vv), own(rr)}
+    case V.JSpan{src, +nn}:
+      V.JStr{V.span.str(src, nn, U32.is_zero(nn))}
+    case V.JBind{src, +nn, vv, rr}:
+      V.JPair{V.span.str(src, nn, U32.is_zero(nn)), own(vv), own(rr)}
+
+# a parse result, owned
+def own_m(mb: Maybe<&2, V.Json>) -> Maybe<&2, V.Json>:
+  match mb:
+    case None{}:
+      None{}
+    case Some{jj}:
+      Some{own(jj)}
+
+# a character as print writes it: U+FFFD for one that is not a Unicode scalar
+# value
+def fix_char(+ch: Char) -> Char:
+  Bool.pick(Char, non_scalar(Char.to_u32(ch)), Char.from_u32(65533), ch)
+
+# a string as print writes it, character by character
+def fix_str(txt: String) -> String:
+  match txt:
+    case SNil{}:
+      SNil{}
+    case SCon{hd, tl}:
+      SCon{fix_char(hd), fix_str(tl)}
+
+# a value with its strings and keys as print writes them
+def fixv(val: V.Json) -> V.Json:
+  match val:
+    case V.JNull{}:
+      V.JNull{}
+    case V.JBool{bb}:
+      V.JBool{bb}
+    case V.JNum{raw}:
+      V.JNum{raw}
+    case V.JStr{txt}:
+      V.JStr{fix_str(txt)}
+    case V.JArr{items}:
+      V.JArr{fixv(items)}
+    case V.JObj{pairs}:
+      V.JObj{fixv(pairs)}
+    case V.JNil{}:
+      V.JNil{}
+    case V.JCons{hd, tl}:
+      V.JCons{fixv(hd), fixv(tl)}
+    case V.JPair{kk, vv, rr}:
+      V.JPair{fix_str(kk), fixv(vv), fixv(rr)}
+    case V.JSpan{src, nn}:
+      V.JSpan{src, nn}
+    case V.JBind{src, nn, vv, rr}:
+      V.JBind{src, nn, fixv(vv), fixv(rr)}
+
 # RFC 8259 §6, the grammar a JSON number must match, one def per production:
 #
 #   number = [ minus ] int [ frac ] [ exp ]
@@ -543,6 +617,15 @@ law wf_obj:
   for ps: List<&1, String & V.Json>
   for h_all: {all_wf_pairs(ps) == True{} : Bool}
   {V.wf(Ezjson.obj(ps)) == True{} : Bool}
+
+# LAW: print then parse gives back a value `same` as the one printed, with
+# every code point that is not a Unicode scalar value replaced by U+FFFD
+# JSON-PRINT-1
+law print_parse:
+  for +val: V.Json
+  for +h_wf: {V.wf(val) == True{} : Bool}
+  for h_s: {short(Ezjson.print(val)) == True{} : Bool}
+  {own_m(Ezjson.parse(Ezjson.print(val))) == Some{fixv(own(val))} : Maybe<&2, V.Json>}
 
 # LAW: every value parse returns is well-formed
 # JSON-PRINT-3
