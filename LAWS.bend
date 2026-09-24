@@ -1847,3 +1847,24 @@ law u32_nat_inj:
   for +bb: U32
   for h: {U32.to_nat(aa) == U32.to_nat(bb) : Nat}
   {aa == bb : U32}
+
+# LAW: the events next yields from the cursor of a text that parses are the
+# value's events, then the end
+# JSON-PULL-1
+law pull_events:
+  for +txt: String
+  for +jj: V.Json
+  for +h_s: {short(txt) == True{} : Bool}
+  for +h_p: {Ezjson.parse(txt) == Some{jj} : Maybe<&2, V.Json>}
+  {pulled(1n+List.length(&2, Evt, events(jj)), Ezjson.cursor(txt)) == List.append(&2, Evt, events(jj), [VEnd{}])
+    : List<&2, Evt>}
+
+# LAW: the events next yields from a text's cursor reach the end only when
+# the text parses
+# JSON-PULL-1
+law pull_ends:
+  for +txt: String
+  for +kk: Nat
+  for +h_s: {short(txt) == True{} : Bool}
+  for h_e: {is_end(ev_of(Ezjson.next(nexts(kk, Ezjson.cursor(txt))))) == True{} : Bool}
+  {is_some(Ezjson.parse(txt)) == True{} : Bool}

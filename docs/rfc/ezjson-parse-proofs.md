@@ -199,6 +199,22 @@ outside strings, and after a word only when no word character follows
 (`cp_run` against `gap`). So the text with the character does not pass,
 and does not parse (`ins_none`).
 
+JSON-PULL-1, WP-C: the cursor's events are defined in LAWS.bend
+(`events`, a value's scalars, keys and container begins and ends in
+document order; `pulled`, the events `next` yields in `n` steps; `nexts`,
+the cursor after `n` steps). One direction (`pull_events`): a text that
+parses has a derivation (`text_derives`), and by induction on it the cursor
+yields the derivation's events (`gv_go`): words through the ghost cut the
+cursor keeps (`pwrun`), strings piece by piece as the cursor quotes, spans
+or copies them. The other direction (`pull_ends`): the cursor is walked in
+step with the character lexer and the parser on its tokens, under an
+invariant that relates the cursor's frames to the parser's stack (`frel`)
+and its mode to the lexer's (`cminv`); when the cursor yields the end the
+parser has finished with a value. Following REVIEW-P4, the fuel is a budget
+of nested levels and is never normalized: every lemma holds for any fuel
+(`pgo_inv`), and the levels `next` grows through are an induction on
+the levels left (`prun_inv`, `pgrow_inv`, `pfin_inv`).
+
 ## What parse does
 
 | |
