@@ -179,6 +179,18 @@ def number(+cs: List<&2, Char>) -> Bool:
     case ch <> tl:
       when(is_cp(ch, 45), int_end(tl), int_end(ch <> tl))
 
+# the list's value at a position; null past the end
+def nth(+xs: List<&2, V.Json>, left: Nat) -> V.Json:
+  match xs:
+    case Nil{}:
+      V.JNull{}
+    case hd <> tl:
+      match left:
+        case 0n:
+          hd
+        case 1n+pp:
+          nth(tl, pp)
+
 # LAW: as_bool reads back the boolean bool built
 # JSON-TREE-1
 law as_bool_bool:
@@ -251,6 +263,13 @@ law at_not_arr:
   for idx: U32
   for h_kind: {is_arr(val) == False{} : Bool}
   {Ezjson.at(val, idx) == Ezjson.null() : V.Json}
+
+# LAW: at on an array is the element at that index, and null past the end
+# JSON-TREE-3
+law at_arr:
+  for +xs: List<&2, V.Json>
+  for idx: U32
+  {Ezjson.at(Ezjson.arr(xs), idx) == nth(xs, U32.to_nat(idx)) : V.Json}
 
 # LAW: get on a value that is not an object is null, for every key
 # JSON-TREE-4

@@ -68,7 +68,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | :---- | :---- | :---- | :---- | :---- |
 | JSON-TREE-1 | `as_bool(bool(b)) == Some{b}`, `as_str(str(s)) == Some{s}`, and `as_num(num(s)) == Some{s}` when `num.ok(s)` | Proved | proved | ezjson/LAWS.bend as_bool_bool; ezjson/LAWS.bend as_str_str; ezjson/LAWS.bend as_num_num |
 | JSON-TREE-2 | Each of `as_bool`, `as_str`, `as_num`, `as_u32`, `as_f32` is `None` on every value of another kind | Proved | proved | ezjson/LAWS.bend as_bool_kind; ezjson/LAWS.bend as_str_kind; ezjson/LAWS.bend as_num_kind; ezjson/LAWS.bend as_u32_kind; ezjson/LAWS.bend as_f32_kind |
-| JSON-TREE-3 | `at(arr(xs), i)` is the `i`-th element of `xs` when `i` is less than its length, and `null()` otherwise; `at(j, i)` is `null()` for every `j` that is not an array | Proved | pending | ezjson/LAWS.bend at_not_arr |
+| JSON-TREE-3 | `at(arr(xs), i)` is the `i`-th element of `xs` when `i` is less than its length, and `null()` otherwise; `at(j, i)` is `null()` for every `j` that is not an array | Proved | proved | ezjson/LAWS.bend at_not_arr; ezjson/LAWS.bend at_arr |
 | JSON-TREE-4 | `get(obj(ps), k)` is the value of the first pair in `ps` whose key is `k`, and `null()` when there is none; `get(j, k)` is `null()` for every `j` that is not an object | Proved | proved | ezjson/LAWS.bend get_not_obj; ezjson/LAWS.bend get_empty; ezjson/LAWS.bend get_hit; ezjson/LAWS.bend get_miss |
 | JSON-TREE-5 | For every text `t` with `parse(t) == Some{j}`, every reader (`get`, `at`, `as_*`) gives on `j` the result it gives on the owned value `same` as `j`: a span reads as its characters | Proved | pending |  |
 | JSON-TREE-6 | `as_u32(num(s))` is `Some{n}` exactly when `s` is one or more ASCII digits, with no leading zero unless `s` is `0`, whose value `n` is at most 4294967295 | Proved | pending |  |
@@ -93,7 +93,6 @@ Every pending row with no Law entry is unproved in full; the RFC's Rollout says 
 
 | ID | Proved so far | Missing |
 | :---- | :---- | :---- |
-| JSON-TREE-3 | `at` on a value that is not an array is `null()` at every index (`at_not_arr`) | `at(arr(xs), i)` is the `i`-th element, or `null()` past the end |
 | JSON-STR-5 | a code point that is not a scalar value is written as U+FFFD (`print_non_scalar`) | what is written for each scalar value: `"`, `\` and U+0000 to U+001F escaped, everything else as itself |
 | JSON-PRINT-3 | `null`, `bool`, `str` and `num` build well-formed values, and `arr` and `obj` do from well-formed values (`wf_scalars`, `wf_num`, `wf_arr`, `wf_obj`) | every value `parse` returns is well-formed |
 
