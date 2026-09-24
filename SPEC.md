@@ -60,7 +60,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | :---- | :---- | :---- | :---- | :---- |
 | JSON-PRINT-1 | For texts shorter than 2^32 - 1 characters: for every well-formed value `j`, `parse(print(j))` is `Some` of a value `same` as `j` with every code point that is not a Unicode scalar value replaced by U+FFFD | Proved | pending |  |
 | JSON-PRINT-2 | For texts shorter than 2^32 - 1 characters: for every text `t` with `parse(t) == Some{j}`, `print(j)` holds no whitespace outside strings, and `print(j) == print(j2)` where `parse(print(j)) == Some{j2}` | Proved | pending |  |
-| JSON-PRINT-3 | For every value built only from `null`, `bool`, `str`, `num`, `arr` and `obj`, or returned by `parse`, `wf` holds | Proved | pending | ezjson/LAWS.bend wf_scalars; ezjson/LAWS.bend wf_num; ezjson/LAWS.bend wf_arr; ezjson/LAWS.bend wf_obj |
+| JSON-PRINT-3 | For every value built only from `null`, `bool`, `str`, `num`, `arr` and `obj`, or returned by `parse`, `wf` holds | Proved | proved | ezjson/LAWS.bend wf_scalars; ezjson/LAWS.bend wf_num; ezjson/LAWS.bend wf_arr; ezjson/LAWS.bend wf_obj; ezjson/LAWS.bend parse_wf |
 
 ### The tree interface (JSON-TREE)
 
@@ -89,11 +89,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 
 ## Left to prove
 
-Every pending row with no Law entry is unproved in full; the RFC's Rollout says in which phase its laws land. Pending rows with partial laws:
-
-| ID | Proved so far | Missing |
-| :---- | :---- | :---- |
-| JSON-PRINT-3 | `null`, `bool`, `str` and `num` build well-formed values, and `arr` and `obj` do from well-formed values (`wf_scalars`, `wf_num`, `wf_arr`, `wf_obj`) | every value `parse` returns is well-formed |
+Every pending row has no Law entry and is unproved in full; the RFC's Rollout says in which phase its laws land. No row is partly proved.
 
 ## Trust boundary
 

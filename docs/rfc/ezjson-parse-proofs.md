@@ -51,6 +51,19 @@ code differs from the sketch:
 JSON-STR-1 follows (`str_back`), and so does the rest of JSON-STR-5
 (`esc_ctl`, the controls as `\u00` and two lowercase hex digits).
 
+WP-P1 has landed as `parse_tj`: for every well-formed value `j`, running the
+parser on `tj(j)` gives `Some{canon(j)}`, the value with its strings and span
+keys owned and fixed. The induction (`pv`) is again on the value and its
+shape; its invariant is the open frame, `rpush` and `ppush` giving the cells
+an array or object frame holds, reversed, and `aslot` and `oslot` its slot.
+A number's word is taken as that number because a JSON number is none of the
+literals (`step_num`, through `str_eq_sound`).
+
+The parse half of JSON-PRINT-3 landed with it (`parse_wf`): every value
+`parse` returns is well-formed, for every text. It is an invariant of the
+parser's state (`pinv`: the root and every open frame's cells are
+well-formed) that every token keeps (`step_inv`).
+
 ## What parse does
 
 | |

@@ -8097,3 +8097,2345 @@ def Laws.str_back(txt, h_sc, h_s):
   Equal.trans(Maybe<&2, String>, Laws.str_of(Parse.parse(Print.quote(txt))), Some{got}, Some{txt},
     one_str(Lex.tokens(Print.quote(txt)), got, tokens_print(V.JStr{txt}, {==}, h_s)),
     Equal.cong(String, Maybe<&2, String>, xx => Some{xx}, got, txt, fixs_id(txt, h_sc)))
+
+# WP-P1: the parser on a value's tokens
+
+# comparing two strings, one character in front of each, answers as the rest
+law cmp_rec_eq:
+  for h1: Char
+  for h2: Char
+  for rr: (String & String) & Cmp
+  {String.eq.fin(String.cmp.rec(h1, h2, rr)) == String.eq.fin(rr) : Bool}
+
+def cmp_rec_eq(_h1, _h2, rr):
+  ((_a, _b), _c) = rr
+  {==}
+
+# str_eq_sound, once the first characters' comparison is named
+law str_eq_at:
+  for cc: Cmp
+  for +xx: U32
+  for +yy: U32
+  for +t1: String
+  for +t2: String
+  for ec: {U32.cmp(xx, yy) == cc : Cmp}
+  for h: {String.eq.fin(String.cmp.fin(t1, t2, ((Chr{xx}, Chr{yy}), cc))) == True{} : Bool}
+  for ih: {String.eq(t1, t2) == True{} : Bool} -> {t1 == t2 : String}
+  {SCon{Chr{xx}, t1} == SCon{Chr{yy}, t2} : String}
+
+def str_eq_at(cc, xx, yy, t1, t2, ec, h, ih):
+  match cc:
+    case LT{}:
+      Empty.absurd({SCon{Chr{xx}, t1} == SCon{Chr{yy}, t2} : String}, false_true(h))
+    case GT{}:
+      Empty.absurd({SCon{Chr{xx}, t1} == SCon{Chr{yy}, t2} : String}, false_true(h))
+    case EQ{}:
+      et = ih(Equal.trans(Bool, String.eq(t1, t2), String.eq.fin(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(t1, t2))),
+        True{}, Equal.sym(Bool, String.eq.fin(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(t1, t2))), String.eq(t1, t2),
+          cmp_rec_eq(Chr{xx}, Chr{yy}, String.cmp(t1, t2))), h))
+      ex = ueq(xx, yy, Equal.cong(Cmp, Bool, zz => Cmp.is_eq(zz), U32.cmp(xx, yy), EQ{}, ec))
+      %ex : {SCon{Chr{xx}, t1} == SCon{Chr{_}, t2} : String}
+      %et : {SCon{Chr{xx}, t1} == SCon{Chr{xx}, _} : String}
+      {==}
+
+# strings String.eq calls equal are equal
+law str_eq_sound:
+  for +aa: String
+  for +bb: String
+  for h: {String.eq(aa, bb) == True{} : Bool}
+  {aa == bb : String}
+
+def str_eq_sound(aa, bb, h):
+  match aa bb:
+    case SNil{} SNil{}:
+      {==}
+    case SNil{} SCon{h2, t2}:
+      Empty.absurd({SNil{} == SCon{h2, t2} : String}, false_true(h))
+    case SCon{h1, t1} SNil{}:
+      Empty.absurd({SCon{h1, t1} == SNil{} : String}, false_true(h))
+    case SCon{Chr{+xx}, +t1} SCon{Chr{+yy}, +t2}:
+      str_eq_at(U32.cmp(xx, yy), xx, yy, t1, t2, {==}, h, hh => str_eq_sound(t1, t2, hh))
+
+# a word equal to a literal is no number
+law lit_not_num:
+  for +raw: String
+  for +lit: String
+  for e_lit: {String.eq(raw, lit) == True{} : Bool}
+  for h_lit: {V.num.ok(lit) == False{} : Bool}
+  for h_num: {V.num.ok(raw) == True{} : Bool}
+  Empty
+
+def lit_not_num(raw, lit, e_lit, h_lit, h_num):
+  true_false(Equal.trans(Bool, True{}, V.num.ok(raw), False{}, Equal.sym(Bool, V.num.ok(raw), True{}, h_num),
+    Equal.trans(Bool, V.num.ok(raw), V.num.ok(lit), False{},
+      Equal.cong(String, Bool, zz => V.num.ok(zz), raw, lit, str_eq_sound(raw, lit, e_lit)), h_lit)))
+
+# a number's word, with the literal tests named: the parser takes it as that number
+law word_num.at:
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for +raw: String
+  for e1: {String.eq(raw, "null") == b1 : Bool}
+  for e2: {String.eq(raw, "true") == b2 : Bool}
+  for e3: {String.eq(raw, "false") == b3 : Bool}
+  for +h_num: {V.num.ok(raw) == True{} : Bool}
+  ({Bool.pick(V.Json, b1, V.JNull{}, Bool.pick(V.Json, b2, V.JBool{True{}}, Bool.pick(V.Json, b3, V.JBool{False{}},
+    V.JNum{raw}))) == V.JNum{raw} : V.Json} & {Bool.or(b1, Bool.or(b2, Bool.or(b3, V.num.ok(raw)))) == True{} : Bool})
+
+def word_num.at(b1, b2, b3, raw, e1, e2, e3, h_num):
+  match b1:
+    case True{}:
+      Empty.absurd(({V.JNull{} == V.JNum{raw} : V.Json} & {True{} == True{} : Bool}),
+        lit_not_num(raw, "null", e1, {==}, h_num))
+    case False{}:
+      match b2:
+        case True{}:
+          Empty.absurd(({V.JBool{True{}} == V.JNum{raw} : V.Json} & {True{} == True{} : Bool}),
+            lit_not_num(raw, "true", e2, {==}, h_num))
+        case False{}:
+          match b3:
+            case True{}:
+              Empty.absurd(({V.JBool{False{}} == V.JNum{raw} : V.Json} & {True{} == True{} : Bool}),
+                lit_not_num(raw, "false", e3, {==}, h_num))
+            case False{}:
+              ({==}, h_num)
+
+# step_num, with the word's two facts in hand
+law step_num.go:
+  for +raw: String
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for both: ({Parse.word(raw) == V.JNum{raw} : V.Json} & {Parse.word.ok(raw) == True{} : Bool})
+  {Parse.step.word(raw, Parse.P{bad, root, stk}) == Parse.put(stk, root, V.JNum{raw}, bad) : Parse.P}
+
+def step_num.go(raw, bad, root, stk, both):
+  (ew, eo) = both
+  ok = Equal.sym(Bool, Parse.word.ok(raw), True{}, eo)
+  %ok : {Parse.step.word.go(raw, Parse.P{bad, root, stk}, _) == Parse.put(stk, root, V.JNum{raw}, bad) : Parse.P}
+  ws = Equal.sym(V.Json, Parse.word(raw), V.JNum{raw}, ew)
+  %ws : {Parse.put(stk, root, _, bad) == Parse.put(stk, root, V.JNum{raw}, bad) : Parse.P}
+  {==}
+
+# the parser on a number's word, at a place a value may go
+law step_num:
+  for +raw: String
+  for h_num: {V.num.ok(raw) == True{} : Bool}
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  {Parse.step.word(raw, Parse.P{bad, root, stk}) == Parse.put(stk, root, V.JNum{raw}, bad) : Parse.P}
+
+def step_num(raw, h_num, bad, root, stk):
+  both = word_num.at(String.eq(raw, "null"), String.eq(raw, "true"), String.eq(raw, "false"), raw, {==}, {==}, {==},
+    h_num)
+  step_num.go(raw, bad, root, stk, both)
+
+# a value as parse builds it back from its tokens: strings owned and fixed,
+# span keys owned, by shape as tj reads it
+def canon(val: V.Json, sh: V.Shape) -> V.Json:
+  match val sh:
+    case V.JNull{} V.WVal{}:
+      V.JNull{}
+    case V.JBool{bb} V.WVal{}:
+      V.JBool{bb}
+    case V.JNum{raw} V.WVal{}:
+      V.JNum{raw}
+    case V.JStr{txt} V.WVal{}:
+      V.JStr{fixs(String.to_list(txt))}
+    case V.JSpan{src, +nn} V.WVal{}:
+      V.JStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))}
+    case V.JArr{items} V.WVal{}:
+      V.JArr{canon(items, V.WArr{})}
+    case V.JObj{pairs} V.WVal{}:
+      V.JObj{canon(pairs, V.WObj{})}
+    case V.JCons{hd, tl} V.WArr{}:
+      V.JCons{canon(hd, V.WVal{}), canon(tl, V.WArr{})}
+    case V.JPair{kk, vv, rr} V.WObj{}:
+      V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), canon(rr, V.WObj{})}
+    case V.JBind{src, +nn, vv, rr} V.WObj{}:
+      V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), canon(rr, V.WObj{})}
+    case _ _:
+      V.JNil{}
+
+# an array's cells pushed, as parse pushes them, onto its frame's items
+def rpush(cells: V.Json, acc: V.Json) -> V.Json:
+  match cells:
+    case V.JCons{hd, tl}:
+      rpush(tl, V.JCons{canon(hd, V.WVal{}), acc})
+    case _:
+      acc
+
+# an object's cells pushed, as parse pushes them, onto its frame's pairs
+def ppush(cells: V.Json, acc: V.Json) -> V.Json:
+  match cells:
+    case V.JPair{kk, vv, rr}:
+      ppush(rr, V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc})
+    case V.JBind{src, +nn, vv, rr}:
+      ppush(rr, V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc})
+    case _:
+      acc
+
+# an array frame's slot after its cells: a value still, when there were none
+def aslot(cells: V.Json) -> Parse.Slot:
+  match cells:
+    case V.JNil{}:
+      Parse.SValue{}
+    case _:
+      Parse.SComma{}
+
+# an object frame's slot after its cells: a key still, when there were none
+def oslot(cells: V.Json) -> Parse.Slot:
+  match cells:
+    case V.JNil{}:
+      Parse.SKey{}
+    case _:
+      Parse.SComma{}
+
+# the parser on two token lists is the parser on the first, then the second
+law prun_app:
+  for +xs: List<&2, Lex.Tok>
+  for +ys: List<&2, Lex.Tok>
+  for +st: Parse.P
+  {Parse.run(List.append(&2, Lex.Tok, xs, ys), st) == Parse.run(ys, Parse.run(xs, st)) : Parse.P}
+
+def prun_app(xs, ys, st):
+  match xs:
+    case Nil{}:
+      {==}
+    case +hd <> +tl:
+      prun_app(tl, ys, Parse.step(hd, st))
+
+# what put_str_ready says
+def psr_goal(+stk: List<&2, Parse.Frame>, +root: Maybe<&2, V.Json>, +txt: String, +bad: Bool) -> Type:
+  {Parse.put.str(stk, root, Parse.KOwn{txt}, bad) == Parse.put(stk, root, V.JStr{txt}, bad) : Parse.P}
+
+# a string where a value may go is that value
+law put_str_ready:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +txt: String
+  for +bad: Bool
+  for h: {Parse.step.ready(stk, root) == True{} : Bool}
+  psr_goal(stk, root, txt, bad)
+
+def put_str_ready(stk, root, txt, bad, h):
+  match stk:
+    case Nil{}:
+      match root:
+        case None{}:
+          {==}
+        case Some{+rr}:
+          Empty.absurd(psr_goal([], Some{rr}, txt, bad), false_true(h))
+    case +fr <> +rest:
+      match fr:
+        case Parse.FArr{+items, +slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              Empty.absurd(psr_goal(Parse.FArr{items, Parse.SComma{}} <> rest, root, txt, bad), false_true(h))
+            case Parse.SKey{}:
+              Empty.absurd(psr_goal(Parse.FArr{items, Parse.SKey{}} <> rest, root, txt, bad), false_true(h))
+            case Parse.SColon{}:
+              Empty.absurd(psr_goal(Parse.FArr{items, Parse.SColon{}} <> rest, root, txt, bad), false_true(h))
+        case Parse.FObj{+pairs, +key, +slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              Empty.absurd(psr_goal(Parse.FObj{pairs, key, Parse.SComma{}} <> rest, root, txt, bad), false_true(h))
+            case Parse.SKey{}:
+              Empty.absurd(psr_goal(Parse.FObj{pairs, key, Parse.SKey{}} <> rest, root, txt, bad), false_true(h))
+            case Parse.SColon{}:
+              Empty.absurd(psr_goal(Parse.FObj{pairs, key, Parse.SColon{}} <> rest, root, txt, bad), false_true(h))
+
+# `[` where a value may go opens an array
+law open_arr_ready:
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for h: {Parse.step.ready(stk, root) == True{} : Bool}
+  {Parse.step.open_arr(Parse.P{bad, root, stk}) == Parse.P{bad, root, Parse.FArr{V.JNil{},
+    Parse.SValue{}} <> stk} : Parse.P}
+
+def open_arr_ready(bad, root, stk, h):
+  hs = Equal.sym(Bool, Parse.step.ready(stk, root), True{}, h)
+  %hs : {Parse.step.open_arr.go(bad, root, stk, _) == Parse.P{bad, root, Parse.FArr{V.JNil{},
+    Parse.SValue{}} <> stk} : Parse.P}
+  {==}
+
+# `{` where a value may go opens an object
+law open_obj_ready:
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for h: {Parse.step.ready(stk, root) == True{} : Bool}
+  {Parse.step.open_obj(Parse.P{bad, root, stk}) == Parse.P{bad, root, Parse.FObj{V.JNil{}, Parse.KOwn{""},
+    Parse.SKey{}} <> stk} : Parse.P}
+
+def open_obj_ready(bad, root, stk, h):
+  hs = Equal.sym(Bool, Parse.step.ready(stk, root), True{}, h)
+  %hs : {Parse.step.open_obj.go(bad, root, stk, _) == Parse.P{bad, root, Parse.FObj{V.JNil{}, Parse.KOwn{""},
+    Parse.SKey{}} <> stk} : Parse.P}
+  {==}
+
+# `]` after an array's cells and a value
+law close_arr_comma:
+  for +items: V.Json
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  {Parse.close_arr(Parse.FArr{items, Parse.SComma{}} <> stk, root, bad) ==
+    Parse.put(stk, root, V.JArr{V.reverse(items, V.JNil{})}, bad) : Parse.P}
+
+def close_arr_comma(items, _stk, _root, _bad):
+  match items:
+    case V.JNull{}:
+      {==}
+    case V.JBool{+x1}:
+      {==}
+    case V.JNum{+x1}:
+      {==}
+    case V.JStr{+x1}:
+      {==}
+    case V.JArr{+x1}:
+      {==}
+    case V.JObj{+x1}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{+x1, +x2}:
+      {==}
+    case V.JPair{+x1, +x2, +x3}:
+      {==}
+    case V.JSpan{+x1, +x2}:
+      {==}
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      {==}
+
+# `}` after an object's cells and a value
+law close_obj_comma:
+  for +pairs: V.Json
+  for +key: Parse.Key
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  {Parse.close_obj(Parse.FObj{pairs, key, Parse.SComma{}} <> stk, root, bad) ==
+    Parse.put(stk, root, V.JObj{V.reverse(pairs, V.JNil{})}, bad) : Parse.P}
+
+def close_obj_comma(pairs, _key, _stk, _root, _bad):
+  match pairs:
+    case V.JNull{}:
+      {==}
+    case V.JBool{+x1}:
+      {==}
+    case V.JNum{+x1}:
+      {==}
+    case V.JStr{+x1}:
+      {==}
+    case V.JArr{+x1}:
+      {==}
+    case V.JObj{+x1}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{+x1, +x2}:
+      {==}
+    case V.JPair{+x1, +x2, +x3}:
+      {==}
+    case V.JSpan{+x1, +x2}:
+      {==}
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      {==}
+
+# pushing an array's cells then reversing them gives the cells back in order
+law rev_rpush:
+  for +cells: V.Json
+  for +acc: V.Json
+  {V.reverse(rpush(cells, acc), V.JNil{}) == V.reverse(acc, canon(cells, V.WArr{})) : V.Json}
+
+def rev_rpush(cells, acc):
+  match cells:
+    case V.JNull{}:
+      {==}
+    case V.JBool{+x1}:
+      {==}
+    case V.JNum{+x1}:
+      {==}
+    case V.JStr{+x1}:
+      {==}
+    case V.JArr{+x1}:
+      {==}
+    case V.JObj{+x1}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{+x1, +x2}:
+      rev_rpush(x2, V.JCons{canon(x1, V.WVal{}), acc})
+    case V.JPair{+x1, +x2, +x3}:
+      {==}
+    case V.JSpan{+x1, +x2}:
+      {==}
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      {==}
+
+# pushing an object's cells then reversing them gives the cells back in order
+law rev_ppush:
+  for +cells: V.Json
+  for +acc: V.Json
+  {V.reverse(ppush(cells, acc), V.JNil{}) == V.reverse(acc, canon(cells, V.WObj{})) : V.Json}
+
+def rev_ppush(cells, acc):
+  match cells:
+    case V.JNull{}:
+      {==}
+    case V.JBool{+x1}:
+      {==}
+    case V.JNum{+x1}:
+      {==}
+    case V.JStr{+x1}:
+      {==}
+    case V.JArr{+x1}:
+      {==}
+    case V.JObj{+x1}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{+x1, +x2}:
+      {==}
+    case V.JPair{+x1, +x2, +x3}:
+      rev_ppush(x3, V.JPair{fixs(String.to_list(x1)), canon(x2, V.WVal{}), acc})
+    case V.JSpan{+x1, +x2}:
+      {==}
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      rev_ppush(x4, V.JPair{fixs(String.to_list(V.span.str(x1, x2, U32.is_zero(x2)))), canon(x3, V.WVal{}), acc})
+
+# `]` after an array's cells
+law close_after_arr:
+  for +items: V.Json
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  {Parse.close_arr(Parse.FArr{rpush(items, V.JNil{}), aslot(items)} <> stk, root, bad) ==
+    Parse.put(stk, root, V.JArr{canon(items, V.WArr{})}, bad) : Parse.P}
+
+def close_after_arr(items, bad, root, stk):
+  match items:
+
+    case V.JNull{}:
+      Equal.trans(Parse.P, Parse.close_arr(Parse.FArr{rpush(V.JNull{}, V.JNil{}), Parse.SComma{}} <> stk, root, bad),
+        Parse.put(stk, root, V.JArr{V.reverse(rpush(V.JNull{}, V.JNil{}), V.JNil{})}, bad), Parse.put(stk, root,
+        V.JArr{canon(V.JNull{}, V.WArr{})}, bad), close_arr_comma(rpush(V.JNull{}, V.JNil{}), stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JArr{zz}, bad), V.reverse(rpush(V.JNull{}, V.JNil{}),
+          V.JNil{}), canon(V.JNull{}, V.WArr{}), rev_rpush(V.JNull{}, V.JNil{})))
+    case V.JBool{+x1}:
+      Equal.trans(Parse.P, Parse.close_arr(Parse.FArr{rpush(V.JBool{x1}, V.JNil{}), Parse.SComma{}} <> stk, root, bad),
+        Parse.put(stk, root, V.JArr{V.reverse(rpush(V.JBool{x1}, V.JNil{}), V.JNil{})}, bad), Parse.put(stk, root,
+        V.JArr{canon(V.JBool{x1}, V.WArr{})}, bad), close_arr_comma(rpush(V.JBool{x1}, V.JNil{}), stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JArr{zz}, bad), V.reverse(rpush(V.JBool{x1},
+          V.JNil{}), V.JNil{}), canon(V.JBool{x1}, V.WArr{}), rev_rpush(V.JBool{x1}, V.JNil{})))
+    case V.JNum{+x1}:
+      Equal.trans(Parse.P, Parse.close_arr(Parse.FArr{rpush(V.JNum{x1}, V.JNil{}), Parse.SComma{}} <> stk, root, bad),
+        Parse.put(stk, root, V.JArr{V.reverse(rpush(V.JNum{x1}, V.JNil{}), V.JNil{})}, bad), Parse.put(stk, root,
+        V.JArr{canon(V.JNum{x1}, V.WArr{})}, bad), close_arr_comma(rpush(V.JNum{x1}, V.JNil{}), stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JArr{zz}, bad), V.reverse(rpush(V.JNum{x1}, V.JNil{}),
+          V.JNil{}), canon(V.JNum{x1}, V.WArr{}), rev_rpush(V.JNum{x1}, V.JNil{})))
+    case V.JStr{+x1}:
+      Equal.trans(Parse.P, Parse.close_arr(Parse.FArr{rpush(V.JStr{x1}, V.JNil{}), Parse.SComma{}} <> stk, root, bad),
+        Parse.put(stk, root, V.JArr{V.reverse(rpush(V.JStr{x1}, V.JNil{}), V.JNil{})}, bad), Parse.put(stk, root,
+        V.JArr{canon(V.JStr{x1}, V.WArr{})}, bad), close_arr_comma(rpush(V.JStr{x1}, V.JNil{}), stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JArr{zz}, bad), V.reverse(rpush(V.JStr{x1}, V.JNil{}),
+          V.JNil{}), canon(V.JStr{x1}, V.WArr{}), rev_rpush(V.JStr{x1}, V.JNil{})))
+    case V.JArr{+x1}:
+      Equal.trans(Parse.P, Parse.close_arr(Parse.FArr{rpush(V.JArr{x1}, V.JNil{}), Parse.SComma{}} <> stk, root, bad),
+        Parse.put(stk, root, V.JArr{V.reverse(rpush(V.JArr{x1}, V.JNil{}), V.JNil{})}, bad), Parse.put(stk, root,
+        V.JArr{canon(V.JArr{x1}, V.WArr{})}, bad), close_arr_comma(rpush(V.JArr{x1}, V.JNil{}), stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JArr{zz}, bad), V.reverse(rpush(V.JArr{x1}, V.JNil{}),
+          V.JNil{}), canon(V.JArr{x1}, V.WArr{}), rev_rpush(V.JArr{x1}, V.JNil{})))
+    case V.JObj{+x1}:
+      Equal.trans(Parse.P, Parse.close_arr(Parse.FArr{rpush(V.JObj{x1}, V.JNil{}), Parse.SComma{}} <> stk, root, bad),
+        Parse.put(stk, root, V.JArr{V.reverse(rpush(V.JObj{x1}, V.JNil{}), V.JNil{})}, bad), Parse.put(stk, root,
+        V.JArr{canon(V.JObj{x1}, V.WArr{})}, bad), close_arr_comma(rpush(V.JObj{x1}, V.JNil{}), stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JArr{zz}, bad), V.reverse(rpush(V.JObj{x1}, V.JNil{}),
+          V.JNil{}), canon(V.JObj{x1}, V.WArr{}), rev_rpush(V.JObj{x1}, V.JNil{})))
+    case V.JNil{}:
+      {==}
+    case V.JCons{+x1, +x2}:
+      Equal.trans(Parse.P, Parse.close_arr(Parse.FArr{rpush(V.JCons{x1, x2}, V.JNil{}), Parse.SComma{}} <> stk, root,
+        bad), Parse.put(stk, root, V.JArr{V.reverse(rpush(V.JCons{x1, x2}, V.JNil{}), V.JNil{})}, bad), Parse.put(stk,
+        root, V.JArr{canon(V.JCons{x1, x2}, V.WArr{})}, bad), close_arr_comma(rpush(V.JCons{x1, x2}, V.JNil{}), stk,
+        root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JArr{zz}, bad), V.reverse(rpush(V.JCons{x1, x2},
+          V.JNil{}), V.JNil{}), canon(V.JCons{x1, x2}, V.WArr{}), rev_rpush(V.JCons{x1, x2}, V.JNil{})))
+    case V.JPair{+x1, +x2, +x3}:
+      Equal.trans(Parse.P, Parse.close_arr(Parse.FArr{rpush(V.JPair{x1, x2, x3}, V.JNil{}), Parse.SComma{}} <> stk,
+        root, bad), Parse.put(stk, root, V.JArr{V.reverse(rpush(V.JPair{x1, x2, x3}, V.JNil{}), V.JNil{})}, bad),
+        Parse.put(stk, root, V.JArr{canon(V.JPair{x1, x2, x3}, V.WArr{})}, bad), close_arr_comma(rpush(V.JPair{x1, x2,
+        x3}, V.JNil{}), stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JArr{zz}, bad), V.reverse(rpush(V.JPair{x1, x2, x3},
+          V.JNil{}), V.JNil{}), canon(V.JPair{x1, x2, x3}, V.WArr{}), rev_rpush(V.JPair{x1, x2, x3}, V.JNil{})))
+    case V.JSpan{+x1, +x2}:
+      Equal.trans(Parse.P, Parse.close_arr(Parse.FArr{rpush(V.JSpan{x1, x2}, V.JNil{}), Parse.SComma{}} <> stk, root,
+        bad), Parse.put(stk, root, V.JArr{V.reverse(rpush(V.JSpan{x1, x2}, V.JNil{}), V.JNil{})}, bad), Parse.put(stk,
+        root, V.JArr{canon(V.JSpan{x1, x2}, V.WArr{})}, bad), close_arr_comma(rpush(V.JSpan{x1, x2}, V.JNil{}), stk,
+        root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JArr{zz}, bad), V.reverse(rpush(V.JSpan{x1, x2},
+          V.JNil{}), V.JNil{}), canon(V.JSpan{x1, x2}, V.WArr{}), rev_rpush(V.JSpan{x1, x2}, V.JNil{})))
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      Equal.trans(Parse.P, Parse.close_arr(Parse.FArr{rpush(V.JBind{x1, x2, x3, x4}, V.JNil{}), Parse.SComma{}} <> stk,
+        root, bad), Parse.put(stk, root, V.JArr{V.reverse(rpush(V.JBind{x1, x2, x3, x4}, V.JNil{}), V.JNil{})}, bad),
+        Parse.put(stk, root, V.JArr{canon(V.JBind{x1, x2, x3, x4}, V.WArr{})}, bad), close_arr_comma(rpush(V.JBind{x1,
+        x2, x3, x4}, V.JNil{}), stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JArr{zz}, bad), V.reverse(rpush(V.JBind{x1, x2, x3,
+          x4}, V.JNil{}), V.JNil{}), canon(V.JBind{x1, x2, x3, x4}, V.WArr{}), rev_rpush(V.JBind{x1, x2, x3, x4},
+          V.JNil{})))
+
+# `}` after an object's cells
+law close_after_obj:
+  for +pairs: V.Json
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  {Parse.close_obj(Parse.FObj{ppush(pairs, V.JNil{}), Parse.KOwn{""}, oslot(pairs)} <> stk, root, bad) ==
+    Parse.put(stk, root, V.JObj{canon(pairs, V.WObj{})}, bad) : Parse.P}
+
+def close_after_obj(pairs, bad, root, stk):
+  match pairs:
+    case V.JNull{}:
+      Equal.trans(Parse.P, Parse.close_obj(Parse.FObj{ppush(V.JNull{}, V.JNil{}), Parse.KOwn{""},
+        Parse.SComma{}} <> stk, root, bad), Parse.put(stk, root, V.JObj{V.reverse(ppush(V.JNull{}, V.JNil{}),
+        V.JNil{})}, bad), Parse.put(stk, root, V.JObj{canon(V.JNull{}, V.WObj{})}, bad),
+        close_obj_comma(ppush(V.JNull{}, V.JNil{}), Parse.KOwn{""}, stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JObj{zz}, bad), V.reverse(ppush(V.JNull{}, V.JNil{}),
+          V.JNil{}), canon(V.JNull{}, V.WObj{}), rev_ppush(V.JNull{}, V.JNil{})))
+    case V.JBool{+x1}:
+      Equal.trans(Parse.P, Parse.close_obj(Parse.FObj{ppush(V.JBool{x1}, V.JNil{}), Parse.KOwn{""},
+        Parse.SComma{}} <> stk, root, bad), Parse.put(stk, root, V.JObj{V.reverse(ppush(V.JBool{x1}, V.JNil{}),
+        V.JNil{})}, bad), Parse.put(stk, root, V.JObj{canon(V.JBool{x1}, V.WObj{})}, bad),
+        close_obj_comma(ppush(V.JBool{x1}, V.JNil{}), Parse.KOwn{""}, stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JObj{zz}, bad), V.reverse(ppush(V.JBool{x1},
+          V.JNil{}), V.JNil{}), canon(V.JBool{x1}, V.WObj{}), rev_ppush(V.JBool{x1}, V.JNil{})))
+    case V.JNum{+x1}:
+      Equal.trans(Parse.P, Parse.close_obj(Parse.FObj{ppush(V.JNum{x1}, V.JNil{}), Parse.KOwn{""},
+        Parse.SComma{}} <> stk, root, bad), Parse.put(stk, root, V.JObj{V.reverse(ppush(V.JNum{x1}, V.JNil{}),
+        V.JNil{})}, bad), Parse.put(stk, root, V.JObj{canon(V.JNum{x1}, V.WObj{})}, bad),
+        close_obj_comma(ppush(V.JNum{x1}, V.JNil{}), Parse.KOwn{""}, stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JObj{zz}, bad), V.reverse(ppush(V.JNum{x1}, V.JNil{}),
+          V.JNil{}), canon(V.JNum{x1}, V.WObj{}), rev_ppush(V.JNum{x1}, V.JNil{})))
+    case V.JStr{+x1}:
+      Equal.trans(Parse.P, Parse.close_obj(Parse.FObj{ppush(V.JStr{x1}, V.JNil{}), Parse.KOwn{""},
+        Parse.SComma{}} <> stk, root, bad), Parse.put(stk, root, V.JObj{V.reverse(ppush(V.JStr{x1}, V.JNil{}),
+        V.JNil{})}, bad), Parse.put(stk, root, V.JObj{canon(V.JStr{x1}, V.WObj{})}, bad),
+        close_obj_comma(ppush(V.JStr{x1}, V.JNil{}), Parse.KOwn{""}, stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JObj{zz}, bad), V.reverse(ppush(V.JStr{x1}, V.JNil{}),
+          V.JNil{}), canon(V.JStr{x1}, V.WObj{}), rev_ppush(V.JStr{x1}, V.JNil{})))
+    case V.JArr{+x1}:
+      Equal.trans(Parse.P, Parse.close_obj(Parse.FObj{ppush(V.JArr{x1}, V.JNil{}), Parse.KOwn{""},
+        Parse.SComma{}} <> stk, root, bad), Parse.put(stk, root, V.JObj{V.reverse(ppush(V.JArr{x1}, V.JNil{}),
+        V.JNil{})}, bad), Parse.put(stk, root, V.JObj{canon(V.JArr{x1}, V.WObj{})}, bad),
+        close_obj_comma(ppush(V.JArr{x1}, V.JNil{}), Parse.KOwn{""}, stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JObj{zz}, bad), V.reverse(ppush(V.JArr{x1}, V.JNil{}),
+          V.JNil{}), canon(V.JArr{x1}, V.WObj{}), rev_ppush(V.JArr{x1}, V.JNil{})))
+    case V.JObj{+x1}:
+      Equal.trans(Parse.P, Parse.close_obj(Parse.FObj{ppush(V.JObj{x1}, V.JNil{}), Parse.KOwn{""},
+        Parse.SComma{}} <> stk, root, bad), Parse.put(stk, root, V.JObj{V.reverse(ppush(V.JObj{x1}, V.JNil{}),
+        V.JNil{})}, bad), Parse.put(stk, root, V.JObj{canon(V.JObj{x1}, V.WObj{})}, bad),
+        close_obj_comma(ppush(V.JObj{x1}, V.JNil{}), Parse.KOwn{""}, stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JObj{zz}, bad), V.reverse(ppush(V.JObj{x1}, V.JNil{}),
+          V.JNil{}), canon(V.JObj{x1}, V.WObj{}), rev_ppush(V.JObj{x1}, V.JNil{})))
+    case V.JNil{}:
+      {==}
+    case V.JCons{+x1, +x2}:
+      Equal.trans(Parse.P, Parse.close_obj(Parse.FObj{ppush(V.JCons{x1, x2}, V.JNil{}), Parse.KOwn{""},
+        Parse.SComma{}} <> stk, root, bad), Parse.put(stk, root, V.JObj{V.reverse(ppush(V.JCons{x1, x2}, V.JNil{}),
+        V.JNil{})}, bad), Parse.put(stk, root, V.JObj{canon(V.JCons{x1, x2}, V.WObj{})}, bad),
+        close_obj_comma(ppush(V.JCons{x1, x2}, V.JNil{}), Parse.KOwn{""}, stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JObj{zz}, bad), V.reverse(ppush(V.JCons{x1, x2},
+          V.JNil{}), V.JNil{}), canon(V.JCons{x1, x2}, V.WObj{}), rev_ppush(V.JCons{x1, x2}, V.JNil{})))
+    case V.JPair{+x1, +x2, +x3}:
+      Equal.trans(Parse.P, Parse.close_obj(Parse.FObj{ppush(V.JPair{x1, x2, x3}, V.JNil{}), Parse.KOwn{""},
+        Parse.SComma{}} <> stk, root, bad), Parse.put(stk, root, V.JObj{V.reverse(ppush(V.JPair{x1, x2, x3}, V.JNil{}),
+        V.JNil{})}, bad), Parse.put(stk, root, V.JObj{canon(V.JPair{x1, x2, x3}, V.WObj{})}, bad),
+        close_obj_comma(ppush(V.JPair{x1, x2, x3}, V.JNil{}), Parse.KOwn{""}, stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JObj{zz}, bad), V.reverse(ppush(V.JPair{x1, x2, x3},
+          V.JNil{}), V.JNil{}), canon(V.JPair{x1, x2, x3}, V.WObj{}), rev_ppush(V.JPair{x1, x2, x3}, V.JNil{})))
+    case V.JSpan{+x1, +x2}:
+      Equal.trans(Parse.P, Parse.close_obj(Parse.FObj{ppush(V.JSpan{x1, x2}, V.JNil{}), Parse.KOwn{""},
+        Parse.SComma{}} <> stk, root, bad), Parse.put(stk, root, V.JObj{V.reverse(ppush(V.JSpan{x1, x2}, V.JNil{}),
+        V.JNil{})}, bad), Parse.put(stk, root, V.JObj{canon(V.JSpan{x1, x2}, V.WObj{})}, bad),
+        close_obj_comma(ppush(V.JSpan{x1, x2}, V.JNil{}), Parse.KOwn{""}, stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JObj{zz}, bad), V.reverse(ppush(V.JSpan{x1, x2},
+          V.JNil{}), V.JNil{}), canon(V.JSpan{x1, x2}, V.WObj{}), rev_ppush(V.JSpan{x1, x2}, V.JNil{})))
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      Equal.trans(Parse.P, Parse.close_obj(Parse.FObj{ppush(V.JBind{x1, x2, x3, x4}, V.JNil{}), Parse.KOwn{""},
+        Parse.SComma{}} <> stk, root, bad), Parse.put(stk, root, V.JObj{V.reverse(ppush(V.JBind{x1, x2, x3, x4},
+        V.JNil{}), V.JNil{})}, bad), Parse.put(stk, root, V.JObj{canon(V.JBind{x1, x2, x3, x4}, V.WObj{})}, bad),
+        close_obj_comma(ppush(V.JBind{x1, x2, x3, x4}, V.JNil{}), Parse.KOwn{""}, stk, root, bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, V.JObj{zz}, bad), V.reverse(ppush(V.JBind{x1, x2, x3,
+          x4}, V.JNil{}), V.JNil{}), canon(V.JBind{x1, x2, x3, x4}, V.WObj{}), rev_ppush(V.JBind{x1, x2, x3, x4},
+          V.JNil{})))
+
+# what pv says of a value by its shape: at a place a value may go, a value's
+# tokens put the value; an array's or object's cells push their elements
+def pg(
+  +val: V.Json,
+  sh: V.Shape,
+  +bad: Bool,
+  +root: Maybe<&2, V.Json>,
+  +stk: List<&2, Parse.Frame>,
+  +acc: V.Json
+) -> Type:
+  match sh:
+    case V.WVal{}:
+      {Parse.step.ready(stk, root) == True{} : Bool} ->
+        {Parse.run(tj(val, V.WVal{}), Parse.P{bad, root, stk}) == Parse.put(stk, root, canon(val, V.WVal{}),
+          bad) : Parse.P}
+    case V.WArr{}:
+      {Parse.run(tj(val, V.WArr{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}) ==
+        Parse.P{bad, root, Parse.FArr{rpush(val, acc), aslot(val)} <> stk} : Parse.P}
+    case V.WObj{}:
+      {Parse.run(tj(val, V.WObj{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{""}, Parse.SKey{}} <> stk}) ==
+        Parse.P{bad, root, Parse.FObj{ppush(val, acc), Parse.KOwn{""}, oslot(val)} <> stk} : Parse.P}
+
+# pv for a boolean
+law pv_bool:
+  for bb: Bool
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  pg(V.JBool{bb}, V.WVal{}, bad, root, stk, V.JNil{})
+
+def pv_bool(bb, _bad, _root, _stk):
+  match bb:
+    case True{}:
+      _hr => {==}
+    case False{}:
+      _hr => {==}
+
+# pv for an array cell, by what follows it
+law pv_cons:
+  for tl: V.Json
+  for +hd: V.Json
+  for +h: {V.wf.go(V.JCons{hd, tl}, V.WArr{}) == True{} : Bool}
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for +acc: V.Json
+  for ih_hd: {V.wf.go(hd, V.WVal{}) == True{} : Bool} -> pg(hd, V.WVal{}, bad, root, Parse.FArr{acc,
+    Parse.SValue{}} <> stk, V.JNil{})
+  for ih_tl: {V.wf.go(tl, V.WArr{}) == True{} : Bool} -> pg(tl, V.WArr{}, bad, root, stk, V.JCons{canon(hd, V.WVal{}),
+    acc})
+  pg(V.JCons{hd, tl}, V.WArr{}, bad, root, stk, acc)
+
+def pv_cons(tl, hd, h, bad, root, stk, acc, ih_hd, ih_tl):
+  match tl:
+    case V.JNil{}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JNil{}, V.WArr{}), h)
+      ih_hd(hd_ok)({==})
+    case V.JNull{}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JNull{}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JNull{}, V.WArr{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JNull{},
+        V.WArr{})), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JNull{}, V.WArr{}), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root,
+        Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FArr{rpush(V.JNull{}, V.JCons{canon(hd,
+        V.WVal{}), acc}), aslot(V.JNull{})} <> stk}, prun_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JNull{},
+        V.WArr{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JNull{}, V.WArr{}), Parse.run(tj(hd, V.WVal{}),
+          Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JNull{},
+          V.WArr{}), Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{rpush(V.JNull{}, V.JCons{canon(hd, V.WVal{}), acc}), aslot(V.JNull{})} <> stk},
+          Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JNull{}, V.WArr{}), zz), Parse.run(tj(hd,
+          V.WVal{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}), Parse.P{bad, root,
+          Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}, ih_hd(hd_ok)({==})),
+        ih_tl(tl_ok)))
+    case V.JBool{+x1}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JBool{x1}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JBool{x1}, V.WArr{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JBool{x1},
+        V.WArr{})), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JBool{x1}, V.WArr{}), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root,
+        Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FArr{rpush(V.JBool{x1}, V.JCons{canon(hd,
+        V.WVal{}), acc}), aslot(V.JBool{x1})} <> stk}, prun_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JBool{x1},
+        V.WArr{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JBool{x1}, V.WArr{}), Parse.run(tj(hd, V.WVal{}),
+          Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JBool{x1},
+          V.WArr{}), Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{rpush(V.JBool{x1}, V.JCons{canon(hd, V.WVal{}), acc}),
+          aslot(V.JBool{x1})} <> stk}, Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JBool{x1},
+          V.WArr{}), zz), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}, ih_hd(hd_ok)({==})),
+        ih_tl(tl_ok)))
+    case V.JNum{+x1}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JNum{x1}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JNum{x1}, V.WArr{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JNum{x1},
+        V.WArr{})), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JNum{x1}, V.WArr{}), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root,
+        Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FArr{rpush(V.JNum{x1}, V.JCons{canon(hd,
+        V.WVal{}), acc}), aslot(V.JNum{x1})} <> stk}, prun_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JNum{x1},
+        V.WArr{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JNum{x1}, V.WArr{}), Parse.run(tj(hd, V.WVal{}),
+          Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JNum{x1},
+          V.WArr{}), Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{rpush(V.JNum{x1}, V.JCons{canon(hd, V.WVal{}), acc}),
+          aslot(V.JNum{x1})} <> stk}, Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JNum{x1},
+          V.WArr{}), zz), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}, ih_hd(hd_ok)({==})),
+        ih_tl(tl_ok)))
+    case V.JStr{+x1}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JStr{x1}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JStr{x1}, V.WArr{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JStr{x1},
+        V.WArr{})), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JStr{x1}, V.WArr{}), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root,
+        Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FArr{rpush(V.JStr{x1}, V.JCons{canon(hd,
+        V.WVal{}), acc}), aslot(V.JStr{x1})} <> stk}, prun_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JStr{x1},
+        V.WArr{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JStr{x1}, V.WArr{}), Parse.run(tj(hd, V.WVal{}),
+          Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JStr{x1},
+          V.WArr{}), Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{rpush(V.JStr{x1}, V.JCons{canon(hd, V.WVal{}), acc}),
+          aslot(V.JStr{x1})} <> stk}, Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JStr{x1},
+          V.WArr{}), zz), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}, ih_hd(hd_ok)({==})),
+        ih_tl(tl_ok)))
+    case V.JArr{+x1}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JArr{x1}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JArr{x1}, V.WArr{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JArr{x1},
+        V.WArr{})), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JArr{x1}, V.WArr{}), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root,
+        Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FArr{rpush(V.JArr{x1}, V.JCons{canon(hd,
+        V.WVal{}), acc}), aslot(V.JArr{x1})} <> stk}, prun_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JArr{x1},
+        V.WArr{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JArr{x1}, V.WArr{}), Parse.run(tj(hd, V.WVal{}),
+          Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JArr{x1},
+          V.WArr{}), Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{rpush(V.JArr{x1}, V.JCons{canon(hd, V.WVal{}), acc}),
+          aslot(V.JArr{x1})} <> stk}, Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JArr{x1},
+          V.WArr{}), zz), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}, ih_hd(hd_ok)({==})),
+        ih_tl(tl_ok)))
+    case V.JObj{+x1}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JObj{x1}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JObj{x1}, V.WArr{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JObj{x1},
+        V.WArr{})), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JObj{x1}, V.WArr{}), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root,
+        Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FArr{rpush(V.JObj{x1}, V.JCons{canon(hd,
+        V.WVal{}), acc}), aslot(V.JObj{x1})} <> stk}, prun_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JObj{x1},
+        V.WArr{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JObj{x1}, V.WArr{}), Parse.run(tj(hd, V.WVal{}),
+          Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JObj{x1},
+          V.WArr{}), Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{rpush(V.JObj{x1}, V.JCons{canon(hd, V.WVal{}), acc}),
+          aslot(V.JObj{x1})} <> stk}, Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JObj{x1},
+          V.WArr{}), zz), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}, ih_hd(hd_ok)({==})),
+        ih_tl(tl_ok)))
+    case V.JCons{+x1, +x2}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JCons{x1, x2}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JCons{x1, x2}, V.WArr{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JCons{x1, x2},
+        V.WArr{})), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WArr{}), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root,
+        Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FArr{rpush(V.JCons{x1, x2},
+        V.JCons{canon(hd, V.WVal{}), acc}), aslot(V.JCons{x1, x2})} <> stk}, prun_app(tj(hd, V.WVal{}),
+        Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WArr{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WArr{}), Parse.run(tj(hd, V.WVal{}),
+          Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JCons{x1, x2},
+          V.WArr{}), Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{rpush(V.JCons{x1, x2}, V.JCons{canon(hd, V.WVal{}), acc}), aslot(V.JCons{x1,
+          x2})} <> stk}, Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WArr{}),
+          zz), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}), Parse.P{bad,
+          root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}, ih_hd(hd_ok)({==})),
+        ih_tl(tl_ok)))
+    case V.JPair{+x1, +x2, +x3}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JPair{x1, x2, x3}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JPair{x1, x2, x3}, V.WArr{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JPair{x1, x2, x3},
+        V.WArr{})), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JPair{x1, x2, x3}, V.WArr{}), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root,
+        Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FArr{rpush(V.JPair{x1, x2, x3},
+        V.JCons{canon(hd, V.WVal{}), acc}), aslot(V.JPair{x1, x2, x3})} <> stk}, prun_app(tj(hd, V.WVal{}),
+        Lex.TComma{} <> tj(V.JPair{x1, x2, x3}, V.WArr{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JPair{x1, x2, x3}, V.WArr{}), Parse.run(tj(hd, V.WVal{}),
+          Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JPair{x1, x2,
+          x3}, V.WArr{}), Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{rpush(V.JPair{x1, x2, x3}, V.JCons{canon(hd, V.WVal{}), acc}),
+          aslot(V.JPair{x1, x2, x3})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JPair{x1, x2, x3}, V.WArr{}), zz), Parse.run(tj(hd, V.WVal{}),
+          Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}), Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd,
+          V.WVal{}), acc}, Parse.SComma{}} <> stk}, ih_hd(hd_ok)({==})),
+        ih_tl(tl_ok)))
+    case V.JSpan{+x1, +x2}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JSpan{x1, x2}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JSpan{x1, x2}, V.WArr{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{x1, x2},
+        V.WArr{})), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WArr{}), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root,
+        Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FArr{rpush(V.JSpan{x1, x2},
+        V.JCons{canon(hd, V.WVal{}), acc}), aslot(V.JSpan{x1, x2})} <> stk}, prun_app(tj(hd, V.WVal{}),
+        Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WArr{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WArr{}), Parse.run(tj(hd, V.WVal{}),
+          Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JSpan{x1, x2},
+          V.WArr{}), Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{rpush(V.JSpan{x1, x2}, V.JCons{canon(hd, V.WVal{}), acc}), aslot(V.JSpan{x1,
+          x2})} <> stk}, Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WArr{}),
+          zz), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}), Parse.P{bad,
+          root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}, ih_hd(hd_ok)({==})),
+        ih_tl(tl_ok)))
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JBind{x1, x2, x3, x4}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JBind{x1, x2, x3, x4}, V.WArr{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JBind{x1, x2, x3,
+        x4}, V.WArr{})), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4}, V.WArr{}), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root,
+        Parse.FArr{acc, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FArr{rpush(V.JBind{x1, x2, x3, x4},
+        V.JCons{canon(hd, V.WVal{}), acc}), aslot(V.JBind{x1, x2, x3, x4})} <> stk}, prun_app(tj(hd, V.WVal{}),
+        Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4}, V.WArr{}), Parse.P{bad, root, Parse.FArr{acc,
+        Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4}, V.WArr{}), Parse.run(tj(hd,
+          V.WVal{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk})),
+          Parse.run(Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4}, V.WArr{}), Parse.P{bad, root,
+          Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}), Parse.P{bad, root,
+          Parse.FArr{rpush(V.JBind{x1, x2, x3, x4}, V.JCons{canon(hd, V.WVal{}), acc}), aslot(V.JBind{x1, x2, x3,
+          x4})} <> stk}, Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4},
+          V.WArr{}), zz), Parse.run(tj(hd, V.WVal{}), Parse.P{bad, root, Parse.FArr{acc, Parse.SValue{}} <> stk}),
+          Parse.P{bad, root, Parse.FArr{V.JCons{canon(hd, V.WVal{}), acc}, Parse.SComma{}} <> stk}, ih_hd(hd_ok)({==})),
+        ih_tl(tl_ok)))
+
+# pv for an object cell, by what follows it
+law pv_pair:
+  for rr: V.Json
+  for +kk: String
+  for +vv: V.Json
+  for +h: {V.wf.go(V.JPair{kk, vv, rr}, V.WObj{}) == True{} : Bool}
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for +acc: V.Json
+  for ih_v: {V.wf.go(vv, V.WVal{}) == True{} : Bool} -> pg(vv, V.WVal{}, bad, root, Parse.FObj{acc,
+    Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk, V.JNil{})
+  for ih_r: {V.wf.go(rr, V.WObj{}) == True{} : Bool} -> pg(rr, V.WObj{}, bad, root, stk,
+    V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc})
+  pg(V.JPair{kk, vv, rr}, V.WObj{}, bad, root, stk, acc)
+
+def pv_pair(rr, kk, vv, h, bad, root, stk, acc, ih_v, ih_r):
+  match rr:
+    case V.JNil{}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNil{}, V.WObj{}), h)
+      ih_v(v_ok)({==})
+    case V.JNull{}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNull{}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNull{}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNull{},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JNull{}, V.WObj{}), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+        Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})), Parse.P{bad, root,
+        Parse.FObj{ppush(V.JNull{}, V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JNull{})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNull{}, V.WObj{}), Parse.P{bad,
+        root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JNull{}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})),
+          Parse.run(Lex.TComma{} <> tj(V.JNull{}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JNull{}, V.JPair{fixs(String.to_list(kk)),
+          canon(vv, V.WVal{}), acc}), Parse.KOwn{""}, oslot(V.JNull{})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JNull{}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+          Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JBool{+x1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBool{x1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBool{x1}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBool{x1},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JBool{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+        Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})), Parse.P{bad, root,
+        Parse.FObj{ppush(V.JBool{x1}, V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JBool{x1})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBool{x1}, V.WObj{}), Parse.P{bad,
+        root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JBool{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})),
+          Parse.run(Lex.TComma{} <> tj(V.JBool{x1}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JBool{x1}, V.JPair{fixs(String.to_list(kk)),
+          canon(vv, V.WVal{}), acc}), Parse.KOwn{""}, oslot(V.JBool{x1})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JBool{x1}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad,
+          root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JNum{+x1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNum{x1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNum{x1}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNum{x1},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JNum{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+        Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})), Parse.P{bad, root,
+        Parse.FObj{ppush(V.JNum{x1}, V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JNum{x1})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNum{x1}, V.WObj{}), Parse.P{bad,
+        root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JNum{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})),
+          Parse.run(Lex.TComma{} <> tj(V.JNum{x1}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JNum{x1}, V.JPair{fixs(String.to_list(kk)),
+          canon(vv, V.WVal{}), acc}), Parse.KOwn{""}, oslot(V.JNum{x1})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JNum{x1}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+          Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JStr{+x1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JStr{x1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JStr{x1}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JStr{x1},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JStr{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+        Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})), Parse.P{bad, root,
+        Parse.FObj{ppush(V.JStr{x1}, V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JStr{x1})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JStr{x1}, V.WObj{}), Parse.P{bad,
+        root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JStr{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})),
+          Parse.run(Lex.TComma{} <> tj(V.JStr{x1}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JStr{x1}, V.JPair{fixs(String.to_list(kk)),
+          canon(vv, V.WVal{}), acc}), Parse.KOwn{""}, oslot(V.JStr{x1})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JStr{x1}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+          Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JArr{+x1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JArr{x1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JArr{x1}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JArr{x1},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JArr{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+        Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})), Parse.P{bad, root,
+        Parse.FObj{ppush(V.JArr{x1}, V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JArr{x1})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JArr{x1}, V.WObj{}), Parse.P{bad,
+        root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JArr{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})),
+          Parse.run(Lex.TComma{} <> tj(V.JArr{x1}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JArr{x1}, V.JPair{fixs(String.to_list(kk)),
+          canon(vv, V.WVal{}), acc}), Parse.KOwn{""}, oslot(V.JArr{x1})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JArr{x1}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+          Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JObj{+x1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JObj{x1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JObj{x1}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JObj{x1},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JObj{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+        Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})), Parse.P{bad, root,
+        Parse.FObj{ppush(V.JObj{x1}, V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JObj{x1})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JObj{x1}, V.WObj{}), Parse.P{bad,
+        root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JObj{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})),
+          Parse.run(Lex.TComma{} <> tj(V.JObj{x1}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JObj{x1}, V.JPair{fixs(String.to_list(kk)),
+          canon(vv, V.WVal{}), acc}), Parse.KOwn{""}, oslot(V.JObj{x1})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JObj{x1}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+          Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JCons{+x1, +x2}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JCons{x1, x2}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JCons{x1, x2}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JCons{x1, x2},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WObj{}), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+        Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})), Parse.P{bad, root,
+        Parse.FObj{ppush(V.JCons{x1, x2}, V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JCons{x1, x2})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WObj{}),
+        Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})),
+          Parse.run(Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JCons{x1, x2},
+          V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}), Parse.KOwn{""}, oslot(V.JCons{x1,
+          x2})} <> stk}, Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WObj{}),
+          zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))},
+          Parse.SValue{}} <> stk}), Parse.P{bad, root, Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv,
+          V.WVal{}), acc}, Parse.KOwn{""}, Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JPair{+x1, +x2, +x3}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JPair{x1, x2, x3}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JPair{x1, x2, x3}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JPair{x1, x2, x3},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JPair{x1, x2, x3}, V.WObj{}), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+        Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})), Parse.P{bad, root,
+        Parse.FObj{ppush(V.JPair{x1, x2, x3}, V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}),
+        Parse.KOwn{""}, oslot(V.JPair{x1, x2, x3})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JPair{x1,
+        x2, x3}, V.WObj{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))},
+        Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JPair{x1, x2, x3}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})),
+          Parse.run(Lex.TComma{} <> tj(V.JPair{x1, x2, x3}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JPair{x1, x2, x3},
+          V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}), Parse.KOwn{""}, oslot(V.JPair{x1, x2,
+          x3})} <> stk}, Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JPair{x1, x2, x3},
+          V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc,
+          Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JSpan{+x1, +x2}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JSpan{x1, x2}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JSpan{x1, x2}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{x1, x2},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Parse.run(Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WObj{}), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+        Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})), Parse.P{bad, root,
+        Parse.FObj{ppush(V.JSpan{x1, x2}, V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JSpan{x1, x2})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WObj{}),
+        Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})),
+          Parse.run(Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JSpan{x1, x2},
+          V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}), Parse.KOwn{""}, oslot(V.JSpan{x1,
+          x2})} <> stk}, Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WObj{}),
+          zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))},
+          Parse.SValue{}} <> stk}), Parse.P{bad, root, Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv,
+          V.WVal{}), acc}, Parse.KOwn{""}, Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBind{x1, x2, x3, x4}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBind{x1, x2, x3, x4}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBind{x1, x2, x3,
+        x4}, V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))},
+        Parse.SValue{}} <> stk}), Parse.run(Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4}, V.WObj{}), Parse.run(tj(vv,
+        V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk})),
+        Parse.P{bad, root, Parse.FObj{ppush(V.JBind{x1, x2, x3, x4}, V.JPair{fixs(String.to_list(kk)), canon(vv,
+        V.WVal{}), acc}), Parse.KOwn{""}, oslot(V.JBind{x1, x2, x3, x4})} <> stk}, prun_app(tj(vv, V.WVal{}),
+        Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4}, V.WObj{}), Parse.P{bad, root, Parse.FObj{acc,
+        Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4}, V.WObj{}), Parse.run(tj(vv,
+          V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))},
+          Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4}, V.WObj{}), Parse.P{bad,
+          root, Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JBind{x1, x2, x3, x4},
+          V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}), Parse.KOwn{""}, oslot(V.JBind{x1, x2, x3,
+          x4})} <> stk}, Equal.cong(Parse.P, Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4},
+          V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc,
+          Parse.KOwn{fixs(String.to_list(kk))}, Parse.SValue{}} <> stk}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}, Parse.KOwn{""},
+          Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+
+# pv for an object cell, by what follows it
+law pv_bind:
+  for rr: V.Json
+  for +src: String
+  for +nn: U32
+  for +vv: V.Json
+  for +h: {V.wf.go(V.JBind{src, nn, vv, rr}, V.WObj{}) == True{} : Bool}
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for +acc: V.Json
+  for ih_v: {V.wf.go(vv, V.WVal{}) == True{} : Bool} -> pg(vv, V.WVal{}, bad, root, Parse.FObj{acc,
+    Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))}, Parse.SValue{}} <> stk, V.JNil{})
+  for ih_r: {V.wf.go(rr, V.WObj{}) == True{} : Bool} -> pg(rr, V.WObj{}, bad, root, stk,
+    V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc})
+  pg(V.JBind{src, nn, vv, rr}, V.WObj{}, bad, root, stk, acc)
+
+def pv_bind(rr, src, nn, vv, h, bad, root, stk, acc, ih_v, ih_r):
+  match rr:
+    case V.JNil{}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNil{}, V.WObj{}), h)
+      ih_v(v_ok)({==})
+    case V.JNull{}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNull{}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNull{}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNull{},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+        U32.is_zero(nn))))}, Parse.SValue{}} <> stk}), Parse.run(Lex.TComma{} <> tj(V.JNull{}, V.WObj{}),
+        Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src,
+        nn, U32.is_zero(nn))))}, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FObj{ppush(V.JNull{},
+        V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JNull{})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNull{}, V.WObj{}), Parse.P{bad,
+        root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+        Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JNull{}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JNull{}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc},
+          Parse.KOwn{""}, Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JNull{},
+          V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}),
+          Parse.KOwn{""}, oslot(V.JNull{})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JNull{}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+          Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk}), Parse.P{bad, root, Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}, Parse.KOwn{""}, Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JBool{+x1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBool{x1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBool{x1}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBool{x1},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+        U32.is_zero(nn))))}, Parse.SValue{}} <> stk}), Parse.run(Lex.TComma{} <> tj(V.JBool{x1}, V.WObj{}),
+        Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src,
+        nn, U32.is_zero(nn))))}, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FObj{ppush(V.JBool{x1},
+        V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JBool{x1})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBool{x1}, V.WObj{}), Parse.P{bad,
+        root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+        Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JBool{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JBool{x1}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc},
+          Parse.KOwn{""}, Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JBool{x1},
+          V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}),
+          Parse.KOwn{""}, oslot(V.JBool{x1})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JBool{x1}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad,
+          root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk}), Parse.P{bad, root, Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}, Parse.KOwn{""}, Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JNum{+x1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNum{x1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNum{x1}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNum{x1},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+        U32.is_zero(nn))))}, Parse.SValue{}} <> stk}), Parse.run(Lex.TComma{} <> tj(V.JNum{x1}, V.WObj{}),
+        Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src,
+        nn, U32.is_zero(nn))))}, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FObj{ppush(V.JNum{x1},
+        V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JNum{x1})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNum{x1}, V.WObj{}), Parse.P{bad,
+        root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+        Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JNum{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JNum{x1}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc},
+          Parse.KOwn{""}, Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JNum{x1},
+          V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}),
+          Parse.KOwn{""}, oslot(V.JNum{x1})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JNum{x1}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+          Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk}), Parse.P{bad, root, Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}, Parse.KOwn{""}, Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JStr{+x1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JStr{x1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JStr{x1}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JStr{x1},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+        U32.is_zero(nn))))}, Parse.SValue{}} <> stk}), Parse.run(Lex.TComma{} <> tj(V.JStr{x1}, V.WObj{}),
+        Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src,
+        nn, U32.is_zero(nn))))}, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FObj{ppush(V.JStr{x1},
+        V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JStr{x1})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JStr{x1}, V.WObj{}), Parse.P{bad,
+        root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+        Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JStr{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JStr{x1}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc},
+          Parse.KOwn{""}, Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JStr{x1},
+          V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}),
+          Parse.KOwn{""}, oslot(V.JStr{x1})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JStr{x1}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+          Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk}), Parse.P{bad, root, Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}, Parse.KOwn{""}, Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JArr{+x1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JArr{x1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JArr{x1}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JArr{x1},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+        U32.is_zero(nn))))}, Parse.SValue{}} <> stk}), Parse.run(Lex.TComma{} <> tj(V.JArr{x1}, V.WObj{}),
+        Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src,
+        nn, U32.is_zero(nn))))}, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FObj{ppush(V.JArr{x1},
+        V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JArr{x1})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JArr{x1}, V.WObj{}), Parse.P{bad,
+        root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+        Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JArr{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JArr{x1}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc},
+          Parse.KOwn{""}, Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JArr{x1},
+          V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}),
+          Parse.KOwn{""}, oslot(V.JArr{x1})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JArr{x1}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+          Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk}), Parse.P{bad, root, Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}, Parse.KOwn{""}, Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JObj{+x1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JObj{x1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JObj{x1}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JObj{x1},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+        U32.is_zero(nn))))}, Parse.SValue{}} <> stk}), Parse.run(Lex.TComma{} <> tj(V.JObj{x1}, V.WObj{}),
+        Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src,
+        nn, U32.is_zero(nn))))}, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FObj{ppush(V.JObj{x1},
+        V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JObj{x1})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JObj{x1}, V.WObj{}), Parse.P{bad,
+        root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+        Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JObj{x1}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JObj{x1}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc},
+          Parse.KOwn{""}, Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JObj{x1},
+          V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}),
+          Parse.KOwn{""}, oslot(V.JObj{x1})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JObj{x1}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root,
+          Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk}), Parse.P{bad, root, Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}, Parse.KOwn{""}, Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JCons{+x1, +x2}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JCons{x1, x2}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JCons{x1, x2}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JCons{x1, x2},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+        U32.is_zero(nn))))}, Parse.SValue{}} <> stk}), Parse.run(Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WObj{}),
+        Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src,
+        nn, U32.is_zero(nn))))}, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FObj{ppush(V.JCons{x1, x2},
+        V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JCons{x1, x2})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WObj{}),
+        Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+        Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc},
+          Parse.KOwn{""}, Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JCons{x1, x2},
+          V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}),
+          Parse.KOwn{""}, oslot(V.JCons{x1, x2})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JCons{x1, x2}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad,
+          root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk}), Parse.P{bad, root, Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}, Parse.KOwn{""}, Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JPair{+x1, +x2, +x3}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JPair{x1, x2, x3}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JPair{x1, x2, x3}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JPair{x1, x2, x3},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+        U32.is_zero(nn))))}, Parse.SValue{}} <> stk}), Parse.run(Lex.TComma{} <> tj(V.JPair{x1, x2, x3}, V.WObj{}),
+        Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src,
+        nn, U32.is_zero(nn))))}, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FObj{ppush(V.JPair{x1, x2, x3},
+        V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JPair{x1, x2, x3})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JPair{x1, x2, x3},
+        V.WObj{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+        U32.is_zero(nn))))}, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JPair{x1, x2, x3}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JPair{x1, x2, x3}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc},
+          Parse.KOwn{""}, Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JPair{x1, x2, x3},
+          V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}),
+          Parse.KOwn{""}, oslot(V.JPair{x1, x2, x3})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JPair{x1, x2, x3}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk}), Parse.P{bad, root, Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}, Parse.KOwn{""}, Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JSpan{+x1, +x2}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JSpan{x1, x2}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JSpan{x1, x2}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{x1, x2},
+        V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+        U32.is_zero(nn))))}, Parse.SValue{}} <> stk}), Parse.run(Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WObj{}),
+        Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src,
+        nn, U32.is_zero(nn))))}, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FObj{ppush(V.JSpan{x1, x2},
+        V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}), Parse.KOwn{""},
+        oslot(V.JSpan{x1, x2})} <> stk}, prun_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WObj{}),
+        Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+        Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WObj{}), Parse.run(tj(vv, V.WVal{}),
+          Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WObj{}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc},
+          Parse.KOwn{""}, Parse.SComma{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(V.JSpan{x1, x2},
+          V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}),
+          Parse.KOwn{""}, oslot(V.JSpan{x1, x2})} <> stk}, Equal.cong(Parse.P, Parse.P,
+          zz => Parse.run(Lex.TComma{} <> tj(V.JSpan{x1, x2}, V.WObj{}), zz), Parse.run(tj(vv, V.WVal{}), Parse.P{bad,
+          root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))},
+          Parse.SValue{}} <> stk}), Parse.P{bad, root, Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}, Parse.KOwn{""}, Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBind{x1, x2, x3, x4}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBind{x1, x2, x3, x4}, V.WObj{}), h)
+      Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBind{x1, x2, x3,
+        x4}, V.WObj{})), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+        U32.is_zero(nn))))}, Parse.SValue{}} <> stk}), Parse.run(Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4}, V.WObj{}),
+        Parse.run(tj(vv, V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src,
+        nn, U32.is_zero(nn))))}, Parse.SValue{}} <> stk})), Parse.P{bad, root, Parse.FObj{ppush(V.JBind{x1, x2, x3,
+        x4}, V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}),
+        Parse.KOwn{""}, oslot(V.JBind{x1, x2, x3, x4})} <> stk}, prun_app(tj(vv, V.WVal{}),
+        Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4}, V.WObj{}), Parse.P{bad, root, Parse.FObj{acc,
+        Parse.KOwn{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))}, Parse.SValue{}} <> stk}),
+        Equal.trans(Parse.P, Parse.run(Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4}, V.WObj{}), Parse.run(tj(vv,
+          V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))}, Parse.SValue{}} <> stk})), Parse.run(Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4},
+          V.WObj{}), Parse.P{bad, root, Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))),
+          canon(vv, V.WVal{}), acc}, Parse.KOwn{""}, Parse.SComma{}} <> stk}), Parse.P{bad, root,
+          Parse.FObj{ppush(V.JBind{x1, x2, x3, x4}, V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))),
+          canon(vv, V.WVal{}), acc}), Parse.KOwn{""}, oslot(V.JBind{x1, x2, x3, x4})} <> stk}, Equal.cong(Parse.P,
+          Parse.P, zz => Parse.run(Lex.TComma{} <> tj(V.JBind{x1, x2, x3, x4}, V.WObj{}), zz), Parse.run(tj(vv,
+          V.WVal{}), Parse.P{bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))}, Parse.SValue{}} <> stk}), Parse.P{bad, root,
+          Parse.FObj{V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), acc},
+          Parse.KOwn{""}, Parse.SComma{}} <> stk}, ih_v(v_ok)({==})),
+        ih_r(r_ok)))
+
+# the parser on a well-formed value's tokens
+law pv:
+  for +val: V.Json
+  for +sh: V.Shape
+  for +h: {V.wf.go(val, sh) == True{} : Bool}
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for +acc: V.Json
+  pg(val, sh, bad, root, stk, acc)
+
+def pv(val, sh, h, bad, root, stk, acc):
+  match val:
+    case V.JNull{}:
+      match sh:
+        case V.WVal{}:
+          _hr => {==}
+        case V.WArr{}:
+          no(pg(V.JNull{}, V.WArr{}, bad, root, stk, acc), h)
+        case V.WObj{}:
+          no(pg(V.JNull{}, V.WObj{}, bad, root, stk, acc), h)
+    case V.JBool{bb}:
+      match sh:
+        case V.WVal{}:
+          pv_bool(bb, bad, root, stk)
+        case V.WArr{}:
+          no(pg(V.JBool{bb}, V.WArr{}, bad, root, stk, acc), h)
+        case V.WObj{}:
+          no(pg(V.JBool{bb}, V.WObj{}, bad, root, stk, acc), h)
+    case V.JNum{+raw}:
+      match sh:
+        case V.WVal{}:
+          _hr => step_num(raw, h, bad, root, stk)
+        case V.WArr{}:
+          no(pg(V.JNum{raw}, V.WArr{}, bad, root, stk, acc), h)
+        case V.WObj{}:
+          no(pg(V.JNum{raw}, V.WObj{}, bad, root, stk, acc), h)
+    case V.JStr{+txt}:
+      match sh:
+        case V.WVal{}:
+          hr => put_str_ready(stk, root, fixs(String.to_list(txt)), bad, hr)
+        case V.WArr{}:
+          no(pg(V.JStr{txt}, V.WArr{}, bad, root, stk, acc), h)
+        case V.WObj{}:
+          no(pg(V.JStr{txt}, V.WObj{}, bad, root, stk, acc), h)
+    case V.JArr{+items}:
+      match sh:
+        case V.WVal{}:
+          hr =>
+            Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(items, V.WArr{}), [Lex.TCloseArr{}]),
+              Parse.step.open_arr(Parse.P{bad, root, stk})), Parse.run(List.append(&2, Lex.Tok, tj(items, V.WArr{}),
+              [Lex.TCloseArr{}]), Parse.P{bad, root, Parse.FArr{V.JNil{}, Parse.SValue{}} <> stk}), Parse.put(stk,
+              root, V.JArr{canon(items, V.WArr{})}, bad), Equal.cong(Parse.P, Parse.P, zz => Parse.run(List.append(&2,
+              Lex.Tok, tj(items, V.WArr{}), [Lex.TCloseArr{}]), zz), Parse.step.open_arr(Parse.P{bad, root, stk}),
+              Parse.P{bad, root, Parse.FArr{V.JNil{}, Parse.SValue{}} <> stk}, open_arr_ready(bad, root, stk, hr)),
+              Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(items, V.WArr{}), [Lex.TCloseArr{}]),
+                Parse.P{bad, root, Parse.FArr{V.JNil{}, Parse.SValue{}} <> stk}), Parse.run([Lex.TCloseArr{}],
+                Parse.run(tj(items, V.WArr{}), Parse.P{bad, root, Parse.FArr{V.JNil{}, Parse.SValue{}} <> stk})),
+                Parse.put(stk, root, V.JArr{canon(items, V.WArr{})}, bad), prun_app(tj(items, V.WArr{}),
+                [Lex.TCloseArr{}], Parse.P{bad, root, Parse.FArr{V.JNil{}, Parse.SValue{}} <> stk}),
+              Equal.trans(Parse.P, Parse.run([Lex.TCloseArr{}], Parse.run(tj(items, V.WArr{}), Parse.P{bad, root,
+                Parse.FArr{V.JNil{}, Parse.SValue{}} <> stk})), Parse.run([Lex.TCloseArr{}], Parse.P{bad, root,
+                Parse.FArr{rpush(items, V.JNil{}), aslot(items)} <> stk}), Parse.put(stk, root, V.JArr{canon(items,
+                V.WArr{})}, bad), Equal.cong(Parse.P, Parse.P, zz => Parse.run([Lex.TCloseArr{}], zz),
+                Parse.run(tj(items, V.WArr{}), Parse.P{bad, root, Parse.FArr{V.JNil{}, Parse.SValue{}} <> stk}),
+                Parse.P{bad, root, Parse.FArr{rpush(items, V.JNil{}), aslot(items)} <> stk}, pv(items, V.WArr{}, h,
+                bad, root, stk, V.JNil{})),
+              close_after_arr(items, bad, root, stk))))
+        case V.WArr{}:
+          no(pg(V.JArr{items}, V.WArr{}, bad, root, stk, acc), h)
+        case V.WObj{}:
+          no(pg(V.JArr{items}, V.WObj{}, bad, root, stk, acc), h)
+    case V.JObj{+pairs}:
+      match sh:
+        case V.WVal{}:
+          hr =>
+            Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(pairs, V.WObj{}), [Lex.TCloseObj{}]),
+              Parse.step.open_obj(Parse.P{bad, root, stk})), Parse.run(List.append(&2, Lex.Tok, tj(pairs, V.WObj{}),
+              [Lex.TCloseObj{}]), Parse.P{bad, root, Parse.FObj{V.JNil{}, Parse.KOwn{""}, Parse.SKey{}} <> stk}),
+              Parse.put(stk, root, V.JObj{canon(pairs, V.WObj{})}, bad), Equal.cong(Parse.P, Parse.P,
+              zz => Parse.run(List.append(&2, Lex.Tok, tj(pairs, V.WObj{}), [Lex.TCloseObj{}]), zz),
+              Parse.step.open_obj(Parse.P{bad, root, stk}), Parse.P{bad, root, Parse.FObj{V.JNil{}, Parse.KOwn{""},
+              Parse.SKey{}} <> stk}, open_obj_ready(bad, root, stk, hr)),
+              Equal.trans(Parse.P, Parse.run(List.append(&2, Lex.Tok, tj(pairs, V.WObj{}), [Lex.TCloseObj{}]),
+                Parse.P{bad, root, Parse.FObj{V.JNil{}, Parse.KOwn{""}, Parse.SKey{}} <> stk}),
+                Parse.run([Lex.TCloseObj{}], Parse.run(tj(pairs, V.WObj{}), Parse.P{bad, root, Parse.FObj{V.JNil{},
+                Parse.KOwn{""}, Parse.SKey{}} <> stk})), Parse.put(stk, root, V.JObj{canon(pairs, V.WObj{})}, bad),
+                prun_app(tj(pairs, V.WObj{}), [Lex.TCloseObj{}], Parse.P{bad, root, Parse.FObj{V.JNil{},
+                Parse.KOwn{""}, Parse.SKey{}} <> stk}),
+              Equal.trans(Parse.P, Parse.run([Lex.TCloseObj{}], Parse.run(tj(pairs, V.WObj{}), Parse.P{bad, root,
+                Parse.FObj{V.JNil{}, Parse.KOwn{""}, Parse.SKey{}} <> stk})), Parse.run([Lex.TCloseObj{}], Parse.P{bad,
+                root, Parse.FObj{ppush(pairs, V.JNil{}), Parse.KOwn{""}, oslot(pairs)} <> stk}), Parse.put(stk, root,
+                V.JObj{canon(pairs, V.WObj{})}, bad), Equal.cong(Parse.P, Parse.P, zz => Parse.run([Lex.TCloseObj{}],
+                zz), Parse.run(tj(pairs, V.WObj{}), Parse.P{bad, root, Parse.FObj{V.JNil{}, Parse.KOwn{""},
+                Parse.SKey{}} <> stk}), Parse.P{bad, root, Parse.FObj{ppush(pairs, V.JNil{}), Parse.KOwn{""},
+                oslot(pairs)} <> stk}, pv(pairs, V.WObj{}, h, bad, root, stk, V.JNil{})),
+              close_after_obj(pairs, bad, root, stk))))
+        case V.WArr{}:
+          no(pg(V.JObj{pairs}, V.WArr{}, bad, root, stk, acc), h)
+        case V.WObj{}:
+          no(pg(V.JObj{pairs}, V.WObj{}, bad, root, stk, acc), h)
+    case V.JNil{}:
+      match sh:
+        case V.WVal{}:
+          no(pg(V.JNil{}, V.WVal{}, bad, root, stk, acc), h)
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          {==}
+    case V.JCons{+hd, +tl}:
+      match sh:
+        case V.WVal{}:
+          no(pg(V.JCons{hd, tl}, V.WVal{}, bad, root, stk, acc), h)
+        case V.WArr{}:
+          pv_cons(tl, hd, h, bad, root, stk, acc, xx => pv(hd, V.WVal{}, xx, bad, root, Parse.FArr{acc,
+            Parse.SValue{}} <> stk, V.JNil{}),
+            xx => pv(tl, V.WArr{}, xx, bad, root, stk, V.JCons{canon(hd, V.WVal{}), acc}))
+        case V.WObj{}:
+          no(pg(V.JCons{hd, tl}, V.WObj{}, bad, root, stk, acc), h)
+    case V.JPair{+kk, +vv, +rr}:
+      match sh:
+        case V.WVal{}:
+          no(pg(V.JPair{kk, vv, rr}, V.WVal{}, bad, root, stk, acc), h)
+        case V.WArr{}:
+          no(pg(V.JPair{kk, vv, rr}, V.WArr{}, bad, root, stk, acc), h)
+        case V.WObj{}:
+          pv_pair(rr, kk, vv, h, bad, root, stk, acc,
+            xx => pv(vv, V.WVal{}, xx, bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(kk))},
+              Parse.SValue{}} <> stk, V.JNil{}),
+            xx => pv(rr, V.WObj{}, xx, bad, root, stk, V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), acc}))
+    case V.JSpan{+src, +nn}:
+      match sh:
+        case V.WVal{}:
+          hr => put_str_ready(stk, root, fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), bad, hr)
+        case V.WArr{}:
+          no(pg(V.JSpan{src, nn}, V.WArr{}, bad, root, stk, acc), h)
+        case V.WObj{}:
+          no(pg(V.JSpan{src, nn}, V.WObj{}, bad, root, stk, acc), h)
+    case V.JBind{+src, +nn, +vv, +rr}:
+      match sh:
+        case V.WVal{}:
+          no(pg(V.JBind{src, nn, vv, rr}, V.WVal{}, bad, root, stk, acc), h)
+        case V.WArr{}:
+          no(pg(V.JBind{src, nn, vv, rr}, V.WArr{}, bad, root, stk, acc), h)
+        case V.WObj{}:
+          pv_bind(rr, src, nn, vv, h, bad, root, stk, acc,
+            xx => pv(vv, V.WVal{}, xx, bad, root, Parse.FObj{acc, Parse.KOwn{fixs(String.to_list(V.span.str(src, nn,
+              U32.is_zero(nn))))}, Parse.SValue{}} <> stk, V.JNil{}),
+            xx => pv(rr, V.WObj{}, xx, bad, root, stk, V.JPair{fixs(String.to_list(V.span.str(src, nn,
+              U32.is_zero(nn)))), canon(vv, V.WVal{}), acc}))
+
+# WP-P1: parse on a well-formed value's tokens gives the value back, strings
+# owned and fixed
+law parse_tj:
+  for +val: V.Json
+  for h_wf: {V.wf(val) == True{} : Bool}
+  {Parse.finish(Parse.run(tj(val, V.WVal{}), Parse.P{False{}, None{}, Nil{}})) == Some{canon(val,
+    V.WVal{})} : Maybe<&2, V.Json>}
+
+def parse_tj(val, h_wf):
+  Equal.cong(Parse.P, Maybe<&2, V.Json>, zz => Parse.finish(zz), Parse.run(tj(val, V.WVal{}), Parse.P{False{}, None{},
+    Nil{}}),
+    Parse.P{False{}, Some{canon(val, V.WVal{})}, Nil{}}, pv(val, V.WVal{}, h_wf, False{}, None{}, Nil{},
+      V.JNil{})({==}))
+
+# JSON-PRINT-3, the parse half: parse's state only ever holds well-formed values
+
+# a finished root is well-formed
+def minv(root: Maybe<&2, V.Json>) -> Type:
+  match root:
+    case None{}:
+      Unit
+    case Some{jj}:
+      {V.wf(jj) == True{} : Bool}
+
+# an open frame's cells are well-formed
+def frinv(fr: Parse.Frame) -> Type:
+  match fr:
+    case Parse.FArr{items, _}:
+      {V.wf.go(items, V.WArr{}) == True{} : Bool}
+    case Parse.FObj{pairs, _, _}:
+      {V.wf.go(pairs, V.WObj{}) == True{} : Bool}
+
+# every open frame's cells are well-formed
+def finv(stk: List<&2, Parse.Frame>) -> Type:
+  match stk:
+    case Nil{}:
+      Unit
+    case fr <> rest:
+      (frinv(fr) & finv(rest))
+
+# the parser's state holds only well-formed values
+def pinv(st: Parse.P) -> Type:
+  match st:
+    case Parse.P{_bad, root, stk}:
+      (minv(root) & finv(stk))
+
+# a well-formed value in front of well-formed cells
+law cons_wf:
+  for +vv: V.Json
+  for +items: V.Json
+  for hv: {V.wf(vv) == True{} : Bool}
+  for hi: {V.wf.go(items, V.WArr{}) == True{} : Bool}
+  {V.wf.go(V.JCons{vv, items}, V.WArr{}) == True{} : Bool}
+
+def cons_wf(vv, items, hv, hi):
+  hs = Equal.sym(Bool, V.wf(vv), True{}, hv)
+  %hs : {Lazy.stop(Bool, Bool.not(_), False{}, _u => V.wf.go(items, V.WArr{})) == True{} : Bool}
+  hi
+
+# a well-formed value under a key, in front of well-formed cells
+law pair_wf:
+  for key: Parse.Key
+  for +vv: V.Json
+  for +pairs: V.Json
+  for hv: {V.wf(vv) == True{} : Bool}
+  for hp: {V.wf.go(pairs, V.WObj{}) == True{} : Bool}
+  {V.wf.go(Parse.put.pair(key, vv, pairs), V.WObj{}) == True{} : Bool}
+
+def pair_wf(key, vv, pairs, hv, hp):
+  match key:
+    case Parse.KOwn{_txt}:
+      hs = Equal.sym(Bool, V.wf(vv), True{}, hv)
+      %hs : {Lazy.stop(Bool, Bool.not(_), False{}, _u => V.wf.go(pairs, V.WObj{})) == True{} : Bool}
+      hp
+    case Parse.KCut{_src, _nn}:
+      hs = Equal.sym(Bool, V.wf(vv), True{}, hv)
+      %hs : {Lazy.stop(Bool, Bool.not(_), False{}, _u => V.wf.go(pairs, V.WObj{})) == True{} : Bool}
+      hp
+
+# a string key's text is well-formed
+law text_wf:
+  for key: Parse.Key
+  {V.wf(Parse.put.text(key)) == True{} : Bool}
+
+def text_wf(key):
+  match key:
+    case Parse.KOwn{_txt}:
+      {==}
+    case Parse.KCut{_src, _nn}:
+      {==}
+
+# well-formed array cells reversed onto well-formed cells
+law rev_wf_arr:
+  for +cells: V.Json
+  for +acc: V.Json
+  for +hc: {V.wf.go(cells, V.WArr{}) == True{} : Bool}
+  for ha: {V.wf.go(acc, V.WArr{}) == True{} : Bool}
+  {V.wf.go(V.reverse(cells, acc), V.WArr{}) == True{} : Bool}
+
+def rev_wf_arr(cells, acc, hc, ha):
+  match cells:
+    case V.JNull{}:
+      no({V.wf.go(V.reverse(V.JNull{}, acc), V.WArr{}) == True{} : Bool}, hc)
+    case V.JBool{+x1}:
+      no({V.wf.go(V.reverse(V.JBool{x1}, acc), V.WArr{}) == True{} : Bool}, hc)
+    case V.JNum{+x1}:
+      no({V.wf.go(V.reverse(V.JNum{x1}, acc), V.WArr{}) == True{} : Bool}, hc)
+    case V.JStr{+x1}:
+      no({V.wf.go(V.reverse(V.JStr{x1}, acc), V.WArr{}) == True{} : Bool}, hc)
+    case V.JArr{+x1}:
+      no({V.wf.go(V.reverse(V.JArr{x1}, acc), V.WArr{}) == True{} : Bool}, hc)
+    case V.JObj{+x1}:
+      no({V.wf.go(V.reverse(V.JObj{x1}, acc), V.WArr{}) == True{} : Bool}, hc)
+    case V.JNil{}:
+      ha
+    case V.JCons{+x1, +x2}:
+      rev_wf_arr(x2, V.JCons{x1, acc}, stop_r(V.wf(x1), V.wf.go(x2, V.WArr{}), hc),
+        cons_wf(x1, acc, stop_l(V.wf(x1), V.wf.go(x2, V.WArr{}), hc), ha))
+    case V.JPair{+x1, +x2, +x3}:
+      no({V.wf.go(V.reverse(V.JPair{x1, x2, x3}, acc), V.WArr{}) == True{} : Bool}, hc)
+    case V.JSpan{+x1, +x2}:
+      no({V.wf.go(V.reverse(V.JSpan{x1, x2}, acc), V.WArr{}) == True{} : Bool}, hc)
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      no({V.wf.go(V.reverse(V.JBind{x1, x2, x3, x4}, acc), V.WArr{}) == True{} : Bool}, hc)
+
+# well-formed object cells reversed onto well-formed cells
+law rev_wf_obj:
+  for +cells: V.Json
+  for +acc: V.Json
+  for +hc: {V.wf.go(cells, V.WObj{}) == True{} : Bool}
+  for ha: {V.wf.go(acc, V.WObj{}) == True{} : Bool}
+  {V.wf.go(V.reverse(cells, acc), V.WObj{}) == True{} : Bool}
+
+def rev_wf_obj(cells, acc, hc, ha):
+  match cells:
+    case V.JNull{}:
+      no({V.wf.go(V.reverse(V.JNull{}, acc), V.WObj{}) == True{} : Bool}, hc)
+    case V.JBool{+x1}:
+      no({V.wf.go(V.reverse(V.JBool{x1}, acc), V.WObj{}) == True{} : Bool}, hc)
+    case V.JNum{+x1}:
+      no({V.wf.go(V.reverse(V.JNum{x1}, acc), V.WObj{}) == True{} : Bool}, hc)
+    case V.JStr{+x1}:
+      no({V.wf.go(V.reverse(V.JStr{x1}, acc), V.WObj{}) == True{} : Bool}, hc)
+    case V.JArr{+x1}:
+      no({V.wf.go(V.reverse(V.JArr{x1}, acc), V.WObj{}) == True{} : Bool}, hc)
+    case V.JObj{+x1}:
+      no({V.wf.go(V.reverse(V.JObj{x1}, acc), V.WObj{}) == True{} : Bool}, hc)
+    case V.JNil{}:
+      ha
+    case V.JCons{+x1, +x2}:
+      no({V.wf.go(V.reverse(V.JCons{x1, x2}, acc), V.WObj{}) == True{} : Bool}, hc)
+    case V.JPair{+x1, +x2, +x3}:
+      rev_wf_obj(x3, V.JPair{x1, x2, acc}, stop_r(V.wf(x2), V.wf.go(x3, V.WObj{}), hc),
+        pair_wf(Parse.KOwn{x1}, x2, acc, stop_l(V.wf(x2), V.wf.go(x3, V.WObj{}), hc), ha))
+    case V.JSpan{+x1, +x2}:
+      no({V.wf.go(V.reverse(V.JSpan{x1, x2}, acc), V.WObj{}) == True{} : Bool}, hc)
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      rev_wf_obj(x4, V.JBind{x1, x2, x3, acc}, stop_r(V.wf(x3), V.wf.go(x4, V.WObj{}), hc),
+        pair_wf(Parse.KCut{x1, x2}, x3, acc, stop_l(V.wf(x3), V.wf.go(x4, V.WObj{}), hc), ha))
+
+# put keeps the state well-formed, given a well-formed value
+law put_inv:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +vv: V.Json
+  for +bad: Bool
+  for hv: {V.wf(vv) == True{} : Bool}
+  for h: pinv(Parse.P{bad, root, stk})
+  pinv(Parse.put(stk, root, vv, bad))
+
+def put_inv(stk, root, vv, _bad, hv, h):
+  match stk:
+    case Nil{}:
+      match root:
+        case None{}:
+          (hv, Unit{})
+        case Some{_rr}:
+          (hr, _hs) = h
+          (hr, Unit{})
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{+items, slot}:
+          match slot:
+            case Parse.SValue{}:
+              (hr, (hf, hrest)) = h
+              (hr, (cons_wf(vv, items, hv, hf), hrest))
+            case Parse.SComma{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SKey{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SColon{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+        case Parse.FObj{+pairs, +key, slot}:
+          match slot:
+            case Parse.SValue{}:
+              (hr, (hf, hrest)) = h
+              (hr, (pair_wf(key, vv, pairs, hv, hf), hrest))
+            case Parse.SComma{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SKey{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SColon{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+# a colon keeps the state well-formed
+law colon_inv:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  for h: pinv(Parse.P{bad, root, stk})
+  pinv(Parse.step.colon(stk, root, bad))
+
+def colon_inv(stk, _root, _bad, h):
+  match stk:
+    case Nil{}:
+      (hr, _rest) = h
+      (hr, Unit{})
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{+items, slot}:
+          match slot:
+            case Parse.SValue{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SComma{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SKey{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SColon{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+        case Parse.FObj{+pairs, +key, slot}:
+          match slot:
+            case Parse.SValue{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SComma{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SKey{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SColon{}:
+              h
+
+# a comma keeps the state well-formed
+law comma_inv:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  for h: pinv(Parse.P{bad, root, stk})
+  pinv(Parse.step.comma(stk, root, bad))
+
+def comma_inv(stk, _root, _bad, h):
+  match stk:
+    case Nil{}:
+      (hr, _rest) = h
+      (hr, Unit{})
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{+items, slot}:
+          match slot:
+            case Parse.SValue{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SComma{}:
+              h
+            case Parse.SKey{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SColon{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+        case Parse.FObj{+pairs, +key, slot}:
+          match slot:
+            case Parse.SValue{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SComma{}:
+              h
+            case Parse.SKey{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SColon{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+
+# a string keeps the state well-formed
+law str_inv:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +key: Parse.Key
+  for +bad: Bool
+  for h: pinv(Parse.P{bad, root, stk})
+  pinv(Parse.put.str(stk, root, key, bad))
+
+def str_inv(stk, root, key, bad, h):
+  match stk:
+    case Nil{}:
+      put_inv([], root, Parse.put.text(key), bad, text_wf(key), h)
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{+items, slot}:
+          match slot:
+            case Parse.SValue{}:
+              put_inv(Parse.FArr{items, Parse.SValue{}} <> rest, root, Parse.put.text(key), bad, text_wf(key), h)
+            case Parse.SComma{}:
+              put_inv(Parse.FArr{items, Parse.SComma{}} <> rest, root, Parse.put.text(key), bad, text_wf(key), h)
+            case Parse.SKey{}:
+              put_inv(Parse.FArr{items, Parse.SKey{}} <> rest, root, Parse.put.text(key), bad, text_wf(key), h)
+            case Parse.SColon{}:
+              put_inv(Parse.FArr{items, Parse.SColon{}} <> rest, root, Parse.put.text(key), bad, text_wf(key), h)
+        case Parse.FObj{+pairs, +k2, slot}:
+          match slot:
+            case Parse.SValue{}:
+              put_inv(Parse.FObj{pairs, k2, Parse.SValue{}} <> rest, root, Parse.put.text(key), bad, text_wf(key), h)
+            case Parse.SComma{}:
+              put_inv(Parse.FObj{pairs, k2, Parse.SComma{}} <> rest, root, Parse.put.text(key), bad, text_wf(key), h)
+            case Parse.SKey{}:
+              h
+            case Parse.SColon{}:
+              put_inv(Parse.FObj{pairs, k2, Parse.SColon{}} <> rest, root, Parse.put.text(key), bad, text_wf(key), h)
+
+# close_arr_inv, for one frame
+law ca_arr:
+  for slot: Parse.Slot
+  for items: V.Json
+  for +rest: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  for h: pinv(Parse.P{bad, root, Parse.FArr{items, slot} <> rest})
+  pinv(Parse.close_arr(Parse.FArr{items, slot} <> rest, root, bad))
+
+def ca_arr(slot, items, rest, root, bad, h):
+  match slot:
+    case Parse.SValue{}:
+      match items:
+        case V.JNull{}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JBool{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JNum{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JStr{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JArr{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JObj{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JNil{}:
+          (hr, (_hf, hrest)) = h
+          put_inv(rest, root, V.JArr{V.JNil{}}, bad, {==}, (hr, hrest))
+        case V.JCons{+x1, +x2}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JPair{+x1, +x2, +x3}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JSpan{+x1, +x2}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          (hr, _rest) = h
+          (hr, Unit{})
+    case Parse.SComma{}:
+      (hr, (hf, hrest)) = h
+      +it = items
+      ec = Equal.sym(Parse.P, Parse.close_arr(Parse.FArr{it, Parse.SComma{}} <> rest, root, bad),
+        Parse.put(rest, root, V.JArr{V.reverse(it, V.JNil{})}, bad), close_arr_comma(it, rest, root, bad))
+      %ec : pinv(_)
+      put_inv(rest, root, V.JArr{V.reverse(it, V.JNil{})}, bad, rev_wf_arr(it, V.JNil{}, hf, {==}), (hr, hrest))
+    case Parse.SKey{}:
+      match items:
+        case V.JNull{}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JBool{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JNum{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JStr{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JArr{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JObj{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JNil{}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JCons{+x1, +x2}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JPair{+x1, +x2, +x3}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JSpan{+x1, +x2}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          (hr, _rest) = h
+          (hr, Unit{})
+    case Parse.SColon{}:
+      match items:
+        case V.JNull{}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JBool{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JNum{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JStr{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JArr{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JObj{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JNil{}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JCons{+x1, +x2}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JPair{+x1, +x2, +x3}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JSpan{+x1, +x2}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          (hr, _rest) = h
+          (hr, Unit{})
+
+# a closing bracket keeps the state well-formed
+law close_arr_inv:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  for h: pinv(Parse.P{bad, root, stk})
+  pinv(Parse.close_arr(stk, root, bad))
+
+def close_arr_inv(stk, root, bad, h):
+  match stk:
+    case Nil{}:
+      (hr, _rest) = h
+      (hr, Unit{})
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{items, slot}:
+          ca_arr(slot, items, rest, root, bad, h)
+        case Parse.FObj{+pairs, +key, slot}:
+          match slot:
+            case Parse.SValue{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SComma{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SKey{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SColon{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+
+# close_obj_inv, for one frame
+law co_obj:
+  for slot: Parse.Slot
+  for pairs: V.Json
+  for +key: Parse.Key
+  for +rest: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  for h: pinv(Parse.P{bad, root, Parse.FObj{pairs, key, slot} <> rest})
+  pinv(Parse.close_obj(Parse.FObj{pairs, key, slot} <> rest, root, bad))
+
+def co_obj(slot, pairs, key, rest, root, bad, h):
+  match slot:
+    case Parse.SValue{}:
+      match pairs:
+        case V.JNull{}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JBool{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JNum{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JStr{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JArr{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JObj{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JNil{}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JCons{+x1, +x2}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JPair{+x1, +x2, +x3}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JSpan{+x1, +x2}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          (hr, _rest) = h
+          (hr, Unit{})
+    case Parse.SComma{}:
+      (hr, (hf, hrest)) = h
+      +ps = pairs
+      ec = Equal.sym(Parse.P, Parse.close_obj(Parse.FObj{ps, key, Parse.SComma{}} <> rest, root, bad),
+        Parse.put(rest, root, V.JObj{V.reverse(ps, V.JNil{})}, bad), close_obj_comma(ps, key, rest, root, bad))
+      %ec : pinv(_)
+      put_inv(rest, root, V.JObj{V.reverse(ps, V.JNil{})}, bad, rev_wf_obj(ps, V.JNil{}, hf, {==}), (hr, hrest))
+    case Parse.SKey{}:
+      match pairs:
+        case V.JNull{}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JBool{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JNum{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JStr{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JArr{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JObj{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JNil{}:
+          (hr, (_hf, hrest)) = h
+          put_inv(rest, root, V.JObj{V.JNil{}}, bad, {==}, (hr, hrest))
+        case V.JCons{+x1, +x2}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JPair{+x1, +x2, +x3}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JSpan{+x1, +x2}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          (hr, _rest) = h
+          (hr, Unit{})
+    case Parse.SColon{}:
+      match pairs:
+        case V.JNull{}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JBool{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JNum{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JStr{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JArr{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JObj{+x1}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JNil{}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JCons{+x1, +x2}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JPair{+x1, +x2, +x3}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JSpan{+x1, +x2}:
+          (hr, _rest) = h
+          (hr, Unit{})
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          (hr, _rest) = h
+          (hr, Unit{})
+
+# a closing brace keeps the state well-formed
+law close_obj_inv:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  for h: pinv(Parse.P{bad, root, stk})
+  pinv(Parse.close_obj(stk, root, bad))
+
+def close_obj_inv(stk, root, bad, h):
+  match stk:
+    case Nil{}:
+      (hr, _rest) = h
+      (hr, Unit{})
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{+items, slot}:
+          match slot:
+            case Parse.SValue{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SComma{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SKey{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+            case Parse.SColon{}:
+              (hr, _rest) = h
+              (hr, Unit{})
+        case Parse.FObj{pairs, +key, slot}:
+          co_obj(slot, pairs, key, rest, root, bad, h)
+
+# opening an array keeps the state well-formed
+law oa_inv:
+  for ok: Bool
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for h: pinv(Parse.P{bad, root, stk})
+  pinv(Parse.step.open_arr.go(bad, root, stk, ok))
+
+def oa_inv(ok, _bad, _root, _stk, h):
+  match ok:
+    case True{}:
+      (hr, hs) = h
+      (hr, ({==}, hs))
+    case False{}:
+      (hr, _hs) = h
+      (hr, Unit{})
+
+# opening an object keeps the state well-formed
+law oo_inv:
+  for ok: Bool
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for h: pinv(Parse.P{bad, root, stk})
+  pinv(Parse.step.open_obj.go(bad, root, stk, ok))
+
+def oo_inv(ok, _bad, _root, _stk, h):
+  match ok:
+    case True{}:
+      (hr, hs) = h
+      (hr, ({==}, hs))
+    case False{}:
+      (hr, _hs) = h
+      (hr, Unit{})
+
+# a word parse accepts is a well-formed value
+law word_wf:
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for +raw: String
+  for eo: {Bool.or(b1, Bool.or(b2, Bool.or(b3, V.num.ok(raw)))) == True{} : Bool}
+  {V.wf(Bool.pick(V.Json, b1, V.JNull{}, Bool.pick(V.Json, b2, V.JBool{True{}}, Bool.pick(V.Json, b3,
+    V.JBool{False{}}, V.JNum{raw})))) == True{} : Bool}
+
+def word_wf(b1, b2, b3, _raw, eo):
+  match b1:
+    case True{}:
+      {==}
+    case False{}:
+      match b2:
+        case True{}:
+          {==}
+        case False{}:
+          match b3:
+            case True{}:
+              {==}
+            case False{}:
+              eo
+
+# a word keeps the state well-formed
+law sw_inv:
+  for ok: Bool
+  for +raw: String
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for eo: {Parse.word.ok(raw) == ok : Bool}
+  for h: pinv(Parse.P{bad, root, stk})
+  pinv(Parse.step.word.go(raw, Parse.P{bad, root, stk}, ok))
+
+def sw_inv(ok, raw, bad, root, stk, eo, h):
+  match ok:
+    case True{}:
+      put_inv(stk, root, Parse.word(raw), bad, word_wf(String.eq(raw, "null"), String.eq(raw, "true"),
+        String.eq(raw, "false"), raw, eo), h)
+    case False{}:
+      h
+
+# a number span keeps the state well-formed
+law sk_inv:
+  for ok: Bool
+  for +raw: String
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for eo: {V.num.ok(raw) == ok : Bool}
+  for h: pinv(Parse.P{bad, root, stk})
+  pinv(Parse.step.span.open(Parse.P{bad, root, stk}, Parse.step.span.ok(raw, ok)))
+
+def sk_inv(ok, raw, bad, root, stk, eo, h):
+  match ok:
+    case True{}:
+      put_inv(stk, root, V.JNum{raw}, bad, eo, h)
+    case False{}:
+      h
+
+# a word span keeps the state well-formed
+law sg_inv:
+  for aa: Bool
+  for bb: Bool
+  for cc: Bool
+  for +src: String
+  for +nn: U32
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for h: pinv(Parse.P{bad, root, stk})
+  pinv(Parse.step.span.open(Parse.P{bad, root, stk}, Parse.step.span.go(src, nn, aa, bb, cc)))
+
+def sg_inv(aa, bb, cc, src, nn, bad, root, stk, h):
+  match aa:
+    case True{}:
+      put_inv(stk, root, V.JNull{}, bad, {==}, h)
+    case False{}:
+      match bb:
+        case True{}:
+          put_inv(stk, root, V.JBool{True{}}, bad, {==}, h)
+        case False{}:
+          match cc:
+            case True{}:
+              put_inv(stk, root, V.JBool{False{}}, bad, {==}, h)
+            case False{}:
+              +raw = V.span.str(src, nn, U32.is_zero(nn))
+              sk_inv(V.num.ok(raw), raw, bad, root, stk, {==}, h)
+
+# one token keeps the state well-formed
+law step_inv:
+  for tok: Lex.Tok
+  for st: Parse.P
+  for h: pinv(st)
+  pinv(Parse.step(tok, st))
+
+def step_inv(tok, st, h):
+  match tok:
+    case Lex.TOpenArr{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          oa_inv(Parse.step.ready(stk, root), bad, root, stk, h)
+    case Lex.TOpenObj{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          oo_inv(Parse.step.ready(stk, root), bad, root, stk, h)
+    case Lex.TCloseArr{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          close_arr_inv(stk, root, bad, h)
+    case Lex.TCloseObj{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          close_obj_inv(stk, root, bad, h)
+    case Lex.TColon{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          colon_inv(stk, root, bad, h)
+    case Lex.TComma{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          comma_inv(stk, root, bad, h)
+    case Lex.TStr{+txt}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          str_inv(stk, root, Parse.KOwn{txt}, bad, h)
+    case Lex.TWord{+raw}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          sw_inv(Parse.word.ok(raw), raw, bad, root, stk, {==}, h)
+    case Lex.TStrS{+src, +nn}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          str_inv(stk, root, Parse.KCut{src, nn}, bad, h)
+    case Lex.TWordS{+src, +nn}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          sg_inv(V.span.eq(src, nn, "null"), V.span.eq(src, nn, "true"), V.span.eq(src, nn, "false"), src, nn, bad,
+            root, stk, h)
+    case Lex.TBad{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          h
+
+# every token keeps the state well-formed
+law run_inv:
+  for xs: List<&2, Lex.Tok>
+  for +st: Parse.P
+  for h: pinv(st)
+  pinv(Parse.run(xs, st))
+
+def run_inv(xs, st, h):
+  match xs:
+    case Nil{}:
+      h
+    case +tok <> rest:
+      run_inv(rest, Parse.step(tok, st), step_inv(tok, st, h))
+
+# a finished parse of a well-formed state is well-formed
+law fin_wf:
+  for bad: Bool
+  for stk: List<&2, Parse.Frame>
+  for root: Maybe<&2, V.Json>
+  for h: (minv(root) & finv(stk))
+  {Laws.wf_m(Parse.result(bad, stk, root)) == True{} : Bool}
+
+def fin_wf(bad, stk, root, h):
+  match bad:
+    case True{}:
+      {==}
+    case False{}:
+      match stk:
+        case +_fr <> +_rest:
+          {==}
+        case Nil{}:
+          match root:
+            case None{}:
+              {==}
+            case Some{_jj}:
+              (hr, _hs) = h
+              hr
+
+# a finished parse is well-formed
+law fin_inv:
+  for st: Parse.P
+  for h: pinv(st)
+  {Laws.wf_m(Parse.finish(st)) == True{} : Bool}
+
+def fin_inv(st, h):
+  match st:
+    case Parse.P{bad, root, stk}:
+      fin_wf(bad, stk, root, h)
+
+def Laws.parse_wf(txt):
+  fin_inv(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}}),
+    run_inv(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}}, (Unit{}, Unit{})))
+
