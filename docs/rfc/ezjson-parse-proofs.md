@@ -147,7 +147,13 @@ keeps strings as they are rather than fixed as print writes them (`tj_r`,
 are not scalar values. `tj` and its parser lemma now follow from that copy
 through `fxv`, which fixes a value's strings (`tj_fx`, `canon_fx`, `wf_fx`),
 so the parser induction is written once. The other half, that a text that
-parses has a derivation, is left.
+parses has a derivation, is in progress. Its parser step: a token list the
+parser accepts, spans replaced, is exactly its value's tokens
+(`parse_toks`). The invariant pairs each state that has not failed with
+the tokens it has read, reversed (`rs`, `ti`): a frame's cells, the
+separator after them, and a key and colon waiting for a value; a frame
+waiting after a value holds cells (`sok`). Each token keeps it
+(`step_ti`), and a finished state has read its root's tokens (`fin_ti`).
 
 ## What parse does
 
