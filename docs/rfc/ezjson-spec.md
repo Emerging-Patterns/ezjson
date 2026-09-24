@@ -300,7 +300,7 @@ master's results against the branch's in the description.
 | `as_f32` returns none on overflow (landed) | JSON-TREE-7 | REVIEW-6 |
 | `print` writes U+FFFD for a code point that is not a scalar value | JSON-STR-1, JSON-PRINT-1 | REVIEW-3 |
 | add `wf` | JSON-PRINT-1, JSON-PRINT-3 | REVIEW-3 |
-| add `has` and `len` | JSON-TREE-8, JSON-TREE-9 | REVIEW-5 |
+| add `has` and `len` (landed) | JSON-TREE-8, JSON-TREE-9 | REVIEW-5 |
 | README import hash | none (docs) | REVIEW-13 |
 
 ### How we will know it worked

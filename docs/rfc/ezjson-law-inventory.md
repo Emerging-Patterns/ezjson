@@ -355,10 +355,10 @@ requirement depends on.
 | Decisions | done | every REVIEW item resolved as recommended |
 | Lint first | done | bolt pin `5b05a1b` to v1.4.2 (`9a8fd99`); 248 S004 and 2 S003 fixed; `laws` at warn. 922-text harness and interface probe byte-identical before and after |
 | One | done | SPEC.md (31 Proved rows, 4 Trusted); all 99 closed laws and their helpers deleted; `closed`, `unsafe` and `trace` at error, `coverage` at warn; README points at SPEC.md. Also 12 quantified laws: JSON-TREE-1, JSON-TREE-2 and JSON-NUM-3 proved; JSON-TREE-3 and 4 partial (the not-a-container halves) |
-| Behavior changes | in progress | `as_f32` overflow landed, JSON-TREE-7 proved (3 laws). Next: `wf` and U+FFFD in `print`; `has` and `len`; README hash |
+| Behavior changes | in progress | `as_f32` overflow landed, JSON-TREE-7 proved (3 laws); `has` and `len` added, JSON-TREE-9 proved (3 laws), JSON-TREE-8 partial (3 laws). Next: `wf` and U+FFFD in `print`; README hash |
 | Two to five | open | see the RFC's Rollout |
 
-Laws now: 15, all quantified, 0 closed. `coverage` warnings: 93.
+Laws now: 21, all quantified, 0 closed. `coverage` warnings: 93.
 Every new proof was broken on purpose (an absurd case replaced by `{==}`,
 a rewrite removed, a statement changed) and the gate failed each time.
 

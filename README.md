@@ -38,6 +38,8 @@ def point() -> String:
 object key and returns the first value when a key is repeated. `at` reads an
 array index. `as_bool`, `as_str`, `as_num`, `as_u32`, and `as_f32` read a
 value of that kind, or none when the kind differs or the number does not fit.
+`has` tells a missing key from a key whose value is null, and `len` counts
+the elements of an array or the members of an object.
 
 A multi-gigabyte text is read with a cursor. `parse` builds one tree;
 `cursor` does not. `next` returns one event and the cursor after it. `skip`

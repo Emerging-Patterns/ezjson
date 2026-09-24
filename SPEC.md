@@ -71,8 +71,8 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | JSON-TREE-5 | For every text `t` with `parse(t) == Some{j}`, every reader (`get`, `at`, `as_*`) gives on `j` the result it gives on the owned value `same` as `j`: a span reads as its characters | Proved | pending |  |
 | JSON-TREE-6 | `as_u32(num(s))` is `Some{n}` exactly when `s` is one or more ASCII digits, with no leading zero unless `s` is `0`, whose value `n` is at most 4294967295 | Proved | pending |  |
 | JSON-TREE-7 | For every number value whose text is `s`: when `F32.read(s)` is `Some{x}` with `F32.abs(x)` at most 3.4028235e38 (the largest finite F32), `as_f32` is `Some{x}`; when that read is infinite or `None`, `as_f32` is `None` | Proved | proved | ezjson/LAWS.bend as_f32_fits; ezjson/LAWS.bend as_f32_overflow; ezjson/LAWS.bend as_f32_unread |
-| JSON-TREE-8 | `has(obj(ps), k)` is true exactly when some pair in `ps` has key `k`, and `has(j, k)` is false for every `j` that is not an object | Proved | pending |  |
-| JSON-TREE-9 | `len(arr(xs))` is the length of `xs`, `len(obj(ps))` the length of `ps`, and `len(j)` is 0 for every scalar | Proved | pending |  |
+| JSON-TREE-8 | `has(obj(ps), k)` is true exactly when some pair in `ps` has key `k`, and `has(j, k)` is false for every `j` that is not an object | Proved | pending | ezjson/LAWS.bend has_not_obj; ezjson/LAWS.bend has_empty; ezjson/LAWS.bend has_first |
+| JSON-TREE-9 | `len(arr(xs))` is the length of `xs`, `len(obj(ps))` the length of `ps`, and `len(j)` is 0 for every scalar | Proved | proved | ezjson/LAWS.bend len_arr; ezjson/LAWS.bend len_obj; ezjson/LAWS.bend len_scalar |
 
 ### The pull cursor (JSON-PULL)
 
@@ -93,6 +93,7 @@ Every pending row with no Law entry is unproved in full; the RFC's Rollout says 
 | :---- | :---- | :---- |
 | JSON-TREE-3 | `at` on a value that is not an array is `null()` at every index (`at_not_arr`) | `at(arr(xs), i)` is the `i`-th element, or `null()` past the end |
 | JSON-TREE-4 | `get` on a value that is not an object is `null()` for every key (`get_not_obj`) | `get(obj(ps), k)` is the first pair's value with key `k`, or `null()` |
+| JSON-TREE-8 | `has` is false on a non-object (`has_not_obj`) and on `obj([])` (`has_empty`); on `obj((k2, v) <> ps)` it is `find.eq(k2, k)` or `has(obj(ps), k)` (`has_first`) | that `find.eq(a, b)` is true exactly when `a == b`, the string lemma JSON-TREE-4 and JSON-STR-4 also need |
 
 ## Trust boundary
 

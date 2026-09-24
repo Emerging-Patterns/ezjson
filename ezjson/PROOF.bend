@@ -2,6 +2,7 @@
 import Base
 import ./value.bend as V
 import ./main.bend as Ezjson
+import ./lazy.bend as Lazy
 import ./LAWS.bend as Laws
 
 # Unit for True, Empty for False: tells them apart
@@ -239,3 +240,109 @@ def Laws.as_f32_unread(raw, h_read):
   rd = Equal.sym(Maybe<&2, F32>, F32.read(raw), None{}, h_read)
   %rd : {V.f32.fit(_) == None{} : Maybe<&2, F32>}
   {==}
+
+def Laws.has_not_obj(val, key, h_kind):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{_}:
+      {==}
+    case V.JNum{_}:
+      {==}
+    case V.JStr{_}:
+      {==}
+    case V.JArr{_}:
+      {==}
+    case V.JObj{ps}:
+      Empty.absurd({Ezjson.has(V.JObj{ps}, key) == False{} : Bool},
+        true_false(h_kind))
+    case V.JNil{}:
+      {==}
+    case V.JCons{_, _}:
+      {==}
+    case V.JPair{_, _, _}:
+      {==}
+    case V.JSpan{_, _}:
+      {==}
+    case V.JBind{_, _, _, _}:
+      {==}
+
+def Laws.has_empty(_key):
+  {==}
+
+# a stop that answers true on a match is Bool.or
+law stop_or:
+  for cond: Bool
+  for rest: Bool
+  {Lazy.stop(Bool, cond, True{}, _u => rest) == Bool.or(cond, rest) : Bool}
+
+def stop_or(cond, _rest):
+  match cond:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+def Laws.has_first(k2, _vv, ps, key):
+  stop_or(V.find.eq(k2, key), V.has.go(V.obj.go(ps), key))
+
+# len.go counts the cells arr.go builds
+law len_arr_go:
+  for xs: List<&2, V.Json>
+  {V.len.go(V.arr.go(xs)) == List.length(&2, V.Json, xs) : Nat}
+
+def len_arr_go(xs):
+  match xs:
+    case Nil{}:
+      {==}
+    case hd <> tl:
+      %len_arr_go(tl) : {1n+V.len.go(V.arr.go(tl)) == 1n+_ : Nat}
+      {==}
+
+# len.go counts the cells obj.go builds
+law len_obj_go:
+  for ps: List<&1, String & V.Json>
+  {V.len.go(V.obj.go(ps)) == List.length(&1, String & V.Json, ps) : Nat}
+
+def len_obj_go(ps):
+  match ps:
+    case Nil{}:
+      {==}
+    case (kk, vv) <> tl:
+      %len_obj_go(tl) : {1n+V.len.go(V.obj.go(tl)) == 1n+_ : Nat}
+      {==}
+
+def Laws.len_arr(xs):
+  %len_arr_go(xs) : {U32.from_nat(V.len.go(V.arr.go(xs))) == U32.from_nat(_) : U32}
+  {==}
+
+def Laws.len_obj(ps):
+  %len_obj_go(ps) : {U32.from_nat(V.len.go(V.obj.go(ps))) == U32.from_nat(_) : U32}
+  {==}
+
+def Laws.len_scalar(val, h_arr, h_obj):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{_}:
+      {==}
+    case V.JNum{_}:
+      {==}
+    case V.JStr{_}:
+      {==}
+    case V.JArr{its}:
+      Empty.absurd({Ezjson.len(V.JArr{its}) == 0 : U32},
+        true_false(h_arr))
+    case V.JObj{ps}:
+      Empty.absurd({Ezjson.len(V.JObj{ps}) == 0 : U32},
+        true_false(h_obj))
+    case V.JNil{}:
+      {==}
+    case V.JCons{_, _}:
+      {==}
+    case V.JPair{_, _, _}:
+      {==}
+    case V.JSpan{_, _}:
+      {==}
+    case V.JBind{_, _, _, _}:
+      {==}

@@ -152,3 +152,47 @@ law as_f32_unread:
   for +raw: String
   for h_read: {F32.read(raw) == None{} : Maybe<&2, F32>}
   {Ezjson.as_f32(V.JNum{raw}) == None{} : Maybe<&2, F32>}
+
+# LAW: has is false on a value that is not an object, for every key
+# JSON-TREE-8
+law has_not_obj:
+  for +val: V.Json
+  for key: String
+  for h_kind: {is_obj(val) == False{} : Bool}
+  {Ezjson.has(val, key) == False{} : Bool}
+
+# LAW: an object with no pairs has no key
+# JSON-TREE-8
+law has_empty:
+  for key: String
+  {Ezjson.has(Ezjson.obj([]), key) == False{} : Bool}
+
+# LAW: an object has a key when its first key matches it, or the rest has it
+# JSON-TREE-8
+law has_first:
+  for k2: String
+  for vv: V.Json
+  for ps: List<&1, String & V.Json>
+  for +key: String
+  {Ezjson.has(Ezjson.obj((k2, vv) <> ps), key)
+    == Bool.or(V.find.eq(k2, key), Ezjson.has(Ezjson.obj(ps), key)) : Bool}
+
+# LAW: len of an array is how many elements built it
+# JSON-TREE-9
+law len_arr:
+  for xs: List<&2, V.Json>
+  {Ezjson.len(Ezjson.arr(xs)) == U32.from_nat(List.length(&2, V.Json, xs)) : U32}
+
+# LAW: len of an object is how many pairs built it
+# JSON-TREE-9
+law len_obj:
+  for ps: List<&1, String & V.Json>
+  {Ezjson.len(Ezjson.obj(ps)) == U32.from_nat(List.length(&1, String & V.Json, ps)) : U32}
+
+# LAW: len is 0 on every value that is neither an array nor an object
+# JSON-TREE-9
+law len_scalar:
+  for +val: V.Json
+  for h_arr: {is_arr(val) == False{} : Bool}
+  for h_obj: {is_obj(val) == False{} : Bool}
+  {Ezjson.len(val) == 0 : U32}

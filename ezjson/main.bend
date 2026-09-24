@@ -1,7 +1,8 @@
 # ezjson: JSON for Bend 2. `parse` reads text into Maybe Json. `print` writes
 # compact text. `cursor` reads one event at a time. Build null, booleans,
 # numbers, strings, arrays, and objects; read them with get, at, and as_bool,
-# as_str, as_num, as_u32, as_f32.
+# as_str, as_num, as_u32, as_f32; has and len tell a missing key or index
+# from a null.
 import Base
 import ./value.bend as Value
 import ./parse.bend as Parse
@@ -48,6 +49,15 @@ def get(val: Value.Json, key: String) -> Value.Json:
 # an array's item at an index; JNull when it is not an array or has none
 def at(val: Value.Json, idx: U32) -> Value.Json:
   Value.at(val, idx)
+
+# whether an object has a key; false when the value is not an object. Tells
+# a missing key from a key whose value is null, which `get` does not
+def has(val: Value.Json, key: String) -> Bool:
+  Value.has(val, key)
+
+# how many elements an array, or members an object, has; 0 for anything else
+def len(val: Value.Json) -> U32:
+  Value.len(val)
 
 # a boolean, or none when the value is not one
 def as_bool(val: Value.Json) -> Maybe<&2, Bool>:

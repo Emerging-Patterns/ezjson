@@ -345,6 +345,46 @@ def at(val: Json, idx: U32) -> Json:
     case other:
       JNull{}
 
+# whether a chain of pairs has the key, stopping at the first match
+def has.go(cells: Json, +key: String) -> Bool:
+  match cells:
+    case JPair{k2, _, rr}:
+      Lazy.stop(Bool, find.eq(k2, key), True{}, _u => has.go(rr, key))
+    case JBind{src, nn, _, rr}:
+      Lazy.stop(Bool, span.eq(src, nn, key), True{}, _u => has.go(rr, key))
+    case _:
+      False{}
+
+# whether an object has the key; false when the value is not an object
+def has(val: Json, key: String) -> Bool:
+  match val:
+    case JObj{pairs}:
+      has.go(pairs, key)
+    case _:
+      False{}
+
+# how many cells a chain of array or object cells holds
+def len.go(cells: Json) -> Nat:
+  match cells:
+    case JCons{_, tl}:
+      1n+len.go(tl)
+    case JPair{_, _, rr}:
+      1n+len.go(rr)
+    case JBind{_, _, _, rr}:
+      1n+len.go(rr)
+    case _:
+      0n
+
+# how many elements an array, or members an object, has; 0 for anything else
+def len(val: Json) -> U32:
+  match val:
+    case JArr{items}:
+      U32.from_nat(len.go(items))
+    case JObj{pairs}:
+      U32.from_nat(len.go(pairs))
+    case _:
+      0
+
 # a string, or none when the value is not one
 def as_str(val: Json) -> Maybe<&2, String>:
   match val:
