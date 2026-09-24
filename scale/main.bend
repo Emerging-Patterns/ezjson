@@ -15,8 +15,8 @@ def cat.rev(chunk: String, acc: String) -> String:
       cat.rev(t, SCon{c, acc})
 
 # undo a reversed buffer
-def flip(s: String, acc: String) -> String:
-  match s:
+def flip(txt: String, acc: String) -> String:
+  match txt:
     case SNil{}:
       acc
     case SCon{c, t}:
@@ -33,8 +33,8 @@ def rows.put(left: Nat, fresh: Bool, acc: String, +one: String, +more: String) -
       rows.put(p, False{}, cat.rev(more, acc), one, more)
 
 # the row text, forwards
-def rows.of(n: Nat, one: String, more: String) -> String:
-  flip(rows.put(n, True{}, "", one, more), "")
+def rows.of(nn: Nat, one: String, more: String) -> String:
+  flip(rows.put(nn, True{}, "", one, more), "")
 
 # {"rows":[ ... ],"n":1}
 def pack(body: String) -> String:

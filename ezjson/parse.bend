@@ -63,8 +63,8 @@ def put.text(key: Key) -> V.Json:
       V.JSpan{src, n}
 
 # a finished value lands in the innermost open frame, or becomes the root
-def put(stack: List<&2, Frame>, root: Maybe<&2, V.Json>, v: V.Json, bad: Bool) -> P:
-  match stack root v:
+def put(stack: List<&2, Frame>, root: Maybe<&2, V.Json>, vv: V.Json, bad: Bool) -> P:
+  match stack root vv:
     case Nil{} None{} val:
       P{bad, Some{val}, Nil{}}
     case Nil{} Some{r} val:
@@ -162,11 +162,11 @@ def step.span.ok(+raw: String, ok: Bool) -> (V.Json & Bool):
 def step.span.use(+raw: String) -> (V.Json & Bool):
   step.span.ok(raw, V.num.ok(raw))
 
-def step.span.chk(src: String, +n: U32) -> (V.Json & Bool):
-  step.span.use(V.span.str(src, n, U32.is_zero(n)))
+def step.span.chk(src: String, +nn: U32) -> (V.Json & Bool):
+  step.span.use(V.span.str(src, nn, U32.is_zero(nn)))
 
-def step.span.go(src: String, n: U32, a: Bool, b: Bool, c: Bool) -> (V.Json & Bool):
-  match a b c:
+def step.span.go(src: String, nn: U32, is_null: Bool, is_true: Bool, is_false: Bool) -> (V.Json & Bool):
+  match is_null is_true is_false:
     case True{} x y:
       (V.JNull{}, True{})
     case False{} True{} y:
@@ -174,13 +174,13 @@ def step.span.go(src: String, n: U32, a: Bool, b: Bool, c: Bool) -> (V.Json & Bo
     case False{} False{} True{}:
       (V.JBool{False{}}, True{})
     case False{} False{} False{}:
-      step.span.chk(src, n)
+      step.span.chk(src, nn)
 
-def step.span.use2(st: P, v: V.Json, ok: Bool) -> P:
+def step.span.use2(st: P, val: V.Json, ok: Bool) -> P:
   P{bad, root, stack} = st
   match ok:
     case True{}:
-      put(stack, root, v, bad)
+      put(stack, root, val, bad)
     case False{}:
       P{True{}, root, stack}
 
@@ -188,9 +188,9 @@ def step.span.open(st: P, got: (V.Json & Bool)) -> P:
   (v, ok) = got
   step.span.use2(st, v, ok)
 
-def step.span(+src: String, +n: U32, st: P) -> P:
-  step.span.open(st, step.span.go(src, n, V.span.eq(src, n, "null"),
-    V.span.eq(src, n, "true"), V.span.eq(src, n, "false")))
+def step.span(+src: String, +nn: U32, st: P) -> P:
+  step.span.open(st, step.span.go(src, nn, V.span.eq(src, nn, "null"),
+    V.span.eq(src, nn, "true"), V.span.eq(src, nn, "false")))
 
 # one token
 def step(tok: Lex.Tok, st: P) -> P:
@@ -247,5 +247,5 @@ def finish(st: P) -> Maybe<&2, V.Json>:
   result(bad, stack, root)
 
 # a text as a value, or None when it is not JSON
-def parse(s: String) -> Maybe<&2, V.Json>:
-  finish(run(Lex.tokens(s), P{False{}, None{}, Nil{}}))
+def parse(txt: String) -> Maybe<&2, V.Json>:
+  finish(run(Lex.tokens(txt), P{False{}, None{}, Nil{}}))

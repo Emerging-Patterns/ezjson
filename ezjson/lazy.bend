@@ -1,10 +1,10 @@
-# ezjson/lazy: `stop` returns `a` when c holds, and otherwise calls rest.
+# ezjson/lazy: `stop` returns `val` when `cond` holds, and otherwise calls rest.
 import Base
 
-# `a` when c, else what rest gives: the early exit of a search
-def stop(-A: Type, c: Bool, a: A, rest: Unit -> A) -> A:
-  match c:
+# `val` when `cond`, else what rest gives: the early exit of a search
+def stop(-A: Type, cond: Bool, val: A, rest: Unit -> A) -> A:
+  match cond:
     case True{}:
-      a
+      val
     case False{}:
       rest(Unit{})

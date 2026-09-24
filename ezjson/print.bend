@@ -2,39 +2,58 @@
 import Base
 import ./value.bend as V
 
-def escape.nib.go(+n: U32, digit: Bool) -> Char:
+def escape.nib.go(+nn: U32, digit: Bool) -> Char:
   match digit:
     case True{}:
-      Char.from_u32(U32.add(48, n))
+      Char.from_u32(U32.add(48, nn))
     case False{}:
-      Char.from_u32(U32.add(87, n))
+      Char.from_u32(U32.add(87, nn))
 
-def escape.nib(+n: U32) -> Char:
-  escape.nib.go(n, U32.is_lt(n, 10))
+def escape.nib(+nn: U32) -> Char:
+  escape.nib.go(nn, U32.is_lt(nn, 10))
 
-def escape.u(+x: U32) -> String:
-  "\\u00" ++ String.from_list([escape.nib(U32.div(x, 16)), escape.nib(U32.mod(x, 16))])
+def escape.u(+cp: U32) -> String:
+  "\\u00" ++ String.from_list([escape.nib(U32.div(cp, 16)), escape.nib(U32.mod(cp, 16))])
 
-def escape.rest.go(+x: U32, c: Char, ctrl: Bool) -> String:
+def escape.rest.go(+cp: U32, ch: Char, ctrl: Bool) -> String:
   match ctrl:
     case True{}:
-      escape.u(x)
+      escape.u(cp)
     case False{}:
-      String.from_list([c])
+      String.from_list([ch])
 
-def escape.rest(+x: U32, c: Char) -> String:
-  escape.rest.go(x, c, U32.is_lt(x, 32))
+def escape.rest(+cp: U32, ch: Char) -> String:
+  escape.rest.go(cp, ch, U32.is_lt(cp, 32))
 
-def escape.char(+c: Char) -> String:
-  +x = Char.to_u32(c)
-  Bool.pick(String, U32.is_eq(x, 34), "\\\"",
-  Bool.pick(String, U32.is_eq(x, 92), "\\\\",
-  Bool.pick(String, U32.is_eq(x, 8), "\\b",
-  Bool.pick(String, U32.is_eq(x, 12), "\\f",
-  Bool.pick(String, U32.is_eq(x, 10), "\\n",
-  Bool.pick(String, U32.is_eq(x, 13), "\\r",
-  Bool.pick(String, U32.is_eq(x, 9), "\\t",
-    escape.rest(x, c))))))))
+# whether a code point is a Unicode scalar value: not a surrogate, and not
+# past U+10FFFF. No UTF-8 JSON text can hold any other
+def scalar(+cp: U32) -> Bool:
+  Bool.not(Bool.or(Bool.and(U32.is_ge(cp, 55296), U32.is_le(cp, 57343)), U32.is_gt(cp, 1114111)))
+
+# one scalar value, escaped when JSON requires it
+def escape.plain(+cp: U32, ch: Char) -> String:
+  Bool.pick(String, U32.is_eq(cp, 34), "\\\"",
+  Bool.pick(String, U32.is_eq(cp, 92), "\\\\",
+  Bool.pick(String, U32.is_eq(cp, 8), "\\b",
+  Bool.pick(String, U32.is_eq(cp, 12), "\\f",
+  Bool.pick(String, U32.is_eq(cp, 10), "\\n",
+  Bool.pick(String, U32.is_eq(cp, 13), "\\r",
+  Bool.pick(String, U32.is_eq(cp, 9), "\\t",
+    escape.rest(cp, ch))))))))
+
+# a scalar value as escape.plain writes it; any other code point as U+FFFD,
+# as Go's encoding/json writes invalid UTF-8
+def escape.scalar(+cp: U32, ch: Char, ok: Bool) -> String:
+  match ok:
+    case True{}:
+      escape.plain(cp, ch)
+    case False{}:
+      String.from_list([Char.from_u32(65533)])
+
+# one char of a string
+def escape.char(+ch: Char) -> String:
+  +cp = Char.to_u32(ch)
+  escape.scalar(cp, ch, scalar(cp))
 
 # the chars of a string with quotes, backslashes, and controls escaped
 def escape(cs: List<&2, Char>) -> String:
@@ -45,12 +64,12 @@ def escape(cs: List<&2, Char>) -> String:
       escape.char(c) ++ escape(t)
 
 # a string in quotes, escaped
-def quote(s: String) -> String:
-  "\"" ++ escape(String.to_list(s)) ++ "\""
+def quote(txt: String) -> String:
+  "\"" ++ escape(String.to_list(txt)) ++ "\""
 
 # a value as compact JSON
-def print(j: V.Json) -> String:
-  match j:
+def print(val: V.Json) -> String:
+  match val:
     case V.JNull{}:
       "null"
     case V.JBool{True{}}:
@@ -83,8 +102,8 @@ def print(j: V.Json) -> String:
       quote(V.span.str(src, n, U32.is_zero(n))) ++ ":" ++ print(v) ++ "," ++ print(r)
 
 # a parse result: the value, or "<bad>"
-def maybe(m: Maybe<&2, V.Json>) -> String:
-  match m:
+def maybe(mb: Maybe<&2, V.Json>) -> String:
+  match mb:
     case None{}:
       "<bad>"
     case Some{j}:
