@@ -99,6 +99,13 @@ space between, as the first value's tokens then the second's (`two_lex`,
 through WP-L2's `lexp`); the parser takes the first as the root (WP-P1's
 `pv`), and the second value's first token then raises the error flag
 (`after_root`).
+JSON-STR-3: a raw character other than a control, `"` or `\` is kept
+(`raw_kept`, through STR-1's `one_str`); and a raw control inside a string
+makes `parse` `None` for every text (`ctl_none`). "Inside a string" is a
+four-state scan written from RFC 8259 §7 in LAWS.bend (`cs.step`), and the
+proof keeps it in step with the character lexer's mode (`okm`, `tr_m`): once
+the scan meets a raw control inside a string, the lexer is rejecting, so its
+tokens hold the error token, which the parser never gets past.
 
 ## What parse does
 
