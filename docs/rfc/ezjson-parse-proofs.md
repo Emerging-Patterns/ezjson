@@ -13,6 +13,21 @@ RFC is `docs/rfc/ezjson-spec.md`; its decisions stand.
 - [x] <!-- REVIEW-P4 (resolved): The cursor's fuel cannot be checked. `next.go` runs on a Nat fuel of `U32.to_nat(4294967295)`, and the checker normalizes that term in full, four billion successors, as soon as a law reaches `next` on a live cursor: even `{next.fuel() == next.fuel()}` by reflexivity overflows its stack. Only failed and ended cursors, which never reach `next.go`, can be reasoned about today, which blocks JSON-PULL-1, 3 and 4 and half of 2 and 5. Options: (a) fuel whose normal form is small, a depth of 32 where each level runs the one below twice (2^32 steps, structural recursion on the depth), measured against master with `scale` and the bench since the walk is the tuned hot loop; (b) keep the fuel in `Cur`, which changes a public type; (c) move the live-cursor rows to Trusted, a weakening. Recommend (a), with the measurement in its PR, and (c) only if it costs speed. Decided: accepted as recommended. (a): a fuel of nested budgets, 32 deep, measured against master in its PR. -->
 - [x] <!-- REVIEW-P3 (resolved): JSON-TREE-6 (as_u32) goes last. Base's `U32.read` accepts digits by checking that dividing by ten gives back the accumulator, so the row needs U32 multiply and divide lemmas, and nothing else in the rollout does. Recommend: keep it Proved and pending, and do it after the parser. Not a behavior change. Decided: accepted as recommended. JSON-TREE-6 stays Proved and pending and goes last. -->
 
+## Update
+
+WP-L1 has landed as `lexers_agree` in `ezjson/PROOF.bend`: for every text
+`short` enough (at most 2^32 - 1 characters), `dens(Lex.tokens(s))` equals
+`dens` of the character machine's tokens. Where the code differs from the
+sketch:
+
+- `rel` relates a scanner state to a lexer state through `dlex` (the state
+  with spans replaced), and a word or string's span to the character
+  machine's reversed buffer, exactly (`tokens.rev`), not only through `text`.
+- Two refactors made the lexer provable, both byte-identical on the
+  harness: `escape` and `step.hiesc` test for `u` by code point, and the span
+  scanner's mode is an enum (`Span`), not a U32 matched with literals.
+- The count's no-wrap fact comes from `pos_ne`, not an ordering lemma.
+
 ## What parse does
 
 | |
