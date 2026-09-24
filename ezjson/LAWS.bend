@@ -86,6 +86,14 @@ def str_of(mb: Maybe<&2, V.Json>) -> Maybe<&2, String>:
     case Some{jj}:
       Ezjson.as_str(jj)
 
+# whether a parse result is well-formed: none is, trivially
+def wf_m(mb: Maybe<&2, V.Json>) -> Bool:
+  match mb:
+    case None{}:
+      True{}
+    case Some{jj}:
+      V.wf(jj)
+
 # RFC 8259 §6, the grammar a JSON number must match, one def per production:
 #
 #   number = [ minus ] int [ frac ] [ exp ]
@@ -535,6 +543,12 @@ law wf_obj:
   for ps: List<&1, String & V.Json>
   for h_all: {all_wf_pairs(ps) == True{} : Bool}
   {V.wf(Ezjson.obj(ps)) == True{} : Bool}
+
+# LAW: every value parse returns is well-formed
+# JSON-PRINT-3
+law parse_wf:
+  for +txt: String
+  {wf_m(Ezjson.parse(txt)) == True{} : Bool}
 
 # LAW: print writes a code point that is not a Unicode scalar value as U+FFFD
 # JSON-STR-5
