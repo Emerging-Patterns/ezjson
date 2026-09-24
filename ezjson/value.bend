@@ -43,7 +43,8 @@ def span.str(src: String, +nn: U32, zero: Bool) -> String:
     case SCon{h, t} False{}:
       SCon{h, span.str(t, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)))}
 
-# whether the first `nn` chars of `src` equal `key`, stopping at the first miss
+# whether the first `nn` chars of `src` equal `key`, stopping at the first miss.
+# A count past the end of `src` covers what there is, as span.str reads it
 def span.eq.go(src: String, same: Bool, zero: Bool, key: String, +nn: U32) -> Bool:
   match src same zero key:
     case s False{} zero k:
@@ -54,6 +55,8 @@ def span.eq.go(src: String, same: Bool, zero: Bool, key: String, +nn: U32) -> Bo
       False{}
     case SCon{+a, as} True{} False{} SCon{+b, bs}:
       span.eq.go(as, Char.is_eq(a, b), U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1))
+    case SNil{} True{} False{} SNil{}:
+      True{}
     case s True{} False{} k:
       False{}
 

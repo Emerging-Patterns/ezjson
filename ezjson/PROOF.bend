@@ -10439,3 +10439,1143 @@ def Laws.parse_wf(txt):
   fin_inv(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}}),
     run_inv(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}}, (Unit{}, Unit{})))
 
+
+# WP-H: parse on spans against parse on what they cover
+
+# a span comparison that has missed stays missed
+law span_miss:
+  for +src: String
+  for +zero: Bool
+  for +key: String
+  for +nn: U32
+  {V.span.eq.go(src, False{}, zero, key, nn) == False{} : Bool}
+
+def span_miss(src, _zero, _key, _nn):
+  match src:
+    case SNil{}:
+      {==}
+    case SCon{_a, _as}:
+      {==}
+
+# span_eq_go, one character on, with its comparison named
+law span_eq_at:
+  for cc: Cmp
+  for +xx: U32
+  for +yy: U32
+  for +as: String
+  for +bs: String
+  for +nn: U32
+  for ih: {V.span.eq.go(as, True{}, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)) ==
+    String.eq(V.span.str(as, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))), bs) : Bool}
+  {V.span.eq.go(as, Cmp.is_eq(cc), U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)) ==
+    String.eq.fin(String.cmp.fin(V.span.str(as, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))), bs,
+      ((Chr{xx}, Chr{yy}), cc))) : Bool}
+
+def span_eq_at(cc, xx, yy, as, bs, nn, ih):
+  match cc:
+    case LT{}:
+      span_miss(as, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1))
+    case GT{}:
+      span_miss(as, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1))
+    case EQ{}:
+      +sp = V.span.str(as, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)))
+      Equal.trans(Bool, V.span.eq.go(as, True{}, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)), String.eq(sp, bs),
+        String.eq.fin(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(sp, bs))), ih,
+        Equal.sym(Bool, String.eq.fin(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(sp, bs))), String.eq(sp, bs),
+          cmp_rec_eq(Chr{xx}, Chr{yy}, String.cmp(sp, bs))))
+
+# comparing a span with a key is comparing what the span covers with it
+law span_eq_go:
+  for +src: String
+  for +zero: Bool
+  for +key: String
+  for +nn: U32
+  {V.span.eq.go(src, True{}, zero, key, nn) == String.eq(V.span.str(src, nn, zero), key) : Bool}
+
+def span_eq_go(src, zero, key, nn):
+  match src:
+    case SNil{}:
+      match zero:
+        case True{}:
+          match key:
+            case SNil{}:
+              {==}
+            case SCon{_b, _bs}:
+              {==}
+        case False{}:
+          match key:
+            case SNil{}:
+              {==}
+            case SCon{_b, _bs}:
+              {==}
+    case SCon{Chr{+xx}, +as}:
+      match zero:
+        case True{}:
+          match key:
+            case SNil{}:
+              {==}
+            case SCon{_b, _bs}:
+              {==}
+        case False{}:
+          match key:
+            case SNil{}:
+              {==}
+            case SCon{Chr{+yy}, +bs}:
+              span_eq_at(U32.cmp(xx, yy), xx, yy, as, bs, nn,
+                span_eq_go(as, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)))
+
+# fix_eq, with the scalar test named
+law fix_eq.go:
+  for bb: Bool
+  for +uu: U32
+  {Bool.pick(Char, Bool.not(bb), Chr{uu}, Chr{65533}) == Bool.pick(Char, bb, Char.from_u32(65533), Chr{uu}) : Char}
+
+def fix_eq.go(bb, _uu):
+  match bb:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# print's fix and the spec's are the same
+law fix_eq:
+  for +ch: Char
+  {fix(ch) == Laws.fix_char(ch) : Char}
+
+def fix_eq(ch):
+  match ch:
+    case Chr{+uu}:
+      fix_eq.go(Laws.non_scalar(uu), uu)
+
+# print's fixs and the spec's fix_str are the same
+law fixs_eq:
+  for +txt: String
+  {fixs(String.to_list(txt)) == Laws.fix_str(txt) : String}
+
+def fixs_eq(txt):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{+hd, +tl}:
+      Equal.trans(String, SCon{fix(hd), fixs(String.to_list(tl))}, SCon{Laws.fix_char(hd), fixs(String.to_list(tl))},
+        SCon{Laws.fix_char(hd), Laws.fix_str(tl)},
+        Equal.cong(Char, String, zz => SCon{zz, fixs(String.to_list(tl))}, fix(hd), Laws.fix_char(hd), fix_eq(hd)),
+        Equal.cong(String, String, zz => SCon{Laws.fix_char(hd), zz}, fixs(String.to_list(tl)), Laws.fix_str(tl),
+          fixs_eq(tl)))
+
+# a key with its span read out
+def ownk(key: Parse.Key) -> Parse.Key:
+  match key:
+    case Parse.KOwn{txt}:
+      Parse.KOwn{txt}
+    case Parse.KCut{src, +nn}:
+      Parse.KOwn{V.span.str(src, nn, U32.is_zero(nn))}
+
+# an open frame with its spans read out
+def ownf(fr: Parse.Frame) -> Parse.Frame:
+  match fr:
+    case Parse.FArr{items, slot}:
+      Parse.FArr{Laws.own(items), slot}
+    case Parse.FObj{pairs, key, slot}:
+      Parse.FObj{Laws.own(pairs), ownk(key), slot}
+
+# the open frames with their spans read out
+def owns(stk: List<&2, Parse.Frame>) -> List<&2, Parse.Frame>:
+  match stk:
+    case Nil{}:
+      Nil{}
+    case fr <> rest:
+      ownf(fr) <> owns(rest)
+
+# the parser's state with its spans read out
+def ownp(st: Parse.P) -> Parse.P:
+  match st:
+    case Parse.P{bad, root, stk}:
+      Parse.P{bad, Laws.own_m(root), owns(stk)}
+
+# whether a value may go next does not look at spans
+law ready_own:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  {Parse.step.ready(owns(stk), Laws.own_m(root)) == Parse.step.ready(stk, root) : Bool}
+
+def ready_own(stk, root):
+  match stk:
+    case Nil{}:
+      match root:
+        case None{}:
+          {==}
+        case Some{_jj}:
+          {==}
+    case fr <> _rest:
+      match fr:
+        case Parse.FArr{_items, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+        case Parse.FObj{_pairs, _key, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+
+# a pair put under a key, owned
+law pair_own:
+  for key: Parse.Key
+  for +vv: V.Json
+  for +pairs: V.Json
+  {Laws.own(Parse.put.pair(key, vv, pairs)) == Parse.put.pair(ownk(key), Laws.own(vv), Laws.own(pairs)) : V.Json}
+
+def pair_own(key, _vv, _pairs):
+  match key:
+    case Parse.KOwn{_txt}:
+      {==}
+    case Parse.KCut{_src, _nn}:
+      {==}
+
+# a string key's value, owned
+law text_own:
+  for key: Parse.Key
+  {Laws.own(Parse.put.text(key)) == Parse.put.text(ownk(key)) : V.Json}
+
+def text_own(key):
+  match key:
+    case Parse.KOwn{_txt}:
+      {==}
+    case Parse.KCut{_src, _nn}:
+      {==}
+
+# put, owned, is put of the owned value on the owned state
+law put_own:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +vv: V.Json
+  for +bad: Bool
+  {ownp(Parse.put(stk, root, vv, bad)) == Parse.put(owns(stk), Laws.own_m(root), Laws.own(vv), bad) : Parse.P}
+
+def put_own(stk, root, vv, bad):
+  match stk:
+    case Nil{}:
+      match root:
+        case None{}:
+          {==}
+        case Some{_rr}:
+          {==}
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{_items, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+        case Parse.FObj{+pairs, +key, slot}:
+          match slot:
+            case Parse.SValue{}:
+              Equal.cong(V.Json, Parse.P, zz => Parse.P{bad, Laws.own_m(root), Parse.FObj{zz, Parse.KOwn{""},
+                Parse.SComma{}} <> owns(rest)},
+                Laws.own(Parse.put.pair(key, vv, pairs)), Parse.put.pair(ownk(key), Laws.own(vv), Laws.own(pairs)),
+                pair_own(key, vv, pairs))
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+
+# reversing cells, owned
+law own_rev:
+  for +cells: V.Json
+  for +acc: V.Json
+  {Laws.own(V.reverse(cells, acc)) == V.reverse(Laws.own(cells), Laws.own(acc)) : V.Json}
+
+def own_rev(cells, acc):
+  match cells:
+    case V.JNull{}:
+      {==}
+    case V.JBool{+x1}:
+      {==}
+    case V.JNum{+x1}:
+      {==}
+    case V.JStr{+x1}:
+      {==}
+    case V.JArr{+x1}:
+      {==}
+    case V.JObj{+x1}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{+x1, +x2}:
+      own_rev(x2, V.JCons{x1, acc})
+    case V.JPair{+x1, +x2, +x3}:
+      own_rev(x3, V.JPair{x1, x2, acc})
+    case V.JSpan{+x1, +x2}:
+      {==}
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      own_rev(x4, V.JBind{x1, x2, x3, acc})
+
+# a closing bracket on an array frame, owned
+law ca_own:
+  for slot: Parse.Slot
+  for items: V.Json
+  for +rest: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  {ownp(Parse.close_arr(Parse.FArr{items, slot} <> rest, root, bad)) ==
+    Parse.close_arr(owns(Parse.FArr{items, slot} <> rest), Laws.own_m(root), bad) : Parse.P}
+
+def ca_own(slot, items, rest, root, bad):
+  match slot:
+    case Parse.SValue{}:
+      match items:
+        case V.JNull{}:
+          {==}
+        case V.JBool{+x1}:
+          {==}
+        case V.JNum{+x1}:
+          {==}
+        case V.JStr{+x1}:
+          {==}
+        case V.JArr{+x1}:
+          {==}
+        case V.JObj{+x1}:
+          {==}
+        case V.JNil{}:
+          put_own(rest, root, V.JArr{V.JNil{}}, bad)
+        case V.JCons{+x1, +x2}:
+          {==}
+        case V.JPair{+x1, +x2, +x3}:
+          {==}
+        case V.JSpan{+x1, +x2}:
+          {==}
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          {==}
+    case Parse.SComma{}:
+      +it = items
+      Equal.trans(Parse.P, ownp(Parse.close_arr(Parse.FArr{it, Parse.SComma{}} <> rest, root, bad)),
+        ownp(Parse.put(rest, root, V.JArr{V.reverse(it, V.JNil{})}, bad)), Parse.close_arr(Parse.FArr{Laws.own(it),
+        Parse.SComma{}} <> owns(rest), Laws.own_m(root), bad), Equal.cong(Parse.P, Parse.P, zz => ownp(zz),
+        Parse.close_arr(Parse.FArr{it, Parse.SComma{}} <> rest, root, bad), Parse.put(rest, root, V.JArr{V.reverse(it,
+        V.JNil{})}, bad),
+        close_arr_comma(it, rest, root, bad)),
+        Equal.trans(Parse.P, ownp(Parse.put(rest, root, V.JArr{V.reverse(it, V.JNil{})}, bad)), Parse.put(owns(rest),
+          Laws.own_m(root), V.JArr{Laws.own(V.reverse(it, V.JNil{}))}, bad), Parse.close_arr(Parse.FArr{Laws.own(it),
+          Parse.SComma{}} <> owns(rest), Laws.own_m(root), bad), put_own(rest, root, V.JArr{V.reverse(it, V.JNil{})},
+          bad),
+        Equal.trans(Parse.P, Parse.put(owns(rest), Laws.own_m(root), V.JArr{Laws.own(V.reverse(it, V.JNil{}))}, bad),
+          Parse.put(owns(rest), Laws.own_m(root), V.JArr{V.reverse(Laws.own(it), V.JNil{})}, bad),
+          Parse.close_arr(Parse.FArr{Laws.own(it), Parse.SComma{}} <> owns(rest), Laws.own_m(root), bad),
+          Equal.cong(V.Json, Parse.P, zz => Parse.put(owns(rest), Laws.own_m(root), V.JArr{zz}, bad),
+          Laws.own(V.reverse(it, V.JNil{})),
+        V.reverse(Laws.own(it), V.JNil{}), own_rev(it, V.JNil{})),
+        Equal.sym(Parse.P, Parse.close_arr(Parse.FArr{Laws.own(it), Parse.SComma{}} <> owns(rest), Laws.own_m(root),
+          bad), Parse.put(owns(rest), Laws.own_m(root), V.JArr{V.reverse(Laws.own(it), V.JNil{})}, bad),
+          close_arr_comma(Laws.own(it), owns(rest), Laws.own_m(root), bad)))))
+    case Parse.SKey{}:
+      match items:
+        case V.JNull{}:
+          {==}
+        case V.JBool{+x1}:
+          {==}
+        case V.JNum{+x1}:
+          {==}
+        case V.JStr{+x1}:
+          {==}
+        case V.JArr{+x1}:
+          {==}
+        case V.JObj{+x1}:
+          {==}
+        case V.JNil{}:
+          {==}
+        case V.JCons{+x1, +x2}:
+          {==}
+        case V.JPair{+x1, +x2, +x3}:
+          {==}
+        case V.JSpan{+x1, +x2}:
+          {==}
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          {==}
+    case Parse.SColon{}:
+      match items:
+        case V.JNull{}:
+          {==}
+        case V.JBool{+x1}:
+          {==}
+        case V.JNum{+x1}:
+          {==}
+        case V.JStr{+x1}:
+          {==}
+        case V.JArr{+x1}:
+          {==}
+        case V.JObj{+x1}:
+          {==}
+        case V.JNil{}:
+          {==}
+        case V.JCons{+x1, +x2}:
+          {==}
+        case V.JPair{+x1, +x2, +x3}:
+          {==}
+        case V.JSpan{+x1, +x2}:
+          {==}
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          {==}
+
+# a closing brace on an object frame, owned
+law co_own:
+  for slot: Parse.Slot
+  for pairs: V.Json
+  for +key: Parse.Key
+  for +rest: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  {ownp(Parse.close_obj(Parse.FObj{pairs, key, slot} <> rest, root, bad)) ==
+    Parse.close_obj(owns(Parse.FObj{pairs, key, slot} <> rest), Laws.own_m(root), bad) : Parse.P}
+
+def co_own(slot, pairs, key, rest, root, bad):
+  match slot:
+    case Parse.SKey{}:
+      match pairs:
+        case V.JNull{}:
+          {==}
+        case V.JBool{+x1}:
+          {==}
+        case V.JNum{+x1}:
+          {==}
+        case V.JStr{+x1}:
+          {==}
+        case V.JArr{+x1}:
+          {==}
+        case V.JObj{+x1}:
+          {==}
+        case V.JNil{}:
+          put_own(rest, root, V.JObj{V.JNil{}}, bad)
+        case V.JCons{+x1, +x2}:
+          {==}
+        case V.JPair{+x1, +x2, +x3}:
+          {==}
+        case V.JSpan{+x1, +x2}:
+          {==}
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          {==}
+    case Parse.SComma{}:
+      +it = pairs
+      Equal.trans(Parse.P, ownp(Parse.close_obj(Parse.FObj{it, key, Parse.SComma{}} <> rest, root, bad)),
+        ownp(Parse.put(rest, root, V.JObj{V.reverse(it, V.JNil{})}, bad)), Parse.close_obj(Parse.FObj{Laws.own(it),
+        ownk(key), Parse.SComma{}} <> owns(rest), Laws.own_m(root), bad), Equal.cong(Parse.P, Parse.P, zz => ownp(zz),
+        Parse.close_obj(Parse.FObj{it, key, Parse.SComma{}} <> rest, root, bad), Parse.put(rest, root,
+        V.JObj{V.reverse(it, V.JNil{})}, bad),
+        close_obj_comma(it, key, rest, root, bad)),
+        Equal.trans(Parse.P, ownp(Parse.put(rest, root, V.JObj{V.reverse(it, V.JNil{})}, bad)), Parse.put(owns(rest),
+          Laws.own_m(root), V.JObj{Laws.own(V.reverse(it, V.JNil{}))}, bad), Parse.close_obj(Parse.FObj{Laws.own(it),
+          ownk(key), Parse.SComma{}} <> owns(rest), Laws.own_m(root), bad), put_own(rest, root, V.JObj{V.reverse(it,
+          V.JNil{})}, bad),
+        Equal.trans(Parse.P, Parse.put(owns(rest), Laws.own_m(root), V.JObj{Laws.own(V.reverse(it, V.JNil{}))}, bad),
+          Parse.put(owns(rest), Laws.own_m(root), V.JObj{V.reverse(Laws.own(it), V.JNil{})}, bad),
+          Parse.close_obj(Parse.FObj{Laws.own(it), ownk(key), Parse.SComma{}} <> owns(rest), Laws.own_m(root), bad),
+          Equal.cong(V.Json, Parse.P, zz => Parse.put(owns(rest), Laws.own_m(root), V.JObj{zz}, bad),
+          Laws.own(V.reverse(it, V.JNil{})),
+        V.reverse(Laws.own(it), V.JNil{}), own_rev(it, V.JNil{})),
+        Equal.sym(Parse.P, Parse.close_obj(Parse.FObj{Laws.own(it), ownk(key), Parse.SComma{}} <> owns(rest),
+          Laws.own_m(root), bad), Parse.put(owns(rest), Laws.own_m(root), V.JObj{V.reverse(Laws.own(it), V.JNil{})},
+          bad), close_obj_comma(Laws.own(it), ownk(key), owns(rest), Laws.own_m(root), bad)))))
+    case Parse.SValue{}:
+      match pairs:
+        case V.JNull{}:
+          {==}
+        case V.JBool{+x1}:
+          {==}
+        case V.JNum{+x1}:
+          {==}
+        case V.JStr{+x1}:
+          {==}
+        case V.JArr{+x1}:
+          {==}
+        case V.JObj{+x1}:
+          {==}
+        case V.JNil{}:
+          {==}
+        case V.JCons{+x1, +x2}:
+          {==}
+        case V.JPair{+x1, +x2, +x3}:
+          {==}
+        case V.JSpan{+x1, +x2}:
+          {==}
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          {==}
+    case Parse.SColon{}:
+      match pairs:
+        case V.JNull{}:
+          {==}
+        case V.JBool{+x1}:
+          {==}
+        case V.JNum{+x1}:
+          {==}
+        case V.JStr{+x1}:
+          {==}
+        case V.JArr{+x1}:
+          {==}
+        case V.JObj{+x1}:
+          {==}
+        case V.JNil{}:
+          {==}
+        case V.JCons{+x1, +x2}:
+          {==}
+        case V.JPair{+x1, +x2, +x3}:
+          {==}
+        case V.JSpan{+x1, +x2}:
+          {==}
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          {==}
+
+# a closing bracket, owned
+law close_arr_own:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  {ownp(Parse.close_arr(stk, root, bad)) == Parse.close_arr(owns(stk), Laws.own_m(root), bad) : Parse.P}
+
+def close_arr_own(stk, root, bad):
+  match stk:
+    case Nil{}:
+      {==}
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{items, slot}:
+          ca_own(slot, items, rest, root, bad)
+        case Parse.FObj{_pairs, _key, _slot}:
+          {==}
+
+# a closing brace, owned
+law close_obj_own:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  {ownp(Parse.close_obj(stk, root, bad)) == Parse.close_obj(owns(stk), Laws.own_m(root), bad) : Parse.P}
+
+def close_obj_own(stk, root, bad):
+  match stk:
+    case Nil{}:
+      {==}
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{_items, _slot}:
+          {==}
+        case Parse.FObj{pairs, +key, slot}:
+          co_own(slot, pairs, key, rest, root, bad)
+
+# a colon, owned
+law colon_own:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  {ownp(Parse.step.colon(stk, root, bad)) == Parse.step.colon(owns(stk), Laws.own_m(root), bad) : Parse.P}
+
+def colon_own(stk, _root, _bad):
+  match stk:
+    case Nil{}:
+      {==}
+    case fr <> _rest:
+      match fr:
+        case Parse.FArr{_items, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+        case Parse.FObj{_pairs, _key, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+
+# a comma, owned
+law comma_own:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +bad: Bool
+  {ownp(Parse.step.comma(stk, root, bad)) == Parse.step.comma(owns(stk), Laws.own_m(root), bad) : Parse.P}
+
+def comma_own(stk, _root, _bad):
+  match stk:
+    case Nil{}:
+      {==}
+    case fr <> _rest:
+      match fr:
+        case Parse.FArr{_items, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+        case Parse.FObj{_pairs, _key, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+
+# a string, owned
+law str_own:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +key: Parse.Key
+  for +bad: Bool
+  {ownp(Parse.put.str(stk, root, key, bad)) == Parse.put.str(owns(stk), Laws.own_m(root), ownk(key), bad) : Parse.P}
+
+def str_own(stk, root, key, bad):
+  match stk:
+    case Nil{}:
+      Equal.trans(Parse.P, ownp(Parse.put([], root, Parse.put.text(key), bad)),
+        Parse.put(owns([]), Laws.own_m(root), Laws.own(Parse.put.text(key)), bad),
+        Parse.put(owns([]), Laws.own_m(root), Parse.put.text(ownk(key)), bad),
+        put_own([], root, Parse.put.text(key), bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(owns([]), Laws.own_m(root), zz, bad), Laws.own(Parse.put.text(key)),
+          Parse.put.text(ownk(key)), text_own(key)))
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{+items, +slot}:
+          Equal.trans(Parse.P, ownp(Parse.put(Parse.FArr{items, slot} <> rest, root, Parse.put.text(key), bad)),
+            Parse.put(owns(Parse.FArr{items, slot} <> rest), Laws.own_m(root), Laws.own(Parse.put.text(key)), bad),
+            Parse.put(owns(Parse.FArr{items, slot} <> rest), Laws.own_m(root), Parse.put.text(ownk(key)), bad),
+            put_own(Parse.FArr{items, slot} <> rest, root, Parse.put.text(key), bad),
+            Equal.cong(V.Json, Parse.P, zz => Parse.put(owns(Parse.FArr{items, slot} <> rest), Laws.own_m(root), zz,
+              bad), Laws.own(Parse.put.text(key)),
+              Parse.put.text(ownk(key)), text_own(key)))
+        case Parse.FObj{+pairs, +k2, slot}:
+          match slot:
+            case Parse.SKey{}:
+              {==}
+            case Parse.SValue{}:
+              Equal.trans(Parse.P, ownp(Parse.put(Parse.FObj{pairs, k2, Parse.SValue{}} <> rest, root,
+                Parse.put.text(key), bad)),
+                Parse.put(owns(Parse.FObj{pairs, k2, Parse.SValue{}} <> rest), Laws.own_m(root),
+                  Laws.own(Parse.put.text(key)), bad),
+                Parse.put(owns(Parse.FObj{pairs, k2, Parse.SValue{}} <> rest), Laws.own_m(root),
+                  Parse.put.text(ownk(key)), bad),
+                put_own(Parse.FObj{pairs, k2, Parse.SValue{}} <> rest, root, Parse.put.text(key), bad),
+                Equal.cong(V.Json, Parse.P, zz => Parse.put(owns(Parse.FObj{pairs, k2, Parse.SValue{}} <> rest),
+                  Laws.own_m(root), zz, bad), Laws.own(Parse.put.text(key)),
+                  Parse.put.text(ownk(key)), text_own(key)))
+            case Parse.SComma{}:
+              Equal.trans(Parse.P, ownp(Parse.put(Parse.FObj{pairs, k2, Parse.SComma{}} <> rest, root,
+                Parse.put.text(key), bad)),
+                Parse.put(owns(Parse.FObj{pairs, k2, Parse.SComma{}} <> rest), Laws.own_m(root),
+                  Laws.own(Parse.put.text(key)), bad),
+                Parse.put(owns(Parse.FObj{pairs, k2, Parse.SComma{}} <> rest), Laws.own_m(root),
+                  Parse.put.text(ownk(key)), bad),
+                put_own(Parse.FObj{pairs, k2, Parse.SComma{}} <> rest, root, Parse.put.text(key), bad),
+                Equal.cong(V.Json, Parse.P, zz => Parse.put(owns(Parse.FObj{pairs, k2, Parse.SComma{}} <> rest),
+                  Laws.own_m(root), zz, bad), Laws.own(Parse.put.text(key)),
+                  Parse.put.text(ownk(key)), text_own(key)))
+            case Parse.SColon{}:
+              Equal.trans(Parse.P, ownp(Parse.put(Parse.FObj{pairs, k2, Parse.SColon{}} <> rest, root,
+                Parse.put.text(key), bad)),
+                Parse.put(owns(Parse.FObj{pairs, k2, Parse.SColon{}} <> rest), Laws.own_m(root),
+                  Laws.own(Parse.put.text(key)), bad),
+                Parse.put(owns(Parse.FObj{pairs, k2, Parse.SColon{}} <> rest), Laws.own_m(root),
+                  Parse.put.text(ownk(key)), bad),
+                put_own(Parse.FObj{pairs, k2, Parse.SColon{}} <> rest, root, Parse.put.text(key), bad),
+                Equal.cong(V.Json, Parse.P, zz => Parse.put(owns(Parse.FObj{pairs, k2, Parse.SColon{}} <> rest),
+                  Laws.own_m(root), zz, bad), Laws.own(Parse.put.text(key)),
+                  Parse.put.text(ownk(key)), text_own(key)))
+
+
+# a word's value, with the literal tests named, holds no span
+law word_own.go:
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for +raw: String
+  {Laws.own(Bool.pick(V.Json, b1, V.JNull{}, Bool.pick(V.Json, b2, V.JBool{True{}}, Bool.pick(V.Json, b3,
+    V.JBool{False{}}, V.JNum{raw})))) == Bool.pick(V.Json, b1, V.JNull{}, Bool.pick(V.Json, b2, V.JBool{True{}},
+    Bool.pick(V.Json, b3, V.JBool{False{}}, V.JNum{raw}))) : V.Json}
+
+def word_own.go(b1, b2, b3, _raw):
+  match b1:
+    case True{}:
+      {==}
+    case False{}:
+      match b2:
+        case True{}:
+          {==}
+        case False{}:
+          match b3:
+            case True{}:
+              {==}
+            case False{}:
+              {==}
+
+# a word, on the state with spans read out
+law sw_own:
+  for ok: Bool
+  for +raw: String
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  {ownp(Parse.step.word.go(raw, Parse.P{bad, root, stk}, ok)) == Parse.step.word.go(raw, Parse.P{bad, Laws.own_m(root),
+    owns(stk)}, ok) : Parse.P}
+
+def sw_own(ok, raw, bad, root, stk):
+  match ok:
+    case True{}:
+      Equal.trans(Parse.P, ownp(Parse.put(stk, root, Parse.word(raw), bad)),
+        Parse.put(owns(stk), Laws.own_m(root), Laws.own(Parse.word(raw)), bad),
+        Parse.put(owns(stk), Laws.own_m(root), Parse.word(raw), bad),
+        put_own(stk, root, Parse.word(raw), bad),
+        Equal.cong(V.Json, Parse.P, zz => Parse.put(owns(stk), Laws.own_m(root), zz, bad), Laws.own(Parse.word(raw)),
+          Parse.word(raw), word_own.go(String.eq(raw, "null"), String.eq(raw, "true"), String.eq(raw, "false"), raw)))
+    case False{}:
+      {==}
+
+# the literal a word is, by its tests
+law word_is:
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for +raw: String
+  for e1: {String.eq(raw, "null") == b1 : Bool}
+  for e2: {String.eq(raw, "true") == b2 : Bool}
+  for e3: {String.eq(raw, "false") == b3 : Bool}
+  {Parse.word(raw) == Bool.pick(V.Json, b1, V.JNull{}, Bool.pick(V.Json, b2, V.JBool{True{}}, Bool.pick(V.Json, b3,
+    V.JBool{False{}}, V.JNum{raw}))) : V.Json}
+
+def word_is(_b1, b2, b3, raw, e1, e2, e3):
+  %e1 : {Parse.word(raw) == Bool.pick(V.Json, _, V.JNull{}, Bool.pick(V.Json, b2, V.JBool{True{}}, Bool.pick(V.Json,
+    b3, V.JBool{False{}}, V.JNum{raw}))) : V.Json}
+  %e2 : {Parse.word(raw) == Bool.pick(V.Json, String.eq(raw, "null"), V.JNull{}, Bool.pick(V.Json, _, V.JBool{True{}},
+    Bool.pick(V.Json, b3, V.JBool{False{}}, V.JNum{raw}))) : V.Json}
+  %e3 : {Parse.word(raw) == Bool.pick(V.Json, String.eq(raw, "null"), V.JNull{}, Bool.pick(V.Json, String.eq(raw,
+    "true"), V.JBool{True{}}, Bool.pick(V.Json, _, V.JBool{False{}}, V.JNum{raw}))) : V.Json}
+  {==}
+
+# a number span's check, against the word's
+law sk_word:
+  for ok: Bool
+  for +raw: String
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for ew: {Parse.word(raw) == V.JNum{raw} : V.Json}
+  {Parse.step.span.open(Parse.P{bad, root, stk}, Parse.step.span.ok(raw, ok)) == Parse.step.word.go(raw, Parse.P{bad,
+    root, stk}, ok) : Parse.P}
+
+def sk_word(ok, raw, bad, root, stk, ew):
+  match ok:
+    case True{}:
+      Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, zz, bad), V.JNum{raw}, Parse.word(raw),
+        Equal.sym(V.Json, Parse.word(raw), V.JNum{raw}, ew))
+    case False{}:
+      {==}
+
+# a word span against its word, with the literal tests named
+law span_word.go:
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for +src: String
+  for +nn: U32
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  for +e1: {String.eq(V.span.str(src, nn, U32.is_zero(nn)), "null") == b1 : Bool}
+  for +e2: {String.eq(V.span.str(src, nn, U32.is_zero(nn)), "true") == b2 : Bool}
+  for +e3: {String.eq(V.span.str(src, nn, U32.is_zero(nn)), "false") == b3 : Bool}
+  {Parse.step.span.open(Parse.P{bad, root, stk}, Parse.step.span.go(src, nn, b1, b2, b3)) ==
+    Parse.step.word.go(V.span.str(src, nn, U32.is_zero(nn)), Parse.P{bad, root, stk}, Bool.or(b1, Bool.or(b2,
+      Bool.or(b3, V.num.ok(V.span.str(src, nn, U32.is_zero(nn))))))) : Parse.P}
+
+def span_word.go(b1, b2, b3, src, nn, bad, root, stk, e1, e2, e3):
+  match b1:
+    case True{}:
+      Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, zz, bad), V.JNull{}, Parse.word(V.span.str(src, nn,
+        U32.is_zero(nn))),
+        Equal.sym(V.Json, Parse.word(V.span.str(src, nn, U32.is_zero(nn))), V.JNull{}, word_is(True{}, b2, b3,
+          V.span.str(src, nn, U32.is_zero(nn)), e1, e2, e3)))
+    case False{}:
+      match b2:
+        case True{}:
+          Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, zz, bad), V.JBool{True{}}, Parse.word(V.span.str(src,
+            nn, U32.is_zero(nn))),
+            Equal.sym(V.Json, Parse.word(V.span.str(src, nn, U32.is_zero(nn))), V.JBool{True{}}, word_is(False{},
+              True{}, b3, V.span.str(src, nn, U32.is_zero(nn)), e1, e2, e3)))
+        case False{}:
+          match b3:
+            case True{}:
+              Equal.cong(V.Json, Parse.P, zz => Parse.put(stk, root, zz, bad), V.JBool{False{}},
+                Parse.word(V.span.str(src, nn, U32.is_zero(nn))),
+                Equal.sym(V.Json, Parse.word(V.span.str(src, nn, U32.is_zero(nn))), V.JBool{False{}}, word_is(False{},
+                  False{}, True{}, V.span.str(src, nn, U32.is_zero(nn)), e1, e2, e3)))
+            case False{}:
+              sk_word(V.num.ok(V.span.str(src, nn, U32.is_zero(nn))), V.span.str(src, nn, U32.is_zero(nn)), bad, root,
+                stk,
+                word_is(False{}, False{}, False{}, V.span.str(src, nn, U32.is_zero(nn)), e1, e2, e3))
+
+# a word span acts as the word it covers
+law span_word:
+  for +src: String
+  for +nn: U32
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  {Parse.step.span(src, nn, Parse.P{bad, root, stk}) == Parse.step.word(V.span.str(src, nn, U32.is_zero(nn)),
+    Parse.P{bad, root, stk}) : Parse.P}
+
+def span_word(src, nn, bad, root, stk):
+  +zz = U32.is_zero(nn)
+  s1 = Equal.sym(Bool, V.span.eq(src, nn, "null"), String.eq(V.span.str(src, nn, U32.is_zero(nn)), "null"),
+    span_eq_go(src, zz, "null", nn))
+  s2 = Equal.sym(Bool, V.span.eq(src, nn, "true"), String.eq(V.span.str(src, nn, U32.is_zero(nn)), "true"),
+    span_eq_go(src, zz, "true", nn))
+  s3 = Equal.sym(Bool, V.span.eq(src, nn, "false"), String.eq(V.span.str(src, nn, U32.is_zero(nn)), "false"),
+    span_eq_go(src, zz, "false", nn))
+  %s1 : {Parse.step.span.open(Parse.P{bad, root, stk}, Parse.step.span.go(src, nn, _, V.span.eq(src, nn, "true"),
+    V.span.eq(src, nn, "false"))) == Parse.step.word(V.span.str(src, nn, U32.is_zero(nn)), Parse.P{bad, root,
+      stk}) : Parse.P}
+  %s2 : {Parse.step.span.open(Parse.P{bad, root, stk}, Parse.step.span.go(src, nn, String.eq(V.span.str(src, nn,
+    U32.is_zero(nn)), "null"), _,
+    V.span.eq(src, nn, "false"))) == Parse.step.word(V.span.str(src, nn, U32.is_zero(nn)), Parse.P{bad, root,
+      stk}) : Parse.P}
+  %s3 : {Parse.step.span.open(Parse.P{bad, root, stk}, Parse.step.span.go(src, nn, String.eq(V.span.str(src, nn,
+    U32.is_zero(nn)), "null"), String.eq(V.span.str(src, nn, U32.is_zero(nn)), "true"),
+    _)) == Parse.step.word(V.span.str(src, nn, U32.is_zero(nn)), Parse.P{bad, root, stk}) : Parse.P}
+  span_word.go(String.eq(V.span.str(src, nn, U32.is_zero(nn)), "null"), String.eq(V.span.str(src, nn, U32.is_zero(nn)),
+    "true"), String.eq(V.span.str(src, nn, U32.is_zero(nn)), "false"), src, nn, bad, root, stk, {==}, {==}, {==})
+
+# opening an array, owned
+law oa_own:
+  for ok: Bool
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  {ownp(Parse.step.open_arr.go(bad, root, stk, ok)) == Parse.step.open_arr.go(bad, Laws.own_m(root), owns(stk),
+    ok) : Parse.P}
+
+def oa_own(ok, _bad, _root, _stk):
+  match ok:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# opening an object, owned
+law oo_own:
+  for ok: Bool
+  for +bad: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  {ownp(Parse.step.open_obj.go(bad, root, stk, ok)) == Parse.step.open_obj.go(bad, Laws.own_m(root), owns(stk),
+    ok) : Parse.P}
+
+def oo_own(ok, _bad, _root, _stk):
+  match ok:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# one token, owned: the state with spans read out steps as the token with its
+# span read out
+law step_own:
+  for tok: Lex.Tok
+  for st: Parse.P
+  {ownp(Parse.step(tok, st)) == Parse.step(den(tok), ownp(st)) : Parse.P}
+
+def step_own(tok, st):
+  match tok:
+    case Lex.TOpenArr{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          Equal.trans(Parse.P, ownp(Parse.step.open_arr.go(bad, root, stk, Parse.step.ready(stk, root))),
+            Parse.step.open_arr.go(bad, Laws.own_m(root), owns(stk), Parse.step.ready(stk, root)),
+            Parse.step.open_arr.go(bad, Laws.own_m(root), owns(stk), Parse.step.ready(owns(stk), Laws.own_m(root))),
+            oa_own(Parse.step.ready(stk, root), bad, root, stk),
+            Equal.cong(Bool, Parse.P, zz => Parse.step.open_arr.go(bad, Laws.own_m(root), owns(stk), zz),
+              Parse.step.ready(stk, root),
+              Parse.step.ready(owns(stk), Laws.own_m(root)), Equal.sym(Bool, Parse.step.ready(owns(stk),
+                Laws.own_m(root)),
+                Parse.step.ready(stk, root), ready_own(stk, root))))
+    case Lex.TOpenObj{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          Equal.trans(Parse.P, ownp(Parse.step.open_obj.go(bad, root, stk, Parse.step.ready(stk, root))),
+            Parse.step.open_obj.go(bad, Laws.own_m(root), owns(stk), Parse.step.ready(stk, root)),
+            Parse.step.open_obj.go(bad, Laws.own_m(root), owns(stk), Parse.step.ready(owns(stk), Laws.own_m(root))),
+            oo_own(Parse.step.ready(stk, root), bad, root, stk),
+            Equal.cong(Bool, Parse.P, zz => Parse.step.open_obj.go(bad, Laws.own_m(root), owns(stk), zz),
+              Parse.step.ready(stk, root),
+              Parse.step.ready(owns(stk), Laws.own_m(root)), Equal.sym(Bool, Parse.step.ready(owns(stk),
+                Laws.own_m(root)),
+                Parse.step.ready(stk, root), ready_own(stk, root))))
+    case Lex.TCloseArr{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          close_arr_own(stk, root, bad)
+    case Lex.TCloseObj{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          close_obj_own(stk, root, bad)
+    case Lex.TColon{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          colon_own(stk, root, bad)
+    case Lex.TComma{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          comma_own(stk, root, bad)
+    case Lex.TStr{+txt}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          str_own(stk, root, Parse.KOwn{txt}, bad)
+    case Lex.TWord{+raw}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          sw_own(Parse.word.ok(raw), raw, bad, root, stk)
+    case Lex.TStrS{+src, +nn}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          str_own(stk, root, Parse.KCut{src, nn}, bad)
+    case Lex.TWordS{+src, +nn}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          Equal.trans(Parse.P, ownp(Parse.step.span(src, nn, Parse.P{bad, root, stk})),
+            ownp(Parse.step.word(V.span.str(src, nn, U32.is_zero(nn)), Parse.P{bad, root, stk})),
+            Parse.step.word(V.span.str(src, nn, U32.is_zero(nn)), Parse.P{bad, Laws.own_m(root), owns(stk)}),
+            Equal.cong(Parse.P, Parse.P, zz => ownp(zz), Parse.step.span(src, nn, Parse.P{bad, root, stk}),
+              Parse.step.word(V.span.str(src, nn, U32.is_zero(nn)), Parse.P{bad, root, stk}), span_word(src, nn, bad,
+                root, stk)),
+            sw_own(Parse.word.ok(V.span.str(src, nn, U32.is_zero(nn))), V.span.str(src, nn, U32.is_zero(nn)), bad,
+              root, stk))
+    case Lex.TBad{}:
+      match st:
+        case Parse.P{+bad, +root, +stk}:
+          {==}
+
+# the parser, owned, is the parser on tokens with their spans read out
+law run_own:
+  for xs: List<&2, Lex.Tok>
+  for +st: Parse.P
+  {ownp(Parse.run(xs, st)) == Parse.run(dens(xs), ownp(st)) : Parse.P}
+
+def run_own(xs, st):
+  match xs:
+    case Nil{}:
+      {==}
+    case +tok <> +rest:
+      Equal.trans(Parse.P, ownp(Parse.run(rest, Parse.step(tok, st))), Parse.run(dens(rest), ownp(Parse.step(tok, st))),
+        Parse.run(dens(rest), Parse.step(den(tok), ownp(st))), run_own(rest, Parse.step(tok, st)),
+        Equal.cong(Parse.P, Parse.P, zz => Parse.run(dens(rest), zz), ownp(Parse.step(tok, st)),
+          Parse.step(den(tok), ownp(st)), step_own(tok, st)))
+
+# a finished parse, owned
+law fin_own.go:
+  for bad: Bool
+  for stk: List<&2, Parse.Frame>
+  for root: Maybe<&2, V.Json>
+  {Laws.own_m(Parse.result(bad, stk, root)) == Parse.result(bad, owns(stk), Laws.own_m(root)) : Maybe<&2, V.Json>}
+
+def fin_own.go(bad, stk, root):
+  match bad:
+    case True{}:
+      {==}
+    case False{}:
+      match stk:
+        case _fr <> _rest:
+          {==}
+        case Nil{}:
+          match root:
+            case None{}:
+              {==}
+            case Some{_jj}:
+              {==}
+
+# a finished parse, owned, is the owned state finished
+law fin_own:
+  for st: Parse.P
+  {Laws.own_m(Parse.finish(st)) == Parse.finish(ownp(st)) : Maybe<&2, V.Json>}
+
+def fin_own(st):
+  match st:
+    case Parse.P{bad, root, stk}:
+      fin_own.go(bad, stk, root)
+
+
+# the value parse builds back is the spec's: owned, strings fixed
+law canon_fix:
+  for +val: V.Json
+  for +sh: V.Shape
+  for +h: {V.wf.go(val, sh) == True{} : Bool}
+  {canon(val, sh) == Laws.fixv(Laws.own(val)) : V.Json}
+
+def canon_fix(val, sh, h):
+  match val:
+    case V.JNull{}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          no({canon(V.JNull{}, V.WArr{}) == Laws.fixv(Laws.own(V.JNull{})) : V.Json}, h)
+        case V.WObj{}:
+          no({canon(V.JNull{}, V.WObj{}) == Laws.fixv(Laws.own(V.JNull{})) : V.Json}, h)
+    case V.JBool{bb}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          no({canon(V.JBool{bb}, V.WArr{}) == Laws.fixv(Laws.own(V.JBool{bb})) : V.Json}, h)
+        case V.WObj{}:
+          no({canon(V.JBool{bb}, V.WObj{}) == Laws.fixv(Laws.own(V.JBool{bb})) : V.Json}, h)
+    case V.JNum{+raw}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          no({canon(V.JNum{raw}, V.WArr{}) == Laws.fixv(Laws.own(V.JNum{raw})) : V.Json}, h)
+        case V.WObj{}:
+          no({canon(V.JNum{raw}, V.WObj{}) == Laws.fixv(Laws.own(V.JNum{raw})) : V.Json}, h)
+    case V.JStr{+txt}:
+      match sh:
+        case V.WVal{}:
+          Equal.cong(String, V.Json, zz => V.JStr{zz}, fixs(String.to_list(txt)), Laws.fix_str(txt), fixs_eq(txt))
+        case V.WArr{}:
+          no({canon(V.JStr{txt}, V.WArr{}) == Laws.fixv(Laws.own(V.JStr{txt})) : V.Json}, h)
+        case V.WObj{}:
+          no({canon(V.JStr{txt}, V.WObj{}) == Laws.fixv(Laws.own(V.JStr{txt})) : V.Json}, h)
+    case V.JArr{+items}:
+      match sh:
+        case V.WVal{}:
+          Equal.cong(V.Json, V.Json, zz => V.JArr{zz}, canon(items, V.WArr{}), Laws.fixv(Laws.own(items)),
+            canon_fix(items, V.WArr{}, h))
+        case V.WArr{}:
+          no({canon(V.JArr{items}, V.WArr{}) == Laws.fixv(Laws.own(V.JArr{items})) : V.Json}, h)
+        case V.WObj{}:
+          no({canon(V.JArr{items}, V.WObj{}) == Laws.fixv(Laws.own(V.JArr{items})) : V.Json}, h)
+    case V.JObj{+pairs}:
+      match sh:
+        case V.WVal{}:
+          Equal.cong(V.Json, V.Json, zz => V.JObj{zz}, canon(pairs, V.WObj{}), Laws.fixv(Laws.own(pairs)),
+            canon_fix(pairs, V.WObj{}, h))
+        case V.WArr{}:
+          no({canon(V.JObj{pairs}, V.WArr{}) == Laws.fixv(Laws.own(V.JObj{pairs})) : V.Json}, h)
+        case V.WObj{}:
+          no({canon(V.JObj{pairs}, V.WObj{}) == Laws.fixv(Laws.own(V.JObj{pairs})) : V.Json}, h)
+    case V.JNil{}:
+      match sh:
+        case V.WVal{}:
+          no({canon(V.JNil{}, V.WVal{}) == Laws.fixv(Laws.own(V.JNil{})) : V.Json}, h)
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          {==}
+    case V.JCons{+hd, +tl}:
+      match sh:
+        case V.WVal{}:
+          no({canon(V.JCons{hd, tl}, V.WVal{}) == Laws.fixv(Laws.own(V.JCons{hd, tl})) : V.Json}, h)
+        case V.WArr{}:
+          e1 = canon_fix(hd, V.WVal{}, stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(tl, V.WArr{}), h))
+          e2 = canon_fix(tl, V.WArr{}, stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(tl, V.WArr{}), h))
+          %e1 : {V.JCons{canon(hd, V.WVal{}), canon(tl, V.WArr{})} == V.JCons{_, Laws.fixv(Laws.own(tl))} : V.Json}
+          %e2 : {V.JCons{canon(hd, V.WVal{}), canon(tl, V.WArr{})} == V.JCons{canon(hd, V.WVal{}), _} : V.Json}
+          {==}
+        case V.WObj{}:
+          no({canon(V.JCons{hd, tl}, V.WObj{}) == Laws.fixv(Laws.own(V.JCons{hd, tl})) : V.Json}, h)
+    case V.JPair{+kk, +vv, +rr}:
+      match sh:
+        case V.WVal{}:
+          no({canon(V.JPair{kk, vv, rr}, V.WVal{}) == Laws.fixv(Laws.own(V.JPair{kk, vv, rr})) : V.Json}, h)
+        case V.WArr{}:
+          no({canon(V.JPair{kk, vv, rr}, V.WArr{}) == Laws.fixv(Laws.own(V.JPair{kk, vv, rr})) : V.Json}, h)
+        case V.WObj{}:
+          e0 = fixs_eq(kk)
+          e1 = canon_fix(vv, V.WVal{}, stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(rr, V.WObj{}), h))
+          e2 = canon_fix(rr, V.WObj{}, stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(rr, V.WObj{}), h))
+          %e0 : {V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), canon(rr, V.WObj{})} ==
+            V.JPair{_, Laws.fixv(Laws.own(vv)), Laws.fixv(Laws.own(rr))} : V.Json}
+          %e1 : {V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), canon(rr, V.WObj{})} ==
+            V.JPair{fixs(String.to_list(kk)), _, Laws.fixv(Laws.own(rr))} : V.Json}
+          %e2 : {V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), canon(rr, V.WObj{})} ==
+            V.JPair{fixs(String.to_list(kk)), canon(vv, V.WVal{}), _} : V.Json}
+          {==}
+    case V.JSpan{+src, +nn}:
+      match sh:
+        case V.WVal{}:
+          Equal.cong(String, V.Json, zz => V.JStr{zz}, fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))),
+            Laws.fix_str(V.span.str(src, nn, U32.is_zero(nn))),
+            fixs_eq(V.span.str(src, nn, U32.is_zero(nn))))
+        case V.WArr{}:
+          no({canon(V.JSpan{src, nn}, V.WArr{}) == Laws.fixv(Laws.own(V.JSpan{src, nn})) : V.Json}, h)
+        case V.WObj{}:
+          no({canon(V.JSpan{src, nn}, V.WObj{}) == Laws.fixv(Laws.own(V.JSpan{src, nn})) : V.Json}, h)
+    case V.JBind{+src, +nn, +vv, +rr}:
+      match sh:
+        case V.WVal{}:
+          no({canon(V.JBind{src, nn, vv, rr}, V.WVal{}) == Laws.fixv(Laws.own(V.JBind{src, nn, vv, rr})) : V.Json}, h)
+        case V.WArr{}:
+          no({canon(V.JBind{src, nn, vv, rr}, V.WArr{}) == Laws.fixv(Laws.own(V.JBind{src, nn, vv, rr})) : V.Json}, h)
+        case V.WObj{}:
+          e0 = fixs_eq(V.span.str(src, nn, U32.is_zero(nn)))
+          e1 = canon_fix(vv, V.WVal{}, stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(rr, V.WObj{}), h))
+          e2 = canon_fix(rr, V.WObj{}, stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(rr, V.WObj{}), h))
+          %e0 : {V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), canon(rr,
+            V.WObj{})} ==
+            V.JPair{_, Laws.fixv(Laws.own(vv)), Laws.fixv(Laws.own(rr))} : V.Json}
+          %e1 : {V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), canon(rr,
+            V.WObj{})} ==
+            V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), _, Laws.fixv(Laws.own(rr))} : V.Json}
+          %e2 : {V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), canon(rr,
+            V.WObj{})} ==
+            V.JPair{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn)))), canon(vv, V.WVal{}), _} : V.Json}
+          {==}
+
+# JSON-PRINT-1: print then parse gives the value back, owned and fixed
+def Laws.print_parse(val, h_wf, h_s):
+  Equal.trans(Maybe<&2, V.Json>, Laws.own_m(Parse.finish(Parse.run(Lex.tokens(Print.print(val)), Parse.P{False{},
+    None{}, Nil{}}))), Parse.finish(ownp(Parse.run(Lex.tokens(Print.print(val)), Parse.P{False{}, None{}, Nil{}}))),
+    Some{Laws.fixv(Laws.own(val))}, fin_own(Parse.run(Lex.tokens(Print.print(val)), Parse.P{False{}, None{}, Nil{}})),
+    Equal.trans(Maybe<&2, V.Json>, Parse.finish(ownp(Parse.run(Lex.tokens(Print.print(val)), Parse.P{False{}, None{},
+      Nil{}}))), Parse.finish(Parse.run(dens(Lex.tokens(Print.print(val))), Parse.P{False{}, None{}, Nil{}})),
+      Some{Laws.fixv(Laws.own(val))}, Equal.cong(Parse.P, Maybe<&2, V.Json>, zz => Parse.finish(zz),
+      ownp(Parse.run(Lex.tokens(Print.print(val)), Parse.P{False{}, None{}, Nil{}})),
+      Parse.run(dens(Lex.tokens(Print.print(val))), Parse.P{False{}, None{}, Nil{}}),
+    run_own(Lex.tokens(Print.print(val)), Parse.P{False{}, None{}, Nil{}})),
+    Equal.trans(Maybe<&2, V.Json>, Parse.finish(Parse.run(dens(Lex.tokens(Print.print(val))), Parse.P{False{}, None{},
+      Nil{}})), Parse.finish(Parse.run(tj(val, V.WVal{}), Parse.P{False{}, None{}, Nil{}})),
+      Some{Laws.fixv(Laws.own(val))}, Equal.cong(List<&2, Lex.Tok>, Maybe<&2, V.Json>, zz => Parse.finish(Parse.run(zz,
+      Parse.P{False{}, None{}, Nil{}})), dens(Lex.tokens(Print.print(val))), tj(val, V.WVal{}),
+    tokens_print(val, h_wf, h_s)),
+    Equal.trans(Maybe<&2, V.Json>, Parse.finish(Parse.run(tj(val, V.WVal{}), Parse.P{False{}, None{}, Nil{}})),
+      Some{canon(val, V.WVal{})}, Some{Laws.fixv(Laws.own(val))}, parse_tj(val, h_wf),
+    Equal.cong(V.Json, Maybe<&2, V.Json>, zz => Some{zz}, canon(val, V.WVal{}), Laws.fixv(Laws.own(val)),
+    canon_fix(val, V.WVal{}, h_wf))))))
+
