@@ -168,6 +168,14 @@ def fixv(val: V.Json) -> V.Json:
     case V.JBind{src, nn, vv, rr}:
       V.JBind{src, nn, fixv(vv), fixv(rr)}
 
+# a parse result printed; none when parsing failed
+def print_m(mb: Maybe<&2, V.Json>) -> Maybe<&2, String>:
+  match mb:
+    case None{}:
+      None{}
+    case Some{jj}:
+      Some{Ezjson.print(jj)}
+
 # RFC 8259 §6, the grammar a JSON number must match, one def per production:
 #
 #   number = [ minus ] int [ frac ] [ exp ]
@@ -376,6 +384,47 @@ def ended(cur: Pull.Cur) -> Bool:
 # one of JSON's four whitespace characters (RFC 8259 §2)
 def is_ws(+ch: Char) -> Bool:
   Bool.or(is_cp(ch, 32), Bool.or(is_cp(ch, 9), Bool.or(is_cp(ch, 10), is_cp(ch, 13))))
+
+# where a scan of JSON text is: outside strings, inside one, just after a
+# backslash inside one, or past whitespace outside strings. RFC 8259 §7: a
+# string runs from a quotation mark to the next one no backslash escapes
+type Tx is Data:
+  TxOut{}
+  TxIn{}
+  TxEsc{}
+  TxWs{}
+
+# one character of the scan
+def tx.step(st: Tx, +ch: Char) -> Tx:
+  match st:
+    case TxOut{}:
+      Bool.pick(Tx, is_cp(ch, 34), TxIn{}, Bool.pick(Tx, is_ws(ch), TxWs{}, TxOut{}))
+    case TxIn{}:
+      Bool.pick(Tx, is_cp(ch, 92), TxEsc{}, Bool.pick(Tx, is_cp(ch, 34), TxOut{}, TxIn{}))
+    case TxEsc{}:
+      TxIn{}
+    case TxWs{}:
+      TxWs{}
+
+# the scan of every character, in order
+def tx.run(cs: List<&2, Char>, st: Tx) -> Tx:
+  match cs:
+    case Nil{}:
+      st
+    case Con{hd, tl}:
+      tx.run(tl, tx.step(st, hd))
+
+# whether a scan never met whitespace outside strings
+def tx.ok(st: Tx) -> Bool:
+  match st:
+    case TxWs{}:
+      False{}
+    case _:
+      True{}
+
+# whether a text holds no whitespace outside its strings
+def ws_free(txt: String) -> Bool:
+  tx.ok(tx.run(String.to_list(txt), TxOut{}))
 
 # every character is whitespace
 def all_ws(+txt: String) -> Bool:
@@ -627,11 +676,72 @@ law print_parse:
   for h_s: {short(Ezjson.print(val)) == True{} : Bool}
   {own_m(Ezjson.parse(Ezjson.print(val))) == Some{fixv(own(val))} : Maybe<&2, V.Json>}
 
+# LAW: a parsed value prints with no whitespace outside strings
+# JSON-PRINT-2
+law print_compact:
+  for +txt: String
+  for +jj: V.Json
+  for e_p: {Ezjson.parse(txt) == Some{jj} : Maybe<&2, V.Json>}
+  {ws_free(Ezjson.print(jj)) == True{} : Bool}
+
+# LAW: a parsed value printed, parsed again and printed again, prints the same
+# JSON-PRINT-2
+law print_stable:
+  for +txt: String
+  for +jj: V.Json
+  for e_p: {Ezjson.parse(txt) == Some{jj} : Maybe<&2, V.Json>}
+  for h_s: {short(Ezjson.print(jj)) == True{} : Bool}
+  {print_m(Ezjson.parse(Ezjson.print(jj))) == Some{Ezjson.print(jj)} : Maybe<&2, String>}
+
 # LAW: every value parse returns is well-formed
 # JSON-PRINT-3
 law parse_wf:
   for +txt: String
   {wf_m(Ezjson.parse(txt)) == True{} : Bool}
+
+# LAW: get reads a value as it reads the value with its spans read out
+# JSON-TREE-5
+law get_same:
+  for +val: V.Json
+  for +key: String
+  {own(Ezjson.get(val, key)) == Ezjson.get(own(val), key) : V.Json}
+
+# LAW: at reads a value as it reads the value with its spans read out
+# JSON-TREE-5
+law at_same:
+  for +val: V.Json
+  for +idx: U32
+  {own(Ezjson.at(val, idx)) == Ezjson.at(own(val), idx) : V.Json}
+
+# LAW: as_str reads a span as its characters
+# JSON-TREE-5
+law as_str_same:
+  for +val: V.Json
+  {Ezjson.as_str(val) == Ezjson.as_str(own(val)) : Maybe<&2, String>}
+
+# LAW: as_bool reads a value as it reads the value with its spans read out
+# JSON-TREE-5
+law as_bool_same:
+  for +val: V.Json
+  {Ezjson.as_bool(val) == Ezjson.as_bool(own(val)) : Maybe<&2, Bool>}
+
+# LAW: as_num reads a value as it reads the value with its spans read out
+# JSON-TREE-5
+law as_num_same:
+  for +val: V.Json
+  {Ezjson.as_num(val) == Ezjson.as_num(own(val)) : Maybe<&2, String>}
+
+# LAW: as_u32 reads a value as it reads the value with its spans read out
+# JSON-TREE-5
+law as_u32_same:
+  for +val: V.Json
+  {Ezjson.as_u32(val) == Ezjson.as_u32(own(val)) : Maybe<&2, U32>}
+
+# LAW: as_f32 reads a value as it reads the value with its spans read out
+# JSON-TREE-5
+law as_f32_same:
+  for +val: V.Json
+  {Ezjson.as_f32(val) == Ezjson.as_f32(own(val)) : Maybe<&2, F32>}
 
 # LAW: print writes a code point that is not a Unicode scalar value as U+FFFD
 # JSON-STR-5

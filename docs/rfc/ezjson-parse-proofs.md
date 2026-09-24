@@ -73,8 +73,17 @@ tokens, which WP-L2 and WP-P1 finish. `canon` is then the spec's
 its word: `span.eq` now agrees with `span.str` when a span's count runs past
 the end of its source (`span_eq_go`). `parse` never builds such a span, and
 the harness and the interface probe print the same bytes; for a hand-built
-value with one, `get` now finds the key the value prints. WP-H has
-JSON-PRINT-2 and JSON-TREE-5 left.
+value with one, `get` now finds the key the value prints.
+
+WP-H is done. JSON-TREE-5: each reader commutes with `own`, so a span reads
+as its characters (`get_same`, `at_same`, `as_*_same`); for `get`, a span key
+compares as the key it covers (`span_find`, through `find.eq` being
+`String.eq`). The laws hold for every value, not only parsed ones.
+JSON-PRINT-2: printing ignores spans and the U+FFFD fix (`print_own`,
+`print_fix`), so a parsed value, printed, parsed and printed again, prints the
+same (`print_stable`); and a well-formed value's text leaves no whitespace
+outside strings (`print_compact`), where "outside strings" is a four-state
+scan written from RFC 8259 §7 in LAWS.bend (`tx.step`).
 
 ## What parse does
 
