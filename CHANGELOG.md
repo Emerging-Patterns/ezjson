@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/Emerging-Patterns/ezjson/compare/v0.4.2...v0.5.0) (2026-09-24)
+
+
+### Features
+
+* bring ezjson under a machine-checked spec ([#32](https://github.com/Emerging-Patterns/ezjson/issues/32)) ([8647385](https://github.com/Emerging-Patterns/ezjson/commit/86473854837053b781dc8c046f7fcdcc3540fabe))
+
 ## [0.4.2](https://github.com/Emerging-Patterns/ezjson/compare/v0.4.1...v0.4.2) (2026-09-22)
 
 
