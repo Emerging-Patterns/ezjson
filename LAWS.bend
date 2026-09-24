@@ -909,6 +909,160 @@ def bounded(+txt: String, +left: U32) -> Bool:
 def short(+txt: String) -> Bool:
   bounded(txt, 4294967295)
 
+# what one event of the cursor says, its text read out: a string's, a key's
+# or a number's characters, whether a span or owned
+type Evt is Data:
+  VNull{}
+  VBool{b: Bool}
+  VNum{raw: String}
+  VStr{s: String}
+  VKey{s: String}
+  VBeginArr{}
+  VEndArr{}
+  VBeginObj{}
+  VEndObj{}
+  VEnd{}
+  VErr{}
+
+# an event as what it says
+def view(ev: Pull.Ev) -> Evt:
+  match ev:
+    case Pull.ENull{}:
+      VNull{}
+    case Pull.EBool{bb}:
+      VBool{bb}
+    case Pull.ENum{src, +nn}:
+      VNum{take(src, U32.to_nat(nn))}
+    case Pull.EStr{body}:
+      VStr{body}
+    case Pull.EStrS{src, +nn}:
+      VStr{take(src, U32.to_nat(nn))}
+    case Pull.EKey{body}:
+      VKey{body}
+    case Pull.EKeyS{src, +nn}:
+      VKey{take(src, U32.to_nat(nn))}
+    case Pull.EBeginArr{}:
+      VBeginArr{}
+    case Pull.EEndArr{}:
+      VEndArr{}
+    case Pull.EBeginObj{}:
+      VBeginObj{}
+    case Pull.EEndObj{}:
+      VEndObj{}
+    case Pull.EEnd{}:
+      VEnd{}
+    case Pull.EErr{}:
+      VErr{}
+
+# a value's events in document order: its scalars, keys, and container
+# begins and ends. A value holds no comma or colon event. Read through the
+# cells of an array or an object, it gives their elements' or members' events
+def events(val: V.Json) -> List<&2, Evt>:
+  match val:
+    case V.JNull{}:
+      [VNull{}]
+    case V.JBool{bb}:
+      [VBool{bb}]
+    case V.JNum{raw}:
+      [VNum{raw}]
+    case V.JStr{txt}:
+      [VStr{txt}]
+    case V.JSpan{src, +nn}:
+      [VStr{take(src, U32.to_nat(nn))}]
+    case V.JArr{items}:
+      VBeginArr{} <> List.append(&2, Evt, events(items), [VEndArr{}])
+    case V.JObj{pairs}:
+      VBeginObj{} <> List.append(&2, Evt, events(pairs), [VEndObj{}])
+    case V.JNil{}:
+      []
+    case V.JCons{hd, tl}:
+      List.append(&2, Evt, events(hd), events(tl))
+    case V.JPair{kk, vv, rr}:
+      VKey{kk} <> List.append(&2, Evt, events(vv), events(rr))
+    case V.JBind{src, +nn, vv, rr}:
+      VKey{take(src, U32.to_nat(nn))} <> List.append(&2, Evt, events(vv), events(rr))
+
+# the first `left` events next yields from a cursor, one call after another
+def pulled(left: Nat, +cur: Pull.Cur) -> List<&2, Evt>:
+  match left:
+    case 0n:
+      []
+    case 1n+pp:
+      view(ev_of(Ezjson.next(cur))) <> pulled(pp, cur_of(Ezjson.next(cur)))
+
+# the cursor after `left` calls of next
+def nexts(left: Nat, cur: Pull.Cur) -> Pull.Cur:
+  match left:
+    case 0n:
+      cur
+    case 1n+pp:
+      nexts(pp, cur_of(Ezjson.next(cur)))
+
+# the unread suffix of a cursor
+def rest_of(cur: Pull.Cur) -> String:
+  match cur:
+    case Pull.Cur{rest, _, _, _}:
+      rest
+
+# one more event than a count, if there is one
+def one_more(nn: Maybe<&2, Nat>) -> Maybe<&2, Nat>:
+  match nn:
+    case Some{kk}:
+      Some{1n+kk}
+    case None{}:
+      None{}
+
+# how many events finish the value that starts the events, with `depth`
+# containers of it already open: Some{n} when the first n events are exactly
+# that. None when the events run out first, or an end, a failure, or a close
+# or a key where no container of the value is open comes first
+def val_len(es: List<&2, Evt>, depth: Nat) -> Maybe<&2, Nat>:
+  match es:
+    case Nil{}:
+      None{}
+    case Con{ev, tl}:
+      match ev:
+        case VBeginArr{}:
+          one_more(val_len(tl, 1n+depth))
+        case VBeginObj{}:
+          one_more(val_len(tl, 1n+depth))
+        case VEndArr{}:
+          match depth:
+            case 0n:
+              None{}
+            case 1n+kk:
+              match kk:
+                case 0n:
+                  Some{1n}
+                case 1n+jj:
+                  one_more(val_len(tl, 1n+jj))
+        case VEndObj{}:
+          match depth:
+            case 0n:
+              None{}
+            case 1n+kk:
+              match kk:
+                case 0n:
+                  Some{1n}
+                case 1n+jj:
+                  one_more(val_len(tl, 1n+jj))
+        case VKey{_}:
+          match depth:
+            case 0n:
+              None{}
+            case 1n+kk:
+              one_more(val_len(tl, 1n+kk))
+        case VEnd{}:
+          None{}
+        case VErr{}:
+          None{}
+        case _:
+          match depth:
+            case 0n:
+              Some{1n}
+            case 1n+kk:
+              one_more(val_len(tl, 1n+kk))
+
 # LAW: as_bool reads back the boolean bool built
 # JSON-TREE-1
 law as_bool_bool:
@@ -1758,3 +1912,45 @@ law u32_nat_inj:
   for +bb: U32
   for h: {U32.to_nat(aa) == U32.to_nat(bb) : Nat}
   {aa == bb : U32}
+
+# LAW: the events next yields from the cursor of a text that parses are the
+# value's events, then the end
+# JSON-PULL-1
+law pull_events:
+  for +txt: String
+  for +jj: V.Json
+  for +h_s: {short(txt) == True{} : Bool}
+  for +h_p: {Ezjson.parse(txt) == Some{jj} : Maybe<&2, V.Json>}
+  {pulled(1n+List.length(&2, Evt, events(jj)), Ezjson.cursor(txt)) == List.append(&2, Evt, events(jj), [VEnd{}])
+    : List<&2, Evt>}
+
+# LAW: the events next yields from a text's cursor reach the end only when
+# the text parses
+# JSON-PULL-1
+law pull_ends:
+  for +txt: String
+  for +kk: Nat
+  for +h_s: {short(txt) == True{} : Bool}
+  for h_e: {is_end(ev_of(Ezjson.next(nexts(kk, Ezjson.cursor(txt))))) == True{} : Bool}
+  {is_some(Ezjson.parse(txt)) == True{} : Bool}
+
+# LAW: skip drops one whole value: when the first mm events next yields from a
+# cursor are exactly one value, skip leaves the cursor where mm calls of next
+# leave it
+# JSON-PULL-4
+law pull_skip:
+  for +cur: Pull.Cur
+  for +mm: Nat
+  for +h_s: {short(rest_of(cur)) == True{} : Bool}
+  for +h_v: {val_len(pulled(mm, cur), 0n) == Some{mm} : Maybe<&2, Nat>}
+  {Ezjson.skip(cur) == nexts(mm, cur) : Pull.Cur}
+
+# LAW: after skip, next yields the event that follows the value's last event
+# in the events from the same cursor
+# JSON-PULL-4
+law pull_skip_next:
+  for +cur: Pull.Cur
+  for +mm: Nat
+  for +h_s: {short(rest_of(cur)) == True{} : Bool}
+  for +h_v: {val_len(pulled(mm, cur), 0n) == Some{mm} : Maybe<&2, Nat>}
+  {ev_of(Ezjson.next(Ezjson.skip(cur))) == ev_of(Ezjson.next(nexts(mm, cur))) : Pull.Ev}

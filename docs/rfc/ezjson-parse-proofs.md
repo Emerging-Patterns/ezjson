@@ -199,6 +199,40 @@ outside strings, and after a word only when no word character follows
 (`cp_run` against `gap`). So the text with the character does not pass,
 and does not parse (`ins_none`).
 
+JSON-PULL-1, WP-C: the cursor's events are defined in LAWS.bend
+(`events`, a value's scalars, keys and container begins and ends in
+document order; `pulled`, the events `next` yields in `n` steps; `nexts`,
+the cursor after `n` steps). One direction (`pull_events`): a text that
+parses has a derivation (`text_derives`), and by induction on it the cursor
+yields the derivation's events (`gv_go`): words through the ghost cut the
+cursor keeps (`pwrun`), strings piece by piece as the cursor quotes, spans
+or copies them. The other direction (`pull_ends`): the cursor is walked in
+step with the character lexer and the parser on its tokens, under an
+invariant that relates the cursor's frames to the parser's stack (`frel`)
+and its mode to the lexer's (`cminv`); when the cursor yields the end the
+parser has finished with a value. Following REVIEW-P4, the fuel is a budget
+of nested levels and is never normalized: every lemma holds for any fuel
+(`pgo_inv`), and the levels `next` grows through are an induction on
+the levels left (`prun_inv`, `pgrow_inv`, `pfin_inv`).
+
+JSON-PULL-4, WP-C: `pull_skip` says that when the first m events `next`
+yields from a cursor are exactly one value (`val_len`, a count of events
+that tracks the open containers), `skip` leaves the cursor where m calls of
+`next` leave it; `pull_skip_next` reads the event after. The proof walks a
+reader's step and a skip at depth d from the same place in step (`kr`):
+between tokens (`ls_idle`), through a string, where the skip scans without
+decoding (`ls_str`), and through a word, where the skip takes the
+delimiter the reader leaves (`ls_mword`). Then, one event at a time, the
+skip at depth d over the value's events is the reader's m steps
+(`ko_go`). The budget, per REVIEW-P4: a walk on aa + bb jumps is the walk
+on aa resumed on bb (`go_add`), so `next.grow` over its 33 levels is one
+walk on their sum (`walk_ob`). A skip spends two jumps on a bare word, and
+a word is at least one character, so twice the text's characters and one
+more are enough (`fu`, `ar_u`); the sum of the levels is named through a
+unit, `cplu`, and never expanded. That covers a text shorter than 2^32
+characters, the bound the laws carry. Past about 2^35 characters the budget
+runs out, so the row as worded is false there (SPEC.md, Left to prove).
+
 ## What parse does
 
 | |
