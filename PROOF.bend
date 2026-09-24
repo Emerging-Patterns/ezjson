@@ -29479,7 +29479,7 @@ law dm_fin_e:
     U32.to_nat(dmr(1n+pp, U32.divmod.go.fin(pp, qq, U32{ss}, 10, gg)))) ==
     Nat.add(Nat.mul(Nat.double(Word.to_nat(pp, qq)), 10n), Word.to_nat(32n, ss)) : Nat}
 
-def dm_fin_e(uu, pp, qq, ss, gg, eg, hs):
+def dm_fin_e(uu, pp, qq, ss, gg, eg, _hs):
   match gg:
     case True{}:
       Equal.trans(Nat, Nat.add(Nat.add(10n, Nat.mul(Nat.double(Word.to_nat(pp, qq)), 10n)), U32.to_nat(U32.sub(U32{ss},
