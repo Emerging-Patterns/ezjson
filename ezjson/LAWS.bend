@@ -68,6 +68,117 @@ def all_wf_pairs(ps: List<&1, String & V.Json>) -> Bool:
 def non_scalar(+cp: U32) -> Bool:
   Bool.or(Bool.and(U32.is_ge(cp, 55296), U32.is_le(cp, 57343)), U32.is_gt(cp, 1114111))
 
+# RFC 8259 §6, the grammar a JSON number must match, one def per production:
+#
+#   number = [ minus ] int [ frac ] [ exp ]
+#   int    = zero / ( digit1-9 *DIGIT )
+#   frac   = decimal-point 1*DIGIT
+#   exp    = e [ minus / plus ] 1*DIGIT
+#
+# Each def reads what is left of the text and says whether the rest of the
+# number, then the end of the text, follows. Alternatives are read in order,
+# the first that starts here wins, as a PEG reads ABNF
+
+# `yes` when cond holds, else `no`: one ordered alternative
+def when(cond: Bool, yes: Bool, no: Bool) -> Bool:
+  match cond:
+    case True{}:
+      yes
+    case False{}:
+      no
+
+# the character is the code point
+def is_cp(+ch: Char, +cp: U32) -> Bool:
+  U32.is_eq(Char.to_u32(ch), cp)
+
+# DIGIT = %x30-39
+def digit(+ch: Char) -> Bool:
+  Bool.and(U32.is_ge(Char.to_u32(ch), 48), U32.is_le(Char.to_u32(ch), 57))
+
+# digit1-9 = %x31-39
+def digit19(+ch: Char) -> Bool:
+  Bool.and(U32.is_ge(Char.to_u32(ch), 49), U32.is_le(Char.to_u32(ch), 57))
+
+# e = %x65 / %x45
+def is_e(+ch: Char) -> Bool:
+  Bool.or(is_cp(ch, 101), is_cp(ch, 69))
+
+# *DIGIT, then the end
+def digits_end(+cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      True{}
+    case ch <> tl:
+      when(digit(ch), digits_end(tl), False{})
+
+# 1*DIGIT, then the end
+def digits1_end(+cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      False{}
+    case ch <> tl:
+      when(digit(ch), digits_end(tl), False{})
+
+# exp after its e: [ minus / plus ] 1*DIGIT, then the end
+def exp_body(+cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      False{}
+    case ch <> tl:
+      when(is_cp(ch, 43), digits1_end(tl),
+        when(is_cp(ch, 45), digits1_end(tl),
+          when(digit(ch), digits_end(tl), False{})))
+
+# the rest of frac's digits, then [ exp ], then the end
+def digits_exp_end(+cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      True{}
+    case ch <> tl:
+      when(digit(ch), digits_exp_end(tl), when(is_e(ch), exp_body(tl), False{}))
+
+# frac after its decimal point: 1*DIGIT, then [ exp ], then the end
+def frac_body(+cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      False{}
+    case ch <> tl:
+      when(digit(ch), digits_exp_end(tl), False{})
+
+# after an int of `0`: no further digit, then [ frac ] [ exp ], then the end
+def zero_rest(+cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      True{}
+    case ch <> tl:
+      when(digit(ch), False{},
+        when(is_cp(ch, 46), frac_body(tl), when(is_e(ch), exp_body(tl), False{})))
+
+# after digit1-9: *DIGIT, then [ frac ] [ exp ], then the end
+def digits_rest(+cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      True{}
+    case ch <> tl:
+      when(digit(ch), digits_rest(tl),
+        when(is_cp(ch, 46), frac_body(tl), when(is_e(ch), exp_body(tl), False{})))
+
+# int [ frac ] [ exp ], then the end
+def int_end(+cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      False{}
+    case ch <> tl:
+      when(is_cp(ch, 48), zero_rest(tl), when(digit19(ch), digits_rest(tl), False{}))
+
+# number, then the end
+def number(+cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      False{}
+    case ch <> tl:
+      when(is_cp(ch, 45), int_end(tl), int_end(ch <> tl))
+
 # LAW: as_bool reads back the boolean bool built
 # JSON-TREE-1
 law as_bool_bool:
@@ -288,3 +399,10 @@ law print_non_scalar:
   for +ch: Char
   for h_non: {non_scalar(Char.to_u32(ch)) == True{} : Bool}
   {Print.escape.char(ch) == String.from_list([Char.from_u32(65533)]) : String}
+
+# LAW: num.ok holds of a text exactly when it matches RFC 8259's number rule
+# JSON-NUM-1
+law num_grammar:
+  for +txt: String
+  {V.num.ok(txt) == number(String.to_list(txt)) : Bool}
+

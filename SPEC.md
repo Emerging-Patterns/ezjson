@@ -8,6 +8,8 @@ A value is **well-formed** when `V.wf` holds of it: its arrays and objects are c
 
 The reasoning behind each requirement, the verdict of each against the code at `089d520`, and the decisions that shaped them are in [docs/rfc/ezjson-spec.md](docs/rfc/ezjson-spec.md). Every law as it stood then, and the progress of the rollout, is in [docs/rfc/ezjson-law-inventory.md](docs/rfc/ezjson-law-inventory.md).
 
+The number rule of RFC 8259 §6 is written out in `ezjson/LAWS.bend` as `number` and the defs above it, one def per ABNF production, so JSON-NUM-1 can be checked against the RFC by reading those defs.
+
 ## Format
 
 A requirement table is any table whose header row is exactly `| ID | Requirement | Level | Status | Law |`. An ID is uppercase segments joined by hyphens, at least two (`[A-Z][A-Z0-9]*(-[A-Z0-9]+)+`), unique within the requirement tables, and never reused once released. Level is `Proved` or `Trusted`. Status is `proved` or `pending` for a Proved row and empty for a Trusted row. A Law cell holds `<path> <law>` entries, paths relative to this file, separated by `; `. A proved row names one or more laws, and together they prove it. A pending row may name laws that each prove part of it; the row stays pending until its requirement is proved in full, and "Left to prove" says what is missing.
@@ -38,7 +40,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 
 | ID | Requirement | Level | Status | Law |
 | :---- | :---- | :---- | :---- | :---- |
-| JSON-NUM-1 | `num.ok(s)` holds exactly when `s` matches RFC 8259's `number` rule: an optional `-`, `0` or a nonzero digit and digits, an optional `.` and one or more digits, an optional `e` or `E`, an optional sign and one or more digits (§6) | Proved | pending |  |
+| JSON-NUM-1 | `num.ok(s)` holds exactly when `s` matches RFC 8259's `number` rule: an optional `-`, `0` or a nonzero digit and digits, an optional `.` and one or more digits, an optional `e` or `E`, an optional sign and one or more digits (§6) | Proved | proved | ezjson/LAWS.bend num_grammar |
 | JSON-NUM-2 | For every `s` with `num.ok(s)`, `parse(s)` is `Some{JNum{s}}` and `print` of it is `s`: a number keeps its spelling | Proved | pending |  |
 | JSON-NUM-3 | `num(s)` is `JNum{s}` when `num.ok(s)`, and `null()` otherwise | Proved | proved | ezjson/LAWS.bend num_keeps; ezjson/LAWS.bend num_null |
 

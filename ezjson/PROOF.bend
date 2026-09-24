@@ -717,3 +717,311 @@ def Laws.has_miss(k2, _vv, ps, key, h_ne):
   nf = Equal.sym(Bool, V.find.eq.go(k2, key, True{}), False{}, find_eq_false(k2, key, h_ne))
   %nf : {Lazy.stop(Bool, _, True{}, _u => V.has.go(V.obj.go(ps), key)) == Ezjson.has(Ezjson.obj(ps), key) : Bool}
   {==}
+
+# RFC 8259 §6: num.ok's states against the grammar. One lemma per state,
+# from the last state back to the start; each `_at` lemma takes the answer
+# of one character test as a parameter, so it can match on it
+
+# a rejected number stays rejected
+law st_bad:
+  for +cs: List<&2, Char>
+  {V.num.ok.go(cs, V.NBad{}) == False{} : Bool}
+
+def st_bad(cs):
+  match cs:
+    case Nil{}:
+      {==}
+    case _ch <> tl:
+      st_bad(tl)
+
+# exp's last digits: *DIGIT, then the end
+law st_expd:
+  for +cs: List<&2, Char>
+  {V.num.ok.go(cs, V.NExpD{}) == Laws.digits_end(cs) : Bool}
+
+# one digit test of an exponent, the rest given
+law expd_at:
+  for +tl: List<&2, Char>
+  for bd: Bool
+  for ih: {V.num.ok.go(tl, V.NExpD{}) == Laws.digits_end(tl) : Bool}
+  {V.num.ok.go(tl, V.num.ok.step.expd.go(bd)) == Laws.when(bd, Laws.digits_end(tl), False{}) : Bool}
+
+def expd_at(tl, bd, ih):
+  match bd:
+    case True{}:
+      ih
+    case False{}:
+      st_bad(tl)
+
+def st_expd(cs):
+  match cs:
+    case Nil{}:
+      {==}
+    case ch <> tl:
+      expd_at(tl, Laws.digit(ch), st_expd(tl))
+
+# exp after its sign: 1*DIGIT, then the end
+law st_expn:
+  for +cs: List<&2, Char>
+  {V.num.ok.go(cs, V.NExpN{}) == Laws.digits1_end(cs) : Bool}
+
+def st_expn(cs):
+  match cs:
+    case Nil{}:
+      {==}
+    case ch <> tl:
+      expd_at(tl, Laws.digit(ch), st_expd(tl))
+
+# after e, not a plus: a minus, or the first digit
+law exp_minus_at:
+  for +ch: Char
+  for +tl: List<&2, Char>
+  for bm: Bool
+  {V.num.ok.go(tl, V.num.ok.step.exps.minus.go(Char.to_u32(ch), bm))
+    == Laws.when(bm, Laws.digits1_end(tl), Laws.when(Laws.digit(ch), Laws.digits_end(tl), False{})) : Bool}
+
+def exp_minus_at(ch, tl, bm):
+  match bm:
+    case True{}:
+      st_expn(tl)
+    case False{}:
+      expd_at(tl, Laws.digit(ch), st_expd(tl))
+
+# after e: a plus, a minus, or the first digit
+law exp_at:
+  for +ch: Char
+  for +tl: List<&2, Char>
+  for bp: Bool
+  {V.num.ok.go(tl, V.num.ok.step.exps.go(Char.to_u32(ch), bp))
+    == Laws.when(bp, Laws.digits1_end(tl),
+      Laws.when(Laws.is_cp(ch, 45), Laws.digits1_end(tl),
+        Laws.when(Laws.digit(ch), Laws.digits_end(tl), False{}))) : Bool}
+
+def exp_at(ch, tl, bp):
+  match bp:
+    case True{}:
+      st_expn(tl)
+    case False{}:
+      exp_minus_at(ch, tl, Laws.is_cp(ch, 45))
+
+# exp after its e
+law st_exp:
+  for +cs: List<&2, Char>
+  {V.num.ok.go(cs, V.NExp{}) == Laws.exp_body(cs) : Bool}
+
+def st_exp(cs):
+  match cs:
+    case Nil{}:
+      {==}
+    case ch <> tl:
+      exp_at(ch, tl, Laws.is_cp(ch, 43))
+
+# an e starts exp; anything else is not a number
+law mark_at:
+  for +tl: List<&2, Char>
+  for be: Bool
+  {V.num.ok.go(tl, V.num.ok.step.mark.go(be)) == Laws.when(be, Laws.exp_body(tl), False{}) : Bool}
+
+def mark_at(tl, be):
+  match be:
+    case True{}:
+      st_exp(tl)
+    case False{}:
+      st_bad(tl)
+
+# frac's digits after the first, then [ exp ], then the end
+law st_frac:
+  for +cs: List<&2, Char>
+  {V.num.ok.go(cs, V.NFrac{}) == Laws.digits_exp_end(cs) : Bool}
+
+# one character of frac's digits, the rest given
+law frac_at:
+  for +ch: Char
+  for +tl: List<&2, Char>
+  for bd: Bool
+  for ih: {V.num.ok.go(tl, V.NFrac{}) == Laws.digits_exp_end(tl) : Bool}
+  {V.num.ok.go(tl, V.num.ok.step.frac.go(Char.to_u32(ch), True{}, bd))
+    == Laws.when(bd, Laws.digits_exp_end(tl), Laws.when(Laws.is_e(ch), Laws.exp_body(tl), False{})) : Bool}
+
+def frac_at(ch, tl, bd, ih):
+  match bd:
+    case True{}:
+      ih
+    case False{}:
+      mark_at(tl, Laws.is_e(ch))
+
+def st_frac(cs):
+  match cs:
+    case Nil{}:
+      {==}
+    case ch <> tl:
+      frac_at(ch, tl, Laws.digit(ch), st_frac(tl))
+
+# frac after its decimal point
+law st_dot:
+  for +cs: List<&2, Char>
+  {V.num.ok.go(cs, V.NDot{}) == Laws.frac_body(cs) : Bool}
+
+# the first digit of frac
+law dot_at:
+  for +ch: Char
+  for +tl: List<&2, Char>
+  for bd: Bool
+  {V.num.ok.go(tl, V.num.ok.step.frac.go(Char.to_u32(ch), False{}, bd))
+    == Laws.when(bd, Laws.digits_exp_end(tl), False{}) : Bool}
+
+def dot_at(_ch, tl, bd):
+  match bd:
+    case True{}:
+      st_frac(tl)
+    case False{}:
+      st_bad(tl)
+
+def st_dot(cs):
+  match cs:
+    case Nil{}:
+      {==}
+    case ch <> tl:
+      dot_at(ch, tl, Laws.digit(ch))
+
+# after int, not a digit: a decimal point, an e, or not a number
+law other_at:
+  for +ch: Char
+  for +tl: List<&2, Char>
+  for bdot: Bool
+  {V.num.ok.go(tl, V.num.ok.step.body.other.go(Char.to_u32(ch), bdot))
+    == Laws.when(bdot, Laws.frac_body(tl), Laws.when(Laws.is_e(ch), Laws.exp_body(tl), False{})) : Bool}
+
+def other_at(ch, tl, bdot):
+  match bdot:
+    case True{}:
+      st_dot(tl)
+    case False{}:
+      mark_at(tl, Laws.is_e(ch))
+
+# after an int of 0
+law st_zero:
+  for +cs: List<&2, Char>
+  {V.num.ok.go(cs, V.NZero{}) == Laws.zero_rest(cs) : Bool}
+
+# one character after 0: a digit is not a number
+law zero_at:
+  for +ch: Char
+  for +tl: List<&2, Char>
+  for bd: Bool
+  {V.num.ok.go(tl, V.num.ok.step.body.go(Char.to_u32(ch), False{}, bd))
+    == Laws.when(bd, False{},
+      Laws.when(Laws.is_cp(ch, 46), Laws.frac_body(tl), Laws.when(Laws.is_e(ch), Laws.exp_body(tl), False{}))) : Bool}
+
+def zero_at(ch, tl, bd):
+  match bd:
+    case True{}:
+      st_bad(tl)
+    case False{}:
+      other_at(ch, tl, Laws.is_cp(ch, 46))
+
+def st_zero(cs):
+  match cs:
+    case Nil{}:
+      {==}
+    case ch <> tl:
+      zero_at(ch, tl, Laws.digit(ch))
+
+# after digit1-9 and any digits
+law st_dig:
+  for +cs: List<&2, Char>
+  {V.num.ok.go(cs, V.NDig{}) == Laws.digits_rest(cs) : Bool}
+
+# one character after int's digits, the rest given
+law dig_at:
+  for +ch: Char
+  for +tl: List<&2, Char>
+  for bd: Bool
+  for ih: {V.num.ok.go(tl, V.NDig{}) == Laws.digits_rest(tl) : Bool}
+  {V.num.ok.go(tl, V.num.ok.step.body.go(Char.to_u32(ch), True{}, bd))
+    == Laws.when(bd, Laws.digits_rest(tl),
+      Laws.when(Laws.is_cp(ch, 46), Laws.frac_body(tl), Laws.when(Laws.is_e(ch), Laws.exp_body(tl), False{}))) : Bool}
+
+def dig_at(ch, tl, bd, ih):
+  match bd:
+    case True{}:
+      ih
+    case False{}:
+      other_at(ch, tl, Laws.is_cp(ch, 46))
+
+def st_dig(cs):
+  match cs:
+    case Nil{}:
+      {==}
+    case ch <> tl:
+      dig_at(ch, tl, Laws.digit(ch), st_dig(tl))
+
+# int's first character, not 0: digit1-9 or not a number
+law lead_at:
+  for +tl: List<&2, Char>
+  for bl: Bool
+  {V.num.ok.go(tl, V.num.ok.step.lead(bl)) == Laws.when(bl, Laws.digits_rest(tl), False{}) : Bool}
+
+def lead_at(tl, bl):
+  match bl:
+    case True{}:
+      st_dig(tl)
+    case False{}:
+      st_bad(tl)
+
+# int's first character
+law int_at:
+  for +ch: Char
+  for +tl: List<&2, Char>
+  for bz: Bool
+  {V.num.ok.go(tl, V.num.ok.step.int.go(Char.to_u32(ch), bz))
+    == Laws.when(bz, Laws.zero_rest(tl), Laws.when(Laws.digit19(ch), Laws.digits_rest(tl), False{})) : Bool}
+
+def int_at(ch, tl, bz):
+  match bz:
+    case True{}:
+      st_zero(tl)
+    case False{}:
+      lead_at(tl, Laws.digit19(ch))
+
+# int [ frac ] [ exp ]
+law st_int:
+  for +cs: List<&2, Char>
+  {V.num.ok.go(cs, V.NInt{}) == Laws.int_end(cs) : Bool}
+
+def st_int(cs):
+  match cs:
+    case Nil{}:
+      {==}
+    case ch <> tl:
+      int_at(ch, tl, Laws.is_cp(ch, 48))
+
+# the first character: minus, or int's first
+law start_at:
+  for +ch: Char
+  for +tl: List<&2, Char>
+  for bm: Bool
+  {V.num.ok.go(tl, V.num.ok.step.start.go(Char.to_u32(ch), bm))
+    == Laws.when(bm, Laws.int_end(tl), Laws.int_end(ch <> tl)) : Bool}
+
+def start_at(ch, tl, bm):
+  match bm:
+    case True{}:
+      st_int(tl)
+    case False{}:
+      st_int(ch <> tl)
+
+# the whole number
+law st_start:
+  for +cs: List<&2, Char>
+  {V.num.ok.go(cs, V.NStart{}) == Laws.number(cs) : Bool}
+
+def st_start(cs):
+  match cs:
+    case Nil{}:
+      {==}
+    case ch <> tl:
+      start_at(ch, tl, Laws.is_cp(ch, 45))
+
+def Laws.num_grammar(txt):
+  st_start(String.to_list(txt))
