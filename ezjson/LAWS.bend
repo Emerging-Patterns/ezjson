@@ -470,6 +470,60 @@ def is_some(mb: Maybe<&2, V.Json>) -> Bool:
     case Some{_}:
       True{}
 
+# a raw character a string keeps as itself: not a quotation mark, not a
+# reverse solidus, not a control below U+0020 (§7)
+def raw_char(+ch: Char) -> Bool:
+  Bool.not(Bool.or(is_cp(ch, 34), Bool.or(is_cp(ch, 92), U32.is_lt(Char.to_u32(ch), 32))))
+
+# every character a string keeps as itself
+def raw_ok(+cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      True{}
+    case ch <> tl:
+      Bool.and(raw_char(ch), raw_ok(tl))
+
+# where a scan for raw controls in strings is: outside strings, inside one,
+# just after a backslash inside one, or past a raw control inside one (§7)
+type Cs is Data:
+  CsOut{}
+  CsIn{}
+  CsEsc{}
+  CsHit{}
+
+# one character of the scan
+def cs.step(st: Cs, +ch: Char) -> Cs:
+  match st:
+    case CsOut{}:
+      Bool.pick(Cs, is_cp(ch, 34), CsIn{}, CsOut{})
+    case CsIn{}:
+      Bool.pick(Cs, is_cp(ch, 34), CsOut{}, Bool.pick(Cs, is_cp(ch, 92), CsEsc{}, Bool.pick(Cs,
+        U32.is_lt(Char.to_u32(ch), 32), CsHit{}, CsIn{})))
+    case CsEsc{}:
+      CsIn{}
+    case CsHit{}:
+      CsHit{}
+
+# the scan of every character, in order
+def cs.run(cs: List<&2, Char>, st: Cs) -> Cs:
+  match cs:
+    case Nil{}:
+      st
+    case Con{hd, tl}:
+      cs.run(tl, cs.step(st, hd))
+
+# whether a scan met a raw control inside a string
+def cs.hit(st: Cs) -> Bool:
+  match st:
+    case CsHit{}:
+      True{}
+    case _:
+      False{}
+
+# whether a text holds a raw control U+0000 to U+001F inside a string
+def raw_ctl(txt: String) -> Bool:
+  cs.hit(cs.run(String.to_list(txt), CsOut{}))
+
 # at most `left` characters, counted down in a U32
 def bounded(+txt: String, +left: U32) -> Bool:
   match txt:
@@ -839,6 +893,23 @@ law parse_num:
 law print_num:
   for +raw: String
   {Ezjson.print(V.JNum{raw}) == raw : String}
+
+# LAW: inside a string, a raw character other than a control, a quotation
+# mark or a reverse solidus is kept as itself
+# JSON-STR-3
+law raw_kept:
+  for +txt: String
+  for h_r: {raw_ok(String.to_list(txt)) == True{} : Bool}
+  for h_s: {short("\"" ++ txt ++ "\"") == True{} : Bool}
+  {str_of(Ezjson.parse("\"" ++ txt ++ "\"")) == Some{txt} : Maybe<&2, String>}
+
+# LAW: a raw control U+0000 to U+001F inside a string makes parse None
+# JSON-STR-3
+law ctl_none:
+  for +txt: String
+  for h_c: {raw_ctl(txt) == True{} : Bool}
+  for h_s: {short(txt) == True{} : Bool}
+  {Ezjson.parse(txt) == None{} : Maybe<&2, V.Json>}
 
 # LAW: print escapes a quotation mark as backslash, quotation mark
 # JSON-STR-5
