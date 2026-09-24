@@ -483,6 +483,58 @@ def raw_ok(+cs: List<&2, Char>) -> Bool:
     case ch <> tl:
       Bool.and(raw_char(ch), raw_ok(tl))
 
+# the character a two-character escape stands for, RFC 8259 §7: \" \\ \/
+# \b \f \n \r \t; none for any other character after a backslash
+def unesc(+ch: Char) -> Maybe<&2, Char>:
+  Bool.pick(Maybe<&2, Char>, is_cp(ch, 34), Some{'"'},
+  Bool.pick(Maybe<&2, Char>, is_cp(ch, 92), Some{'\\'},
+  Bool.pick(Maybe<&2, Char>, is_cp(ch, 47), Some{'/'},
+  Bool.pick(Maybe<&2, Char>, is_cp(ch, 98), Some{Char.from_u32(8)},
+  Bool.pick(Maybe<&2, Char>, is_cp(ch, 102), Some{Char.from_u32(12)},
+  Bool.pick(Maybe<&2, Char>, is_cp(ch, 110), Some{'\n'},
+  Bool.pick(Maybe<&2, Char>, is_cp(ch, 114), Some{'\r'},
+  Bool.pick(Maybe<&2, Char>, is_cp(ch, 116), Some{'\t'},
+    None{}))))))))
+
+# a hexadecimal digit: 0 to 9, A to F, a to f (§7)
+def hexd(+ch: Char) -> Bool:
+  Bool.or(Bool.and(U32.is_ge(Char.to_u32(ch), 48), U32.is_le(Char.to_u32(ch), 57)),
+    Bool.or(Bool.and(U32.is_ge(Char.to_u32(ch), 65), U32.is_le(Char.to_u32(ch), 70)),
+      Bool.and(U32.is_ge(Char.to_u32(ch), 97), U32.is_le(Char.to_u32(ch), 102))))
+
+# a hexadecimal digit's value
+def hexv(+ch: Char) -> U32:
+  +x = Char.to_u32(ch)
+  Bool.pick(U32, U32.is_le(x, 57), (x - 48 : U32), Bool.pick(U32, U32.is_ge(x, 97), (x - 87 : U32), (x - 55 : U32)))
+
+# one more hexadecimal digit, in base 16
+def hex.acc(acc: U32, +ch: Char) -> U32:
+  (acc * 16 + hexv(ch) : U32)
+
+# the code point four hexadecimal digits spell
+def hex4(+aa: Char, +bb: Char, +cc: Char, +dd: Char) -> U32:
+  hex.acc(hex.acc(hex.acc(hex.acc(0, aa), bb), cc), dd)
+
+# a high surrogate, D800 to DBFF
+def in_hi(+cp: U32) -> Bool:
+  Bool.and(U32.is_ge(cp, 55296), U32.is_le(cp, 56319))
+
+# D800 to DFFF's upper half, DC00 to DFFF
+def in_lo(+cp: U32) -> Bool:
+  Bool.and(U32.is_ge(cp, 56320), U32.is_le(cp, 57343))
+
+# a low surrogate: in DC00 to DFFF, and so not a high one
+def lo_sur(+cp: U32) -> Bool:
+  Bool.and(Bool.not(in_hi(cp)), in_lo(cp))
+
+# a code point that is no surrogate
+def non_sur(+cp: U32) -> Bool:
+  Bool.and(Bool.not(in_hi(cp)), Bool.not(in_lo(cp)))
+
+# the code point a high and a low surrogate stand for, UTF-16's rule
+def pair(hi: U32, lo: U32) -> U32:
+  U32.add(65536, U32.add(U32.mul(U32.sub(hi, 55296), 1024), U32.sub(lo, 56320)))
+
 # where a scan for raw controls in strings is: outside strings, inside one,
 # just after a backslash inside one, or past a raw control inside one (§7)
 type Cs is Data:
@@ -893,6 +945,78 @@ law parse_num:
 law print_num:
   for +raw: String
   {Ezjson.print(V.JNum{raw}) == raw : String}
+
+# LAW: inside a string, a two-character escape decodes to its character
+# JSON-STR-2
+law esc_decodes:
+  for +pre: String
+  for +ch: Char
+  for +cc: Char
+  for +post: String
+  for h_p: {raw_ok(String.to_list(pre)) == True{} : Bool}
+  for h_e: {unesc(ch) == Some{cc} : Maybe<&2, Char>}
+  for h_q: {raw_ok(String.to_list(post)) == True{} : Bool}
+  for h_s: {short("\"" ++ pre ++ SCon{'\\', SCon{ch, post}} ++ "\"") == True{} : Bool}
+  {str_of(Ezjson.parse("\"" ++ pre ++ SCon{'\\', SCon{ch, post}} ++ "\"")) == Some{pre ++ SCon{cc, post}} :
+    Maybe<&2, String>}
+
+# LAW: inside a string, a backslash before any character but those of a
+# two-character escape or u makes parse None, whatever follows
+# JSON-STR-2
+law esc_bad:
+  for +pre: String
+  for +ch: Char
+  for +rest: String
+  for h_p: {raw_ok(String.to_list(pre)) == True{} : Bool}
+  for h_e: {unesc(ch) == None{} : Maybe<&2, Char>}
+  for h_u: {is_cp(ch, 117) == False{} : Bool}
+  for h_s: {short("\"" ++ pre ++ SCon{'\\', SCon{ch, rest}}) == True{} : Bool}
+  {Ezjson.parse("\"" ++ pre ++ SCon{'\\', SCon{ch, rest}}) == None{} : Maybe<&2, V.Json>}
+
+# LAW: inside a string, \u and four hexadecimal digits of a code point that
+# is no surrogate decode to that code point
+# JSON-STR-2
+law esc_u:
+  for +pre: String
+  for +aa: Char
+  for +bb: Char
+  for +cc: Char
+  for +dd: Char
+  for +post: String
+  for h_p: {raw_ok(String.to_list(pre)) == True{} : Bool}
+  for h_h: {Bool.and(hexd(aa), Bool.and(hexd(bb), Bool.and(hexd(cc), hexd(dd)))) == True{} : Bool}
+  for h_n: {non_sur(hex4(aa, bb, cc, dd)) == True{} : Bool}
+  for h_q: {raw_ok(String.to_list(post)) == True{} : Bool}
+  for h_s: {short("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd,
+    post}}}}}} ++ "\"") == True{} : Bool}
+  {str_of(Ezjson.parse("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, post}}}}}} ++ "\"")) ==
+    Some{pre ++ SCon{Char.from_u32(hex4(aa, bb, cc, dd)), post}} : Maybe<&2, String>}
+
+# LAW: inside a string, a high then a low surrogate escape decode to the one
+# code point they stand for
+# JSON-STR-2
+law esc_pair:
+  for +pre: String
+  for +h1: Char
+  for +h2: Char
+  for +h3: Char
+  for +h4: Char
+  for +l1: Char
+  for +l2: Char
+  for +l3: Char
+  for +l4: Char
+  for +post: String
+  for h_p: {raw_ok(String.to_list(pre)) == True{} : Bool}
+  for h_h: {Bool.and(hexd(h1), Bool.and(hexd(h2), Bool.and(hexd(h3), hexd(h4)))) == True{} : Bool}
+  for h_l: {Bool.and(hexd(l1), Bool.and(hexd(l2), Bool.and(hexd(l3), hexd(l4)))) == True{} : Bool}
+  for h_hi: {in_hi(hex4(h1, h2, h3, h4)) == True{} : Bool}
+  for h_lo: {lo_sur(hex4(l1, l2, l3, l4)) == True{} : Bool}
+  for h_q: {raw_ok(String.to_list(post)) == True{} : Bool}
+  for h_s: {short("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1,
+    SCon{l2, SCon{l3, SCon{l4, post}}}}}}}}}}}} ++ "\"") == True{} : Bool}
+  {str_of(Ezjson.parse("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u',
+    SCon{l1, SCon{l2, SCon{l3, SCon{l4, post}}}}}}}}}}}} ++ "\"")) ==
+    Some{pre ++ SCon{Char.from_u32(pair(hex4(h1, h2, h3, h4), hex4(l1, l2, l3, l4))), post}} : Maybe<&2, String>}
 
 # LAW: inside a string, a raw character other than a control, a quotation
 # mark or a reverse solidus is kept as itself
