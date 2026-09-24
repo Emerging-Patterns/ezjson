@@ -259,6 +259,9 @@ first.
 | WP-C | JSON-PULL-1, JSON-PULL-4 | WP-H, REVIEW-P2 | largest |
 | last | JSON-TREE-6 | U32 multiply and divide lemmas | medium |
 
+The last package is done: JSON-TREE-6 is proved as `as_u32_num`, from U32 add, shift, multiply and
+divide-by-ten lemmas that read base's word operations as Nat arithmetic modulo 2^32.
+
 ## Risks
 
 - **The span invariant is harder than it looks.** A span token holds the
