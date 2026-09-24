@@ -105,13 +105,18 @@ def escape.put(mb: Maybe<&2, Char>, buf: List<&2, Char>, toks: List<&2, Tok>) ->
     case None{}:
       Lex{Bad{}, [], toks}
 
-# the char after a backslash in a string
-def escape(ch: Char, buf: List<&2, Char>, toks: List<&2, Tok>) -> Lex:
-  match ch:
-    case 'u':
+# the char after a backslash, once it is known whether it is `u`
+def escape.go(ch: Char, buf: List<&2, Char>, toks: List<&2, Tok>, is_u: Bool) -> Lex:
+  match is_u:
+    case True{}:
       Lex{Uni{3n, 0}, buf, toks}
-    case other:
-      escape.put(unescape(other), buf, toks)
+    case False{}:
+      escape.put(unescape(ch), buf, toks)
+
+# the char after a backslash in a string. Tested by code point, not with a
+# `case 'u':` arm, for the reason `classify` gives
+def escape(+ch: Char, buf: List<&2, Char>, toks: List<&2, Tok>) -> Lex:
+  escape.go(ch, buf, toks, U32.is_eq(Char.to_u32(ch), 117))
 
 def hex.ok(+cp: U32) -> Bool:
   Bool.or(Bool.and(U32.is_ge(cp, 48), U32.is_le(cp, 57)),
@@ -229,12 +234,15 @@ def step.hi.go(hi: U32, buf: List<&2, Char>, toks: List<&2, Tok>, slash: Bool) -
 def step.hi(hi: U32, ch: Char, buf: List<&2, Char>, toks: List<&2, Tok>) -> Lex:
   step.hi.go(hi, buf, toks, U32.is_eq(Char.to_u32(ch), 92))
 
-def step.hiesc(hi: U32, ch: Char, buf: List<&2, Char>, toks: List<&2, Tok>) -> Lex:
-  match ch:
-    case 'u':
+def step.hiesc.go(hi: U32, buf: List<&2, Char>, toks: List<&2, Tok>, is_u: Bool) -> Lex:
+  match is_u:
+    case True{}:
       Lex{Lo{3n, 0, hi}, buf, toks}
-    case other:
+    case False{}:
       Lex{Bad{}, [], toks}
+
+def step.hiesc(hi: U32, ch: Char, buf: List<&2, Char>, toks: List<&2, Tok>) -> Lex:
+  step.hiesc.go(hi, buf, toks, U32.is_eq(Char.to_u32(ch), 117))
 
 # one char, by the mode and the char's class
 def step(mode: Mode, cls: Class, ch: Char, buf: List<&2, Char>, toks: List<&2, Tok>) -> Lex:

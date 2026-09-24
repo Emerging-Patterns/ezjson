@@ -2379,3 +2379,276 @@ def sdrop_grow(cut, nn, zz, ez, h_top, cc, rest, h_d):
       sdrop_grow.cons(hd, tl, nn, h_top, rest,
         sdrop_grow(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), {==},
           pred_ne_top(nn, nz_of(nn, ez), U32.is_eq(U32.sub(nn, 1), 4294967295), {==}), cc, rest, h_d))
+
+# WP-L1: the character machine only adds tokens in front of those it is given
+
+# a lexer state with more tokens after its own
+def lex.app(lx: Lex.Lex, tt: List<&2, Lex.Tok>) -> Lex.Lex:
+  match lx:
+    case Lex.Lex{md, bf, tk}:
+      Lex.Lex{md, bf, List.append(&2, Lex.Tok, tk, tt)}
+
+# escape.put passes its tokens through
+law pass.escape_put:
+  for mb: Maybe<&2, Char>
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.escape.put(mb, bf, tt) == lex.app(Lex.escape.put(mb, bf, []), tt) : Lex.Lex}
+
+def pass.escape_put(mb, _bf, _tt):
+  match mb:
+    case Some{_}:
+      {==}
+    case None{}:
+      {==}
+
+# escape.go passes its tokens through
+law pass.escape_go:
+  for +ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for is_u: Bool
+  {Lex.escape.go(ch, bf, tt, is_u) == lex.app(Lex.escape.go(ch, bf, [], is_u), tt) : Lex.Lex}
+
+def pass.escape_go(ch, bf, tt, is_u):
+  match is_u:
+    case True{}:
+      {==}
+    case False{}:
+      pass.escape_put(Lex.unescape(ch), bf, tt)
+
+# escape passes its tokens through
+law pass.escape:
+  for +ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.escape(ch, bf, tt) == lex.app(Lex.escape(ch, bf, []), tt) : Lex.Lex}
+
+def pass.escape(ch, bf, tt):
+  pass.escape_go(ch, bf, tt, U32.is_eq(Char.to_u32(ch), 117))
+
+# unicode.end.go passes its tokens through
+law pass.end_go:
+  for cp: U32
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for key: Lex.Sur
+  {Lex.unicode.end.go(cp, bf, tt, key) == lex.app(Lex.unicode.end.go(cp, bf, [], key), tt) : Lex.Lex}
+
+def pass.end_go(_cp, _bf, _tt, key):
+  match key:
+    case Lex.SOk{}:
+      {==}
+    case Lex.SHi{}:
+      {==}
+    case Lex.SLo{}:
+      {==}
+
+# unicode.put passes its tokens through
+law pass.put:
+  for left: Nat
+  for +acc: U32
+  for +dig: U32
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.unicode.put(left, acc, dig, bf, tt) == lex.app(Lex.unicode.put(left, acc, dig, bf, []), tt) : Lex.Lex}
+
+def pass.put(left, acc, dig, bf, tt):
+  match left:
+    case 0n:
+      pass.end_go((acc * 16 + dig : U32), bf, tt, Lex.unicode.sur((acc * 16 + dig : U32)))
+    case 1n+_:
+      {==}
+
+# unicode.go passes its tokens through
+law pass.uni_go:
+  for left: Nat
+  for acc: U32
+  for ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for ok: Bool
+  {Lex.unicode.go(left, acc, ch, bf, tt, ok) == lex.app(Lex.unicode.go(left, acc, ch, bf, [], ok), tt) : Lex.Lex}
+
+def pass.uni_go(left, acc, ch, bf, tt, ok):
+  match ok:
+    case True{}:
+      pass.put(left, acc, Lex.hex(ch), bf, tt)
+    case False{}:
+      {==}
+
+# unicode.low.end.go passes its tokens through
+law pass.low_end_go:
+  for lo: U32
+  for hi: U32
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for key: Lex.Sur
+  {Lex.unicode.low.end.go(lo, hi, bf, tt, key) == lex.app(Lex.unicode.low.end.go(lo, hi, bf, [], key), tt) : Lex.Lex}
+
+def pass.low_end_go(_lo, _hi, _bf, _tt, key):
+  match key:
+    case Lex.SLo{}:
+      {==}
+    case Lex.SOk{}:
+      {==}
+    case Lex.SHi{}:
+      {==}
+
+# unicode.low.put passes its tokens through
+law pass.low_put:
+  for left: Nat
+  for +acc: U32
+  for hi: U32
+  for +dig: U32
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.unicode.low.put(left, acc, hi, dig, bf, tt) == lex.app(Lex.unicode.low.put(left, acc, hi, dig, bf, []),
+    tt) : Lex.Lex}
+
+def pass.low_put(left, acc, hi, dig, bf, tt):
+  match left:
+    case 0n:
+      pass.low_end_go((acc * 16 + dig : U32), hi, bf, tt, Lex.unicode.sur((acc * 16 + dig : U32)))
+    case 1n+_:
+      {==}
+
+# unicode.low.go passes its tokens through
+law pass.low_go:
+  for left: Nat
+  for acc: U32
+  for hi: U32
+  for ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for ok: Bool
+  {Lex.unicode.low.go(left, acc, hi, ch, bf, tt, ok) == lex.app(Lex.unicode.low.go(left, acc, hi, ch, bf, [], ok),
+    tt) : Lex.Lex}
+
+def pass.low_go(left, acc, hi, ch, bf, tt, ok):
+  match ok:
+    case True{}:
+      pass.low_put(left, acc, hi, Lex.hex(ch), bf, tt)
+    case False{}:
+      {==}
+
+# step.str.go passes its tokens through
+law pass.str_go:
+  for ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for ctrl: Bool
+  {Lex.step.str.go(ch, bf, tt, ctrl) == lex.app(Lex.step.str.go(ch, bf, [], ctrl), tt) : Lex.Lex}
+
+def pass.str_go(_ch, _bf, _tt, ctrl):
+  match ctrl:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# step.hi.go passes its tokens through
+law pass.hi_go:
+  for hi: U32
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for slash: Bool
+  {Lex.step.hi.go(hi, bf, tt, slash) == lex.app(Lex.step.hi.go(hi, bf, [], slash), tt) : Lex.Lex}
+
+def pass.hi_go(_hi, _bf, _tt, slash):
+  match slash:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# step.hiesc.go passes its tokens through
+law pass.hiesc_go:
+  for hi: U32
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for is_u: Bool
+  {Lex.step.hiesc.go(hi, bf, tt, is_u) == lex.app(Lex.step.hiesc.go(hi, bf, [], is_u), tt) : Lex.Lex}
+
+def pass.hiesc_go(_hi, _bf, _tt, is_u):
+  match is_u:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# step.hiesc passes its tokens through
+law pass.hiesc:
+  for hi: U32
+  for ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.step.hiesc(hi, ch, bf, tt) == lex.app(Lex.step.hiesc(hi, ch, bf, []), tt) : Lex.Lex}
+
+def pass.hiesc(hi, ch, bf, tt):
+  pass.hiesc_go(hi, bf, tt, U32.is_eq(Char.to_u32(ch), 117))
+
+# step passes its tokens through, after the ones it adds
+law pass.step:
+  for md: Lex.Mode
+  for cls: Lex.Class
+  for +ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.step(md, cls, ch, bf, tt) == lex.app(Lex.step(md, cls, ch, bf, []), tt) : Lex.Lex}
+
+def pass.step(md, cls, ch, bf, tt):
+  match md cls:
+    case Lex.Idle{} Lex.CPunct{_}:
+      {==}
+    case Lex.Idle{} Lex.CQuote{}:
+      {==}
+    case Lex.Idle{} Lex.CSpace{}:
+      {==}
+    case Lex.Idle{} Lex.CBack{}:
+      {==}
+    case Lex.Idle{} Lex.COther{}:
+      {==}
+    case Lex.Word{} Lex.CPunct{_}:
+      {==}
+    case Lex.Word{} Lex.CQuote{}:
+      {==}
+    case Lex.Word{} Lex.CSpace{}:
+      {==}
+    case Lex.Word{} Lex.CBack{}:
+      {==}
+    case Lex.Word{} Lex.COther{}:
+      {==}
+    case Lex.Str{} Lex.CQuote{}:
+      {==}
+    case Lex.Str{} Lex.CBack{}:
+      {==}
+    case Lex.Str{} Lex.CPunct{_}:
+      pass.str_go(ch, bf, tt, U32.is_lt(Char.to_u32(ch), 32))
+    case Lex.Str{} Lex.CSpace{}:
+      pass.str_go(ch, bf, tt, U32.is_lt(Char.to_u32(ch), 32))
+    case Lex.Str{} Lex.COther{}:
+      pass.str_go(ch, bf, tt, U32.is_lt(Char.to_u32(ch), 32))
+    case Lex.Esc{} _:
+      pass.escape(ch, bf, tt)
+    case Lex.Uni{left, acc} _:
+      pass.uni_go(left, acc, ch, bf, tt, Lex.hex.ok(Char.to_u32(ch)))
+    case Lex.Hi{hi} _:
+      pass.hi_go(hi, bf, tt, U32.is_eq(Char.to_u32(ch), 92))
+    case Lex.HiEsc{hi} _:
+      pass.hiesc(hi, ch, bf, tt)
+    case Lex.Lo{left, acc, hi} _:
+      pass.low_go(left, acc, hi, ch, bf, tt, Lex.hex.ok(Char.to_u32(ch)))
+    case Lex.Bad{} _:
+      {==}
+
+# feed passes its tokens through, after the ones it adds
+law pass.feed:
+  for +ch: Char
+  for md: Lex.Mode
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.feed(ch, Lex.Lex{md, bf, tt}) == lex.app(Lex.feed(ch, Lex.Lex{md, bf, []}), tt) : Lex.Lex}
+
+def pass.feed(ch, md, bf, tt):
+  pass.step(md, Lex.classify(ch), ch, bf, tt)
