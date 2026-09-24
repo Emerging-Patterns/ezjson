@@ -177,6 +177,27 @@ ends in the error token. `derived` checks a raw string character against
 `raw_char`, which also admits a code point past U+10FFFF; for the texts
 JSON-TEXT-1 is about, whose characters are all code points (REVIEW-P8), that
 is RFC 8259's `unescaped`, so the two laws together are the row.
+JSON-TEXT-2, whitespace: the places before and after a derivation's tokens
+are its whitespace fields, so two derivations with the same tokens
+(`g.bare`) and whitespace in every field parse to the same value
+(`ws_same`): `text_some` gives each its `g.val`, and `g.val` ignores
+whitespace (`val_bare`). Any other character, not a digit or `-`
+(REVIEW-P7): the place is stated on the text, outside strings and not
+inside a word (`gap`, a scan in LAWS.bend). The proof is a scan of the
+text (`sc.run` in PROOF.bend) that every text parse accepts passes
+(`acc_der`, by induction on the derivation, with `text_derives`): outside
+strings it keeps the bracket depth, what the last token lets come next, and
+the word being read, which must be a literal name or a number. For each
+class of character put at the place, the scans without and with it stay
+related over any text (`rel_o` an open bracket, one level deeper; `rel_c`
+a close bracket; `rel_s` a separator after a value, or a fault; `rel_w` a
+word character, a word no literal name or number starts or ends with;
+`rel_q` a quotation mark, one scan in a string where the other is not),
+one step at a time (`cl_*`, generated case by case), and a scan related to
+one that accepts does not accept (`acc_*`). At the place the scan is
+outside strings, and after a word only when no word character follows
+(`cp_run` against `gap`). So the text with the character does not pass,
+and does not parse (`ins_none`).
 
 ## What parse does
 
