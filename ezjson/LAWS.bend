@@ -434,6 +434,42 @@ def all_ws(+txt: String) -> Bool:
     case SCon{ch, tl}:
       Bool.and(is_ws(ch), all_ws(tl))
 
+# a character that can stand in a bare word: not whitespace, not one of the
+# structural characters `[ ] { } : ,` (§2), not a quotation mark or a
+# reverse solidus
+def word_char(+ch: Char) -> Bool:
+  Bool.not(Bool.or(is_ws(ch), Bool.or(is_cp(ch, 91), Bool.or(is_cp(ch, 93), Bool.or(is_cp(ch, 123),
+    Bool.or(is_cp(ch, 125), Bool.or(is_cp(ch, 58), Bool.or(is_cp(ch, 44), Bool.or(is_cp(ch, 34), is_cp(ch, 92))))))))))
+
+# every character can stand in a bare word
+def word_chars(+cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      True{}
+    case ch <> tl:
+      Bool.and(word_char(ch), word_chars(tl))
+
+# a bare word: a text of one or more word characters
+def bare(+txt: String) -> Bool:
+  match txt:
+    case SNil{}:
+      False{}
+    case SCon{ch, tl}:
+      word_chars(ch <> String.to_list(tl))
+
+# the literal names, lowercase (§3), or a number (§6)
+def lit_or_num(+txt: String) -> Bool:
+  Bool.or(String.eq(txt, "null"), Bool.or(String.eq(txt, "true"), Bool.or(String.eq(txt, "false"),
+    number(String.to_list(txt)))))
+
+# whether a parse succeeded
+def is_some(mb: Maybe<&2, V.Json>) -> Bool:
+  match mb:
+    case None{}:
+      False{}
+    case Some{_}:
+      True{}
+
 # at most `left` characters, counted down in a U32
 def bounded(+txt: String, +left: U32) -> Bool:
   match txt:
@@ -764,6 +800,35 @@ law str_back:
   for h_sc: {scalars(txt) == True{} : Bool}
   for h_s: {short(Ezjson.print(Ezjson.str(txt))) == True{} : Bool}
   {str_of(Ezjson.parse(Ezjson.print(Ezjson.str(txt)))) == Some{txt} : Maybe<&2, String>}
+
+# LAW: a text that starts with U+FEFF, a byte order mark, does not parse
+# JSON-TEXT-5
+law bom_none:
+  for +txt: String
+  for h_s: {short(SCon{Char.from_u32(65279), txt}) == True{} : Bool}
+  {Ezjson.parse(SCon{Char.from_u32(65279), txt}) == None{} : Maybe<&2, V.Json>}
+
+# LAW: a bare word parses exactly when it is null, true, false or a number
+# JSON-TEXT-4
+law bare_word:
+  for +txt: String
+  for h_b: {bare(txt) == True{} : Bool}
+  for h_s: {short(txt) == True{} : Bool}
+  {is_some(Ezjson.parse(txt)) == lit_or_num(txt) : Bool}
+
+# LAW: a JSON number parses as itself, spelling kept
+# JSON-NUM-2
+law parse_num:
+  for +raw: String
+  for h_ok: {V.num.ok(raw) == True{} : Bool}
+  for h_s: {short(raw) == True{} : Bool}
+  {Ezjson.parse(raw) == Some{V.JNum{raw}} : Maybe<&2, V.Json>}
+
+# LAW: a number prints as its spelling
+# JSON-NUM-2
+law print_num:
+  for +raw: String
+  {Ezjson.print(V.JNum{raw}) == raw : String}
 
 # LAW: print escapes a quotation mark as backslash, quotation mark
 # JSON-STR-5

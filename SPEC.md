@@ -33,15 +33,15 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | JSON-TEXT-1 | For texts shorter than 2^32 - 1 characters: `parse(t)` is `Some` exactly when `t` matches RFC 8259's `JSON-text` rule (§2 to §7) and holds no `\u` escape of an unpaired surrogate (§8.2) | Proved | pending |  |
 | JSON-TEXT-2 | For texts shorter than 2^32 - 1 characters: inserting any run of U+0020, U+0009, U+000A and U+000D before or after any token of a JSON text leaves `parse`'s result the same value; inserting any other character there makes it `None` (§2) | Proved | pending |  |
 | JSON-TEXT-3 | For texts shorter than 2^32 - 1 characters: for every two well-formed values `j` and `k`, `parse(print(j) ++ " " ++ print(k))` is `None`: a text holds exactly one value (§2) | Proved | pending |  |
-| JSON-TEXT-4 | For texts shorter than 2^32 - 1 characters: a bare word parses exactly when it is `null`, `true`, `false` or a number, and the literals are only the lowercase words (§3) | Proved | pending |  |
-| JSON-TEXT-5 | For texts shorter than 2^32 - 1 characters: for every text `t`, `parse` of U+FEFF followed by `t` is `None` (§8.1) | Proved | pending |  |
+| JSON-TEXT-4 | For texts shorter than 2^32 - 1 characters: a bare word parses exactly when it is `null`, `true`, `false` or a number, and the literals are only the lowercase words (§3) | Proved | proved | ezjson/LAWS.bend bare_word |
+| JSON-TEXT-5 | For texts shorter than 2^32 - 1 characters: for every text `t`, `parse` of U+FEFF followed by `t` is `None` (§8.1) | Proved | proved | ezjson/LAWS.bend bom_none |
 
 ### Numbers (JSON-NUM)
 
 | ID | Requirement | Level | Status | Law |
 | :---- | :---- | :---- | :---- | :---- |
 | JSON-NUM-1 | `num.ok(s)` holds exactly when `s` matches RFC 8259's `number` rule: an optional `-`, `0` or a nonzero digit and digits, an optional `.` and one or more digits, an optional `e` or `E`, an optional sign and one or more digits (§6) | Proved | proved | ezjson/LAWS.bend num_grammar |
-| JSON-NUM-2 | For texts shorter than 2^32 - 1 characters: for every `s` with `num.ok(s)`, `parse(s)` is `Some{JNum{s}}` and `print` of it is `s`: a number keeps its spelling | Proved | pending |  |
+| JSON-NUM-2 | For texts shorter than 2^32 - 1 characters: for every `s` with `num.ok(s)`, `parse(s)` is `Some{JNum{s}}` and `print` of it is `s`: a number keeps its spelling | Proved | proved | ezjson/LAWS.bend parse_num; ezjson/LAWS.bend print_num |
 | JSON-NUM-3 | `num(s)` is `JNum{s}` when `num.ok(s)`, and `null()` otherwise | Proved | proved | ezjson/LAWS.bend num_keeps; ezjson/LAWS.bend num_null |
 
 ### Strings (JSON-STR)

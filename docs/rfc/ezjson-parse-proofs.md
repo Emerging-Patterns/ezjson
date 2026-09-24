@@ -85,6 +85,16 @@ same (`print_stable`); and a well-formed value's text leaves no whitespace
 outside strings (`print_compact`), where "outside strings" is a four-state
 scan written from RFC 8259 §7 in LAWS.bend (`tx.step`).
 
+WP-G has started with the rows the round trip gives cheaply. JSON-NUM-2
+(`parse_num`) is JSON-PRINT-1 on a number: only a number owns as a number.
+JSON-TEXT-4 (`bare_word`) and JSON-TEXT-5 (`bom_none`) go through the
+character lexer: a bare word lexes as one word token, and a text that starts
+with U+FEFF lexes with a first token the parser rejects (the word it starts,
+or the error token). Once the parser's error flag is raised no token lowers it
+(`step_bad`). "Bare word" is written in LAWS.bend (`bare`: one or more
+characters that are not whitespace, not structural, not `"` or `\`), and so
+are the literals and numbers it may be (`lit_or_num`).
+
 ## What parse does
 
 | |
