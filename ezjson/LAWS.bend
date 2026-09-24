@@ -19,8 +19,8 @@ def msg() -> V.Json:
       ("tags", V.arr([V.JNull{}, V.JBool{True{}}]))]))])
 
 # a parse result or JNull
-def parsed(m: Maybe<&2, V.Json>) -> V.Json:
-  Maybe.default(&2, V.Json, m, V.JNull{})
+def parsed(mb: Maybe<&2, V.Json>) -> V.Json:
+  Maybe.default(&2, V.Json, mb, V.JNull{})
 
 # LAW: RFC 8259 §3 — null round-trips
 law roundtrip_null:
@@ -262,16 +262,16 @@ law parse_bad_text:
     ++ again("\"\\uDEAD\"") ++ again("\"\\uD800\"")
     == "<bad><bad><bad><bad><bad><bad>" : String}
 
-def code.go(m: Maybe<&2, Char>) -> U32:
-  match m:
+def code.go(mb: Maybe<&2, Char>) -> U32:
+  match mb:
     case None{}:
       0
     case Some{c}:
       Char.to_u32(c)
 
 # the code point of a string's first char, or 0
-def code(s: String) -> U32:
-  code.go(String.get(s, 0n))
+def code(txt: String) -> U32:
+  code.go(String.get(txt, 0n))
 
 # LAW: RFC 8259 §7 — a surrogate pair is one code point
 law parse_surrogate:
@@ -315,8 +315,8 @@ law public_as_f32:
   {Ezjson.as_f32(Ezjson.num("1.5")) == V.as_f32(V.num("1.5")) : Maybe<&2, F32>}
 
 # the kind of a parse result: null, true, false, num, str, arr, obj, or bad
-def kind.go(m: Maybe<&2, V.Json>) -> String:
-  match m:
+def kind.go(mb: Maybe<&2, V.Json>) -> String:
+  match mb:
     case None{}:
       "bad"
     case Some{V.JNull{}}:
@@ -339,8 +339,8 @@ def kind.go(m: Maybe<&2, V.Json>) -> String:
       "bad"
 
 # the kind of one JSON text
-def kind(s: String) -> String:
-  kind.go(Parse.parse(s))
+def kind(txt: String) -> String:
+  kind.go(Parse.parse(txt))
 
 # LAW: RFC 8259 §3 — null, true, false, a number, a string, an array, and an
 # object parse as those kinds
@@ -363,52 +363,52 @@ law rfc_ws:
     == "[]{}[1,2]" : String}
 
 # a one-character string of code point n, in quotes
-def quoted_cp(n: U32) -> String:
-  "\"" ++ String.from_list([Char.from_u32(n)]) ++ "\""
+def quoted_cp(nn: U32) -> String:
+  "\"" ++ String.from_list([Char.from_u32(nn)]) ++ "\""
 
 # brackets around the character of code point n
-def bracket_cp(n: U32) -> String:
-  "[" ++ String.from_list([Char.from_u32(n)]) ++ "]"
+def bracket_cp(nn: U32) -> String:
+  "[" ++ String.from_list([Char.from_u32(nn)]) ++ "]"
 
 # s, left times
-def repeat(left: Nat, +s: String) -> String:
+def repeat(left: Nat, +txt: String) -> String:
   match left:
     case 0n:
       ""
     case 1n+p:
-      s ++ repeat(p, s)
+      txt ++ repeat(p, txt)
 
 # parse of a string holding each code point from n, for left points
-def scan_raw(left: Nat, +n: U32) -> String:
+def scan_raw(left: Nat, +nn: U32) -> String:
   match left:
     case 0n:
       ""
     case 1n+p:
-      again(quoted_cp(n)) ++ scan_raw(p, U32.add(n, 1))
+      again(quoted_cp(nn)) ++ scan_raw(p, U32.add(nn, 1))
 
 # LAW: RFC 8259 §7 — a raw U+0000 through U+001F in a string is rejected
 law rfc_raw_controls:
   {scan_raw(32n, 0) == repeat(32n, "<bad>") : String}
 
 # tab, line feed, or carriage return
-def is_ws_ctl(+n: U32) -> Bool:
-  Bool.or(U32.is_eq(n, 9), Bool.or(U32.is_eq(n, 10), U32.is_eq(n, 13)))
+def is_ws_ctl(+nn: U32) -> Bool:
+  Bool.or(U32.is_eq(nn, 9), Bool.or(U32.is_eq(nn, 10), U32.is_eq(nn, 13)))
 
 # parse of brackets around each code point from n, for left points
-def scan_ws(left: Nat, +n: U32) -> String:
+def scan_ws(left: Nat, +nn: U32) -> String:
   match left:
     case 0n:
       ""
     case 1n+p:
-      again(bracket_cp(n)) ++ scan_ws(p, U32.add(n, 1))
+      again(bracket_cp(nn)) ++ scan_ws(p, U32.add(nn, 1))
 
 # "[]" where n is tab, line feed, or carriage return, else "<bad>"
-def expect_ws(left: Nat, +n: U32) -> String:
+def expect_ws(left: Nat, +nn: U32) -> String:
   match left:
     case 0n:
       ""
     case 1n+p:
-      Bool.pick(String, is_ws_ctl(n), "[]", "<bad>") ++ expect_ws(p, U32.add(n, 1))
+      Bool.pick(String, is_ws_ctl(nn), "[]", "<bad>") ++ expect_ws(p, U32.add(nn, 1))
 
 # LAW: RFC 8259 §2 — among U+0000 through U+001F, only tab, line feed, and
 # carriage return are whitespace. U+000B and U+000C are not.
@@ -422,24 +422,24 @@ law rfc_one:
     == "true<bad><bad><bad>" : String}
 
 # one hex nibble, lowercase
-def nib.go(+n: U32, digit: Bool) -> Char:
+def nib.go(+nn: U32, digit: Bool) -> Char:
   match digit:
     case True{}:
-      Char.from_u32(U32.add(48, n))
+      Char.from_u32(U32.add(48, nn))
     case False{}:
-      Char.from_u32(U32.add(87, n))
+      Char.from_u32(U32.add(87, nn))
 
 # one hex nibble, lowercase
-def nib(+n: U32) -> Char:
-  nib.go(n, U32.is_lt(n, 10))
+def nib(+nn: U32) -> Char:
+  nib.go(nn, U32.is_lt(nn, 10))
 
 # the JSON text of a \\u00XX escape of n, in quotes
-def u_text(+n: U32) -> String:
-  "\"\\u00" ++ String.from_list([nib(U32.div(n, 16)), nib(U32.mod(n, 16))]) ++ "\""
+def u_text(+nn: U32) -> String:
+  "\"\\u00" ++ String.from_list([nib(U32.div(nn, 16)), nib(U32.mod(nn, 16))]) ++ "\""
 
 # the code point of a parsed string, or 65535 when the text is not one
-def u_point.go(m: Maybe<&2, V.Json>) -> U32:
-  match m:
+def u_point.go(mb: Maybe<&2, V.Json>) -> U32:
+  match mb:
     case Some{V.JStr{s}}:
       code(s)
     case Some{V.JSpan{src, +n}}:
@@ -448,16 +448,16 @@ def u_point.go(m: Maybe<&2, V.Json>) -> U32:
       65535
 
 # the code point a \\u escape parses as, or 65535 when it is not a string
-def u_point(n: U32) -> U32:
-  u_point.go(Parse.parse(u_text(n)))
+def u_point(nn: U32) -> U32:
+  u_point.go(Parse.parse(u_text(nn)))
 
 # each \\u escape from n, for left points, is that code point
-def scan_u(left: Nat, +n: U32) -> Bool:
+def scan_u(left: Nat, +nn: U32) -> Bool:
   match left:
     case 0n:
       True{}
     case 1n+p:
-      Lazy.stop(Bool, U32.is_eq(u_point(n), n), scan_u(p, U32.add(n, 1)), _u => False{})
+      Lazy.stop(Bool, U32.is_eq(u_point(nn), nn), scan_u(p, U32.add(nn, 1)), _u => False{})
 
 # LAW: RFC 8259 §7 — \\u0000 through \\u001F are those code points
 law rfc_u_controls:
@@ -470,8 +470,8 @@ law rfc_escapes:
     == "\"\\\"\\\\/\\b\\f\\n\\r\\t\\u0000\\u001f\"" : String}
 
 # a quoted code point, as print writes it
-def qcp(n: U32) -> String:
-  Print.quote(String.from_list([Char.from_u32(n)]))
+def qcp(nn: U32) -> String:
+  Print.quote(String.from_list([Char.from_u32(nn)]))
 
 # LAW: RFC 8259 §7 and §10 — print escapes U+0000 through U+001F
 law rfc_gen_ctrl:
@@ -479,8 +479,8 @@ law rfc_gen_ctrl:
     == "\"\\u0000\"\"\\b\"\"\\t\"\"\\n\"\"\\f\"\"\\r\"\"\\u001f\"" : String}
 
 # the characters of a parsed string, or empty when it is not one
-def str_of(s: String) -> String:
-  Maybe.default(&2, String, V.as_str(parsed(Parse.parse(s))), "")
+def str_of(txt: String) -> String:
+  Maybe.default(&2, String, V.as_str(parsed(Parse.parse(txt))), "")
 
 # LAW: RFC 8259 §8.3 — escaped and unescaped spellings of one string compare equal
 law rfc_cmp:

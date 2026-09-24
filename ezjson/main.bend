@@ -9,24 +9,24 @@ import ./print.bend as Print
 import ./pull.bend as Pull
 
 # a text as a value, or None when it is not JSON
-def parse(s: String) -> Maybe<&2, Value.Json>:
-  Parse.parse(s)
+def parse(txt: String) -> Maybe<&2, Value.Json>:
+  Parse.parse(txt)
 
 # a value as compact JSON
-def print(j: Value.Json) -> String:
-  Print.print(j)
+def print(val: Value.Json) -> String:
+  Print.print(val)
 
 # null
 def null() -> Value.Json:
   Value.null()
 
 # a boolean
-def bool(b: Bool) -> Value.Json:
-  Value.bool(b)
+def bool(flag: Bool) -> Value.Json:
+  Value.bool(flag)
 
 # a string
-def str(s: String) -> Value.Json:
-  Value.str(s)
+def str(txt: String) -> Value.Json:
+  Value.str(txt)
 
 # a JSON number from its text, or null when that text is not one
 def num(raw: String) -> Value.Json:
@@ -42,32 +42,32 @@ def arr(items: List<&2, Value.Json>) -> Value.Json:
 
 # an object's value at a key; JNull when it is not an object or has no such
 # key
-def get(j: Value.Json, key: String) -> Value.Json:
-  Value.get(j, key)
+def get(val: Value.Json, key: String) -> Value.Json:
+  Value.get(val, key)
 
 # an array's item at an index; JNull when it is not an array or has none
-def at(j: Value.Json, i: U32) -> Value.Json:
-  Value.at(j, i)
+def at(val: Value.Json, idx: U32) -> Value.Json:
+  Value.at(val, idx)
 
 # a boolean, or none when the value is not one
-def as_bool(j: Value.Json) -> Maybe<&2, Bool>:
-  Value.as_bool(j)
+def as_bool(val: Value.Json) -> Maybe<&2, Bool>:
+  Value.as_bool(val)
 
 # a string, or none when the value is not one
-def as_str(j: Value.Json) -> Maybe<&2, String>:
-  Value.as_str(j)
+def as_str(val: Value.Json) -> Maybe<&2, String>:
+  Value.as_str(val)
 
 # a number's text, or none when the value is not a number
-def as_num(j: Value.Json) -> Maybe<&2, String>:
-  Value.as_num(j)
+def as_num(val: Value.Json) -> Maybe<&2, String>:
+  Value.as_num(val)
 
 # a number as a U32, or none when it is not one or does not fit
-def as_u32(j: Value.Json) -> Maybe<&2, U32>:
-  Value.as_u32(j)
+def as_u32(val: Value.Json) -> Maybe<&2, U32>:
+  Value.as_u32(val)
 
 # a number as an F32, or none when it is not one or does not fit
-def as_f32(j: Value.Json) -> Maybe<&2, F32>:
-  Value.as_f32(j)
+def as_f32(val: Value.Json) -> Maybe<&2, F32>:
+  Value.as_f32(val)
 
 # a cursor at the start of a JSON text. It holds the unread suffix of that
 # text. A span event keeps its own suffix, so it stays valid after `next`

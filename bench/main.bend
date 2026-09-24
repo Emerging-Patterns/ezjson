@@ -6,16 +6,16 @@ import ../ezjson/value.bend as V
 import ../ezjson/pull.bend as Pull
 
 # unwrap a parsed U32, or zero when parse fails
-def u32.arg.go(m: Maybe<&2, U32>) -> U32:
-  match m:
+def u32.arg.go(mb: Maybe<&2, U32>) -> U32:
+  match mb:
     case Some{n}:
       n
     case None{}:
       0
 
 # parse a decimal U32 from a string
-def u32.arg(s: String) -> U32:
-  u32.arg.go(U32.read(s))
+def u32.arg(txt: String) -> U32:
+  u32.arg.go(U32.read(txt))
 
 # close the file once the write Result is Unit
 def wrote.close(file: File, ok: Unit) -> IO(Unit):
@@ -38,10 +38,10 @@ def write.text(path: String, data: String) -> IO(Unit):
     wrote(p)
 
 # after reading text, close the file and return it
-def took.after(s: String, closed: Unit) -> String:
+def took.after(txt: String, closed: Unit) -> String:
   match closed:
     case Unit{}:
-      s
+      txt
 
 # force a read Result, then close the file
 def took.text(pair: File & Result<&1, &1, U32 & String, String>) -> IO(String):
@@ -71,8 +71,8 @@ def die.msg(msg: String) -> IO(Unit):
   IO.die(Unit, 1, msg)
 
 # write printed JSON, or die on parse failure
-def write.maybe(path: String, m: Maybe<&2, V.Json>) -> IO(Unit):
-  match m:
+def write.maybe(path: String, mb: Maybe<&2, V.Json>) -> IO(Unit):
+  match mb:
     case None{}:
       die.msg("parse failed")
     case Some{j}:
@@ -91,8 +91,8 @@ def cmd.json.enc(src: String, dst: String) -> IO(Unit):
     write.maybe(dst, Ezjson.parse(s))
 
 # round-trip: parse → print → parse → print
-def cmd.json.rt.go(dst: String, m: Maybe<&2, V.Json>) -> IO(Unit):
-  match m:
+def cmd.json.rt.go(dst: String, mb: Maybe<&2, V.Json>) -> IO(Unit):
+  match mb:
     case None{}:
       die.msg("round-trip parse failed")
     case Some{j}:
@@ -105,104 +105,104 @@ def cmd.json.rt(src: String, dst: String) -> IO(Unit):
     cmd.json.rt.go(dst, Ezjson.parse(s))
 
 # fold a Json tree into a checksum so timed work is not DCE'd
-def json.sum(j: V.Json, +a: U32) -> U32:
-  match j:
+def json.sum(val: V.Json, +lhs: U32) -> U32:
+  match val:
     case V.JNull{}:
-      (a + 1 : U32)
+      (lhs + 1 : U32)
     case V.JBool{True{}}:
-      (a + 2 : U32)
+      (lhs + 2 : U32)
     case V.JBool{False{}}:
-      (a + 3 : U32)
+      (lhs + 3 : U32)
     case V.JNum{raw}:
-      (a + U32.from_nat(String.length(raw)) + 4 : U32)
+      (lhs + U32.from_nat(String.length(raw)) + 4 : U32)
     case V.JStr{s}:
-      (a + U32.from_nat(String.length(s)) + 5 : U32)
+      (lhs + U32.from_nat(String.length(s)) + 5 : U32)
     case V.JSpan{_src, +n}:
-      (a + n + 5 : U32)
+      (lhs + n + 5 : U32)
     case V.JArr{items}:
-      json.sum(items, (a + 6 : U32))
+      json.sum(items, (lhs + 6 : U32))
     case V.JObj{pairs}:
-      json.sum(pairs, (a + 7 : U32))
+      json.sum(pairs, (lhs + 7 : U32))
     case V.JNil{}:
-      a
+      lhs
     case V.JCons{h, t}:
-      json.sum(t, json.sum(h, a))
+      json.sum(t, json.sum(h, lhs))
     case V.JPair{k, v, r}:
-      json.sum(r, json.sum(v, (a + U32.from_nat(String.length(k)) : U32)))
+      json.sum(r, json.sum(v, (lhs + U32.from_nat(String.length(k)) : U32)))
     case V.JBind{_src, +n, v, r}:
-      json.sum(r, json.sum(v, (a + n : U32)))
+      json.sum(r, json.sum(v, (lhs + n : U32)))
 
 # fold a successful parse into the checksum
-def step.dec(+sum: U32, m: Maybe<&2, V.Json>) -> U32:
-  match m:
+def step.dec(+sum: U32, mb: Maybe<&2, V.Json>) -> U32:
+  match mb:
     case None{}:
       sum
     case Some{j}:
       json.sum(j, (sum + 1 : U32))
 
 # repeat parse n times
-def loop.dec(+s: String, n: Nat, +sum: U32) -> U32:
-  match n:
+def loop.dec(+txt: String, nn: Nat, +sum: U32) -> U32:
+  match nn:
     case 0n:
       sum
     case 1n+p:
-      loop.dec(s, p, step.dec(sum, Ezjson.parse(s)))
+      loop.dec(txt, p, step.dec(sum, Ezjson.parse(txt)))
 
 # fold print length into a checksum
 def step.enc(+sum: U32, out: String) -> U32:
   (sum + U32.from_nat(String.length(out)) + 1 : U32)
 
 # repeat print n times
-def loop.enc(+j: V.Json, n: Nat, +sum: U32) -> U32:
-  match n:
+def loop.enc(+val: V.Json, nn: Nat, +sum: U32) -> U32:
+  match nn:
     case 0n:
       sum
     case 1n+p:
-      loop.enc(j, p, step.enc(sum, Ezjson.print(j)))
+      loop.enc(val, p, step.enc(sum, Ezjson.print(val)))
 
 # format a timing line for the harness
-def show.ms(t0: Nat, t1: Nat, +sum: U32, +bytes: U32, +n: U32) -> String:
+def show.ms(t0: Nat, t1: Nat, +sum: U32, +bytes: U32, +nn: U32) -> String:
   "MS " ++ Nat.show(Nat.sub(t1, t0)) ++ " SUM " ++ U32.show(sum) ++ " BY "
-    ++ U32.show(bytes) ++ " N " ++ U32.show(n)
+    ++ U32.show(bytes) ++ " N " ++ U32.show(nn)
 
 # timed decode body once the text is loaded
-def bench.json.dec.go(+s: String, n: Nat, +iters: U32) -> IO(Unit):
-  +bytes = U32.from_nat(String.length(s))
+def bench.json.dec.go(+txt: String, nn: Nat, +iters: U32) -> IO(Unit):
+  +bytes = U32.from_nat(String.length(txt))
   do IO<Unit>:
     t0 : Nat <- IO.now()
-    sum : U32 = loop.dec(s, n, 0)
+    sum : U32 = loop.dec(txt, nn, 0)
     t1 : Nat <- IO.now()
     IO.print(show.ms(t0, t1, sum, bytes, iters))
 
 # timed decode: load text outside IO.now, parse N times inside
-def bench.json.dec(path: String, +n: U32) -> IO(Unit):
-  +k = U32.to_nat(n)
+def bench.json.dec(path: String, +nn: U32) -> IO(Unit):
+  +k = U32.to_nat(nn)
   do IO<Unit>:
     s : String <- read.text(path)
-    bench.json.dec.go(s, k, n)
+    bench.json.dec.go(s, k, nn)
 
 # timed encode from a parsed fixture (load+parse outside the timer)
-def bench.json.enc.go(m: Maybe<&2, V.Json>, +n: U32, +bytes: U32) -> IO(Unit):
-  match m:
+def bench.json.enc.go(mb: Maybe<&2, V.Json>, +nn: U32, +bytes: U32) -> IO(Unit):
+  match mb:
     case None{}:
       die.msg("bad json for bench-json-enc")
     case Some{+j}:
-      +k = U32.to_nat(n)
+      +k = U32.to_nat(nn)
       do IO<Unit>:
         t0 : Nat <- IO.now()
         sum : U32 = loop.enc(j, k, 0)
         t1 : Nat <- IO.now()
-        IO.print(show.ms(t0, t1, sum, bytes, n))
+        IO.print(show.ms(t0, t1, sum, bytes, nn))
 
 # after loading text, parse once then time print
-def bench.json.enc.after(+s: String, +n: U32) -> IO(Unit):
-  bench.json.enc.go(Ezjson.parse(s), n, U32.from_nat(String.length(s)))
+def bench.json.enc.after(+txt: String, +nn: U32) -> IO(Unit):
+  bench.json.enc.go(Ezjson.parse(txt), nn, U32.from_nat(String.length(txt)))
 
 # load JSON text, parse once, then time print only
-def bench.json.enc(path: String, +n: U32) -> IO(Unit):
+def bench.json.enc(path: String, +nn: U32) -> IO(Unit):
   do IO<Unit>:
     s : String <- read.text(path)
-    bench.json.enc.after(s, n)
+    bench.json.enc.after(s, nn)
 
 # checksum tag of one pull event. Same numbers as the Rust token walk:
 # null 1, bool 2, number 3, string 4, key 5, begin-array 6, end-array 7,
@@ -250,8 +250,8 @@ def step.pull(+sum: U32, part: U32) -> U32:
   (sum + part : U32)
 
 # char length of a copied string, or zero when `text` has none
-def text.n(m: Maybe<&2, String>) -> U32:
-  match m:
+def text.n(mb: Maybe<&2, String>) -> U32:
+  match mb:
     case None{}:
       0
     case Some{s}:
@@ -318,13 +318,13 @@ def walk.all(left: Nat, ph: All) -> U32:
     case 1n+p AGo{cur, +acc}:
       walk.all(p, all.need(cur, acc))
 
-# `next` until end, `n` times
-def loop.pull.walk(+s: String, n: Nat, +sum: U32, +fuel: Nat) -> U32:
-  match n:
+# `next` until end, `nn` times
+def loop.pull.walk(+txt: String, nn: Nat, +sum: U32, +fuel: Nat) -> U32:
+  match nn:
     case 0n:
       sum
     case 1n+p:
-      loop.pull.walk(s, p, step.pull(sum, walk.all(fuel, all.need(Ezjson.cursor(s), 0))), fuel)
+      loop.pull.walk(txt, p, step.pull(sum, walk.all(fuel, all.need(Ezjson.cursor(txt), 0))), fuel)
 
 # skip-walk. `KKey` is the bool "this key is rows"
 type Sk is Data:
@@ -386,13 +386,13 @@ def walk.skip(left: Nat, ph: Sk) -> U32:
     case 1n+p KKey{False{}, cur, +acc}:
       walk.skip(p, skip.need(cur, acc))
 
-# skip-walk, `n` times
-def loop.pull.skip(+s: String, n: Nat, +sum: U32, +fuel: Nat) -> U32:
-  match n:
+# skip-walk, `nn` times
+def loop.pull.skip(+txt: String, nn: Nat, +sum: U32, +fuel: Nat) -> U32:
+  match nn:
     case 0n:
       sum
     case 1n+p:
-      loop.pull.skip(s, p, step.pull(sum, walk.skip(fuel, skip.need(Ezjson.cursor(s), 0))), fuel)
+      loop.pull.skip(txt, p, step.pull(sum, walk.skip(fuel, skip.need(Ezjson.cursor(txt), 0))), fuel)
 
 # text-walk. `arm` means the next value is the `rows` array.
 # `depth` 1 is a direct element of that array. `every` counts down to a copy
@@ -409,8 +409,8 @@ def txt.stop(_cur: Pull.Cur, +acc: U32) -> Txt:
   TStop{acc}
 
 # inside `rows`, go one level deeper; otherwise stay outside
-def txt.nest.go(z: Bool, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
-  match z:
+def txt.nest.go(zero: Bool, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  match zero:
     case True{}:
       txt.need(cur, acc, 0, every, False{})
     case False{}:
@@ -421,8 +421,8 @@ def txt.nest(cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
   txt.nest.go(U32.is_zero(depth), cur, acc, depth, every)
 
 # step out of a container. Depth 0 stays 0
-def txt.close.go(z: Bool, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
-  match z:
+def txt.close.go(zero: Bool, cur: Pull.Cur, +acc: U32, +depth: U32, +every: U32) -> Txt:
+  match zero:
     case True{}:
       txt.need(cur, acc, 0, every, False{})
     case False{}:
@@ -536,13 +536,13 @@ def walk.text(left: Nat, ph: Txt) -> U32:
     case 1n+p TNeed{cur, +acc, +depth, +every, arm}:
       walk.text(p, txt.read(cur, acc, depth, every, arm))
 
-# text-walk, `n` times
-def loop.pull.text(+s: String, n: Nat, +sum: U32, +fuel: Nat) -> U32:
-  match n:
+# text-walk, `nn` times
+def loop.pull.text(+sv: String, nn: Nat, +sum: U32, +fuel: Nat) -> U32:
+  match nn:
     case 0n:
       sum
     case 1n+p:
-      loop.pull.text(s, p, step.pull(sum, walk.text(fuel, txt.need(Ezjson.cursor(s), 0, 0, 0, False{}))), fuel)
+      loop.pull.text(sv, p, step.pull(sum, walk.text(fuel, txt.need(Ezjson.cursor(sv), 0, 0, 0, False{}))), fuel)
 
 # two events of fuel per character, plus the end event. Built once, outside the timer
 def fuel.nat(+bytes: U32) -> Nat:
@@ -553,163 +553,163 @@ def bench.pull.show(+bytes: U32, +iters: U32, t0: Nat, t1: Nat, +sum: U32) -> IO
   IO.print(show.ms(t0, t1, sum, bytes, iters))
 
 # time a full `next` walk. Load stays outside IO.now
-def bench.pull.walk.go(+s: String, n: Nat, +iters: U32) -> IO(Unit):
-  +bytes = U32.from_nat(String.length(s))
+def bench.pull.walk.go(+txt: String, nn: Nat, +iters: U32) -> IO(Unit):
+  +bytes = U32.from_nat(String.length(txt))
   +fuel = fuel.nat(bytes)
   do IO<Unit>:
     t0 : Nat <- IO.now()
-    sum : U32 = loop.pull.walk(s, n, 0, fuel)
+    sum : U32 = loop.pull.walk(txt, nn, 0, fuel)
     t1 : Nat <- IO.now()
     bench.pull.show(bytes, iters, t0, t1, sum)
 
 # load the text, then time the full event walk
-def bench.pull.walk(path: String, +n: U32) -> IO(Unit):
-  +k = U32.to_nat(n)
+def bench.pull.walk(path: String, +nn: U32) -> IO(Unit):
+  +k = U32.to_nat(nn)
   do IO<Unit>:
     s : String <- read.text(path)
-    bench.pull.walk.go(s, k, n)
+    bench.pull.walk.go(s, k, nn)
 
 # time a walk that skips each `rows` array
-def bench.pull.skip.go(+s: String, n: Nat, +iters: U32) -> IO(Unit):
-  +bytes = U32.from_nat(String.length(s))
+def bench.pull.skip.go(+txt: String, nn: Nat, +iters: U32) -> IO(Unit):
+  +bytes = U32.from_nat(String.length(txt))
   +fuel = fuel.nat(bytes)
   do IO<Unit>:
     t0 : Nat <- IO.now()
-    sum : U32 = loop.pull.skip(s, n, 0, fuel)
+    sum : U32 = loop.pull.skip(txt, nn, 0, fuel)
     t1 : Nat <- IO.now()
     bench.pull.show(bytes, iters, t0, t1, sum)
 
 # load the text, then time skip of each heavy `rows` array
-def bench.pull.skip(path: String, +n: U32) -> IO(Unit):
-  +k = U32.to_nat(n)
+def bench.pull.skip(path: String, +nn: U32) -> IO(Unit):
+  +k = U32.to_nat(nn)
   do IO<Unit>:
     s : String <- read.text(path)
-    bench.pull.skip.go(s, k, n)
+    bench.pull.skip.go(s, k, nn)
 
 # time a walk that copies every 8th `rows` string with `text`
-def bench.pull.text.go(+s: String, n: Nat, +iters: U32) -> IO(Unit):
-  +bytes = U32.from_nat(String.length(s))
+def bench.pull.text.go(+txt: String, nn: Nat, +iters: U32) -> IO(Unit):
+  +bytes = U32.from_nat(String.length(txt))
   +fuel = fuel.nat(bytes)
   do IO<Unit>:
     t0 : Nat <- IO.now()
-    sum : U32 = loop.pull.text(s, n, 0, fuel)
+    sum : U32 = loop.pull.text(txt, nn, 0, fuel)
     t1 : Nat <- IO.now()
     bench.pull.show(bytes, iters, t0, t1, sum)
 
 # load the text, then time `text` on a subset of string rows
-def bench.pull.text(path: String, +n: U32) -> IO(Unit):
-  +k = U32.to_nat(n)
+def bench.pull.text(path: String, +nn: U32) -> IO(Unit):
+  +k = U32.to_nat(nn)
   do IO<Unit>:
     s : String <- read.text(path)
-    bench.pull.text.go(s, k, n)
+    bench.pull.text.go(s, k, nn)
 
 # fallthrough for unknown commands
-def run.f.at(z: Bool, +cmd: String, _a: String, _b: String, _c: String) -> IO(Unit):
-  match z:
+def run.f.at(zero: Bool, +cmd: String, _a: String, _b: String, _c: String) -> IO(Unit):
+  match zero:
     case True{}:
       IO.print("pong")
     case False{}:
       die.msg("unknown command " ++ cmd)
 
 # dispatch the ping command
-def run.f(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  run.f.at(String.eq(cmd, "ping"), cmd, a, b, c)
+def run.f(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
+  run.f.at(String.eq(cmd, "ping"), cmd, lhs, flag, ch)
 
 # dispatch bench-pull-text
-def run.i.at(z: Bool, +cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  match z:
+def run.i.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +chr: String) -> IO(Unit):
+  match zero:
     case True{}:
-      bench.pull.text(a, u32.arg(b))
+      bench.pull.text(lhs, u32.arg(flag))
     case False{}:
-      run.f(cmd, a, b, c)
+      run.f(cmd, lhs, flag, chr)
 
 # try bench-pull-text then fall through
-def run.i(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  run.i.at(String.eq(cmd, "bench-pull-text"), cmd, a, b, c)
+def run.i(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
+  run.i.at(String.eq(cmd, "bench-pull-text"), cmd, lhs, flag, ch)
 
 # dispatch bench-pull-skip
-def run.h.at(z: Bool, +cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  match z:
+def run.h.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +chr: String) -> IO(Unit):
+  match zero:
     case True{}:
-      bench.pull.skip(a, u32.arg(b))
+      bench.pull.skip(lhs, u32.arg(flag))
     case False{}:
-      run.i(cmd, a, b, c)
+      run.i(cmd, lhs, flag, chr)
 
 # try bench-pull-skip then fall through
-def run.h(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  run.h.at(String.eq(cmd, "bench-pull-skip"), cmd, a, b, c)
+def run.h(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
+  run.h.at(String.eq(cmd, "bench-pull-skip"), cmd, lhs, flag, ch)
 
 # dispatch bench-pull-walk
-def run.g.at(z: Bool, +cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  match z:
+def run.g.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +chr: String) -> IO(Unit):
+  match zero:
     case True{}:
-      bench.pull.walk(a, u32.arg(b))
+      bench.pull.walk(lhs, u32.arg(flag))
     case False{}:
-      run.h(cmd, a, b, c)
+      run.h(cmd, lhs, flag, chr)
 
 # try bench-pull-walk then fall through
-def run.g(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  run.g.at(String.eq(cmd, "bench-pull-walk"), cmd, a, b, c)
+def run.g(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
+  run.g.at(String.eq(cmd, "bench-pull-walk"), cmd, lhs, flag, ch)
 
 # dispatch bench-json-enc
-def run.e.at(z: Bool, +cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  match z:
+def run.e.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +chr: String) -> IO(Unit):
+  match zero:
     case True{}:
-      bench.json.enc(a, u32.arg(b))
+      bench.json.enc(lhs, u32.arg(flag))
     case False{}:
-      run.g(cmd, a, b, c)
+      run.g(cmd, lhs, flag, chr)
 
 # try bench-json-enc then fall through
-def run.e(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  run.e.at(String.eq(cmd, "bench-json-enc"), cmd, a, b, c)
+def run.e(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
+  run.e.at(String.eq(cmd, "bench-json-enc"), cmd, lhs, flag, ch)
 
 # dispatch bench-json-dec
-def run.d.at(z: Bool, +cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  match z:
+def run.d.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +chr: String) -> IO(Unit):
+  match zero:
     case True{}:
-      bench.json.dec(a, u32.arg(b))
+      bench.json.dec(lhs, u32.arg(flag))
     case False{}:
-      run.e(cmd, a, b, c)
+      run.e(cmd, lhs, flag, chr)
 
 # try bench-json-dec then fall through
-def run.d(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  run.d.at(String.eq(cmd, "bench-json-dec"), cmd, a, b, c)
+def run.d(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
+  run.d.at(String.eq(cmd, "bench-json-dec"), cmd, lhs, flag, ch)
 
 # dispatch json-rt
-def run.c.at(z: Bool, +cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  match z:
+def run.c.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
+  match zero:
     case True{}:
-      cmd.json.rt(a, b)
+      cmd.json.rt(lhs, flag)
     case False{}:
-      run.d(cmd, a, b, c)
+      run.d(cmd, lhs, flag, ch)
 
 # try json-rt then fall through
-def run.c(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  run.c.at(String.eq(cmd, "json-rt"), cmd, a, b, c)
+def run.c(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
+  run.c.at(String.eq(cmd, "json-rt"), cmd, lhs, flag, ch)
 
 # dispatch json-enc
-def run.b.at(z: Bool, +cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  match z:
+def run.b.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
+  match zero:
     case True{}:
-      cmd.json.enc(a, b)
+      cmd.json.enc(lhs, flag)
     case False{}:
-      run.c(cmd, a, b, c)
+      run.c(cmd, lhs, flag, ch)
 
 # try json-enc then fall through
-def run.b(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  run.b.at(String.eq(cmd, "json-enc"), cmd, a, b, c)
+def run.b(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
+  run.b.at(String.eq(cmd, "json-enc"), cmd, lhs, flag, ch)
 
 # dispatch json-dec
-def run.named.at(z: Bool, +cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  match z:
+def run.named.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
+  match zero:
     case True{}:
-      cmd.json.dec(a, b)
+      cmd.json.dec(lhs, flag)
     case False{}:
-      run.b(cmd, a, b, c)
+      run.b(cmd, lhs, flag, ch)
 
 # try json-dec then fall through
-def run.named(+cmd: String, +a: String, +b: String, +c: String) -> IO(Unit):
-  run.named.at(String.eq(cmd, "json-dec"), cmd, a, b, c)
+def run.named(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
+  run.named.at(String.eq(cmd, "json-dec"), cmd, lhs, flag, ch)
 
 # the first four argv strings, empty when missing
 def args.of4(xs: List<String>) -> String & String & String & String:

@@ -33,33 +33,33 @@ type Num is Data:
   NExpD{}
   NBad{}
 
-# the first `n` chars of `src` as their own string
-def span.str(src: String, +n: U32, z: Bool) -> String:
-  match src z:
+# the first `nn` chars of `src` as their own string
+def span.str(src: String, +nn: U32, zero: Bool) -> String:
+  match src zero:
     case s True{}:
       ""
     case SNil{} False{}:
       ""
     case SCon{h, t} False{}:
-      SCon{h, span.str(t, U32.sub(n, 1), U32.is_zero(U32.sub(n, 1)))}
+      SCon{h, span.str(t, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)))}
 
-# whether the first `n` chars of `src` equal `key`, stopping at the first miss
-def span.eq.go(src: String, same: Bool, z: Bool, key: String, +n: U32) -> Bool:
-  match src same z key:
-    case s False{} z k:
+# whether the first `nn` chars of `src` equal `key`, stopping at the first miss
+def span.eq.go(src: String, same: Bool, zero: Bool, key: String, +nn: U32) -> Bool:
+  match src same zero key:
+    case s False{} zero k:
       False{}
     case s True{} True{} SNil{}:
       True{}
     case s True{} True{} k:
       False{}
     case SCon{+a, as} True{} False{} SCon{+b, bs}:
-      span.eq.go(as, Char.is_eq(a, b), U32.is_zero(U32.sub(n, 1)), bs, U32.sub(n, 1))
+      span.eq.go(as, Char.is_eq(a, b), U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1))
     case s True{} False{} k:
       False{}
 
-# whether the first `n` chars of `src` are `key`
-def span.eq(+src: String, +n: U32, +key: String) -> Bool:
-  span.eq.go(src, True{}, U32.is_zero(n), key, n)
+# whether the first `nn` chars of `src` are `key`
+def span.eq(+src: String, +nn: U32, +key: String) -> Bool:
+  span.eq.go(src, True{}, U32.is_zero(nn), key, nn)
 
 # reverses a chain of JCons or JPair cells onto acc
 def reverse(cells: Json, acc: Json) -> Json:
@@ -100,12 +100,12 @@ def null() -> Json:
   JNull{}
 
 # a boolean
-def bool(b: Bool) -> Json:
-  JBool{b}
+def bool(flag: Bool) -> Json:
+  JBool{flag}
 
 # a string
-def str(s: String) -> Json:
-  JStr{s}
+def str(txt: String) -> Json:
+  JStr{txt}
 
 def num.go(raw: String, ok: Bool) -> Json:
   match ok:
@@ -114,14 +114,14 @@ def num.go(raw: String, ok: Bool) -> Json:
     case False{}:
       JNull{}
 
-def num.ok.digit(+x: U32) -> Bool:
-  Bool.and(U32.is_ge(x, 48), U32.is_le(x, 57))
+def num.ok.digit(+cp: U32) -> Bool:
+  Bool.and(U32.is_ge(cp, 48), U32.is_le(cp, 57))
 
-def num.ok.expmark(+x: U32) -> Bool:
-  Bool.or(U32.is_eq(x, 101), U32.is_eq(x, 69))
+def num.ok.expmark(+cp: U32) -> Bool:
+  Bool.or(U32.is_eq(cp, 101), U32.is_eq(cp, 69))
 
-def num.ok.lead(+x: U32) -> Bool:
-  Bool.and(U32.is_ge(x, 49), U32.is_le(x, 57))
+def num.ok.lead(+cp: U32) -> Bool:
+  Bool.and(U32.is_ge(cp, 49), U32.is_le(cp, 57))
 
 def num.ok.step.lead(ok: Bool) -> Num:
   match ok:
@@ -130,25 +130,25 @@ def num.ok.step.lead(ok: Bool) -> Num:
     case False{}:
       NBad{}
 
-def num.ok.step.int.go(+x: U32, zero: Bool) -> Num:
+def num.ok.step.int.go(+cp: U32, zero: Bool) -> Num:
   match zero:
     case True{}:
       NZero{}
     case False{}:
-      num.ok.step.lead(num.ok.lead(x))
+      num.ok.step.lead(num.ok.lead(cp))
 
-def num.ok.step.int(+x: U32) -> Num:
-  num.ok.step.int.go(x, U32.is_eq(x, 48))
+def num.ok.step.int(+cp: U32) -> Num:
+  num.ok.step.int.go(cp, U32.is_eq(cp, 48))
 
-def num.ok.step.start.go(+x: U32, minus: Bool) -> Num:
+def num.ok.step.start.go(+cp: U32, minus: Bool) -> Num:
   match minus:
     case True{}:
       NInt{}
     case False{}:
-      num.ok.step.int(x)
+      num.ok.step.int(cp)
 
-def num.ok.step.start(+x: U32) -> Num:
-  num.ok.step.start.go(x, U32.is_eq(x, 45))
+def num.ok.step.start(+cp: U32) -> Num:
+  num.ok.step.start.go(cp, U32.is_eq(cp, 45))
 
 def num.ok.step.mark.go(mark: Bool) -> Num:
   match mark:
@@ -157,8 +157,8 @@ def num.ok.step.mark.go(mark: Bool) -> Num:
     case False{}:
       NBad{}
 
-def num.ok.step.mark(+x: U32) -> Num:
-  num.ok.step.mark.go(num.ok.expmark(x))
+def num.ok.step.mark(+cp: U32) -> Num:
+  num.ok.step.mark.go(num.ok.expmark(cp))
 
 def num.ok.step.body.digit(more: Bool) -> Num:
   match more:
@@ -167,42 +167,42 @@ def num.ok.step.body.digit(more: Bool) -> Num:
     case False{}:
       NBad{}
 
-def num.ok.step.body.other.go(+x: U32, dot: Bool) -> Num:
+def num.ok.step.body.other.go(+cp: U32, dot: Bool) -> Num:
   match dot:
     case True{}:
       NDot{}
     case False{}:
-      num.ok.step.mark(x)
+      num.ok.step.mark(cp)
 
-def num.ok.step.body.other(+x: U32) -> Num:
-  num.ok.step.body.other.go(x, U32.is_eq(x, 46))
+def num.ok.step.body.other(+cp: U32) -> Num:
+  num.ok.step.body.other.go(cp, U32.is_eq(cp, 46))
 
-def num.ok.step.body.go(+x: U32, more: Bool, digit: Bool) -> Num:
+def num.ok.step.body.go(+cp: U32, more: Bool, digit: Bool) -> Num:
   match digit:
     case True{}:
       num.ok.step.body.digit(more)
     case False{}:
-      num.ok.step.body.other(x)
+      num.ok.step.body.other(cp)
 
-def num.ok.step.body(+x: U32, more: Bool) -> Num:
-  num.ok.step.body.go(x, more, num.ok.digit(x))
+def num.ok.step.body(+cp: U32, more: Bool) -> Num:
+  num.ok.step.body.go(cp, more, num.ok.digit(cp))
 
-def num.ok.step.frac.other(+x: U32, have: Bool) -> Num:
+def num.ok.step.frac.other(+cp: U32, have: Bool) -> Num:
   match have:
     case True{}:
-      num.ok.step.mark(x)
+      num.ok.step.mark(cp)
     case False{}:
       NBad{}
 
-def num.ok.step.frac.go(+x: U32, have: Bool, digit: Bool) -> Num:
+def num.ok.step.frac.go(+cp: U32, have: Bool, digit: Bool) -> Num:
   match digit:
     case True{}:
       NFrac{}
     case False{}:
-      num.ok.step.frac.other(x, have)
+      num.ok.step.frac.other(cp, have)
 
-def num.ok.step.frac(+x: U32, have: Bool) -> Num:
-  num.ok.step.frac.go(x, have, num.ok.digit(x))
+def num.ok.step.frac(+cp: U32, have: Bool) -> Num:
+  num.ok.step.frac.go(cp, have, num.ok.digit(cp))
 
 def num.ok.step.expd.go(digit: Bool) -> Num:
   match digit:
@@ -211,49 +211,49 @@ def num.ok.step.expd.go(digit: Bool) -> Num:
     case False{}:
       NBad{}
 
-def num.ok.step.expd(+x: U32) -> Num:
-  num.ok.step.expd.go(num.ok.digit(x))
+def num.ok.step.expd(+cp: U32) -> Num:
+  num.ok.step.expd.go(num.ok.digit(cp))
 
-def num.ok.step.exps.minus.go(+x: U32, minus: Bool) -> Num:
+def num.ok.step.exps.minus.go(+cp: U32, minus: Bool) -> Num:
   match minus:
     case True{}:
       NExpN{}
     case False{}:
-      num.ok.step.expd(x)
+      num.ok.step.expd(cp)
 
-def num.ok.step.exps.minus(+x: U32) -> Num:
-  num.ok.step.exps.minus.go(x, U32.is_eq(x, 45))
+def num.ok.step.exps.minus(+cp: U32) -> Num:
+  num.ok.step.exps.minus.go(cp, U32.is_eq(cp, 45))
 
-def num.ok.step.exps.go(+x: U32, plus: Bool) -> Num:
+def num.ok.step.exps.go(+cp: U32, plus: Bool) -> Num:
   match plus:
     case True{}:
       NExpN{}
     case False{}:
-      num.ok.step.exps.minus(x)
+      num.ok.step.exps.minus(cp)
 
-def num.ok.step.exps(+x: U32) -> Num:
-  num.ok.step.exps.go(x, U32.is_eq(x, 43))
+def num.ok.step.exps(+cp: U32) -> Num:
+  num.ok.step.exps.go(cp, U32.is_eq(cp, 43))
 
-def num.ok.step(st: Num, +x: U32) -> Num:
+def num.ok.step(st: Num, +cp: U32) -> Num:
   match st:
     case NStart{}:
-      num.ok.step.start(x)
+      num.ok.step.start(cp)
     case NInt{}:
-      num.ok.step.int(x)
+      num.ok.step.int(cp)
     case NZero{}:
-      num.ok.step.body(x, False{})
+      num.ok.step.body(cp, False{})
     case NDig{}:
-      num.ok.step.body(x, True{})
+      num.ok.step.body(cp, True{})
     case NDot{}:
-      num.ok.step.frac(x, False{})
+      num.ok.step.frac(cp, False{})
     case NFrac{}:
-      num.ok.step.frac(x, True{})
+      num.ok.step.frac(cp, True{})
     case NExp{}:
-      num.ok.step.exps(x)
+      num.ok.step.exps(cp)
     case NExpN{}:
-      num.ok.step.expd(x)
+      num.ok.step.expd(cp)
     case NExpD{}:
-      num.ok.step.expd(x)
+      num.ok.step.expd(cp)
     case NBad{}:
       NBad{}
 
@@ -278,8 +278,8 @@ def num.ok.go(cs: List<&2, Char>, st: Num) -> Bool:
       num.ok.go(t, num.ok.step(st, Char.to_u32(c)))
 
 # whether text is a JSON number
-def num.ok(s: String) -> Bool:
-  num.ok.go(String.to_list(s), NStart{})
+def num.ok(txt: String) -> Bool:
+  num.ok.go(String.to_list(txt), NStart{})
 
 # a JSON number from its text, or null when that text is not one
 def num(+raw: String) -> Json:
@@ -296,12 +296,12 @@ def find.eq.go(left: String, right: String, same: Bool) -> Bool:
     case l r s:
       False{}
 
-def find.eq(a: String, b: String) -> Bool:
-  find.eq.go(a, b, True{})
+def find.eq(lhs: String, flag: String) -> Bool:
+  find.eq.go(lhs, flag, True{})
 
 # the matched value, or the next pair when the key differs
-def find.at(rest: Json, +key: String, eq: Bool, v: Json) -> Json:
-  match rest key eq v:
+def find.at(rest: Json, +key: String, eq: Bool, vv: Json) -> Json:
+  match rest key eq vv:
     case r k True{} val:
       val
     case JPair{k2, v2, r2} k False{} val:
@@ -323,31 +323,31 @@ def find(cells: Json, +key: String) -> Json:
 
 # an object's value at a key; JNull when it is not an object or has no such
 # key. A repeated key reads as the first value.
-def get(j: Json, key: String) -> Json:
-  match j:
+def get(val: Json, key: String) -> Json:
+  match val:
     case JObj{pairs}:
       find(pairs, key)
     case other:
       JNull{}
 
-def at.go(cells: Json, +i: U32) -> Json:
+def at.go(cells: Json, +idx: U32) -> Json:
   match cells:
     case JCons{h, t}:
-      Lazy.stop(Json, U32.is_zero(i), h, _u => at.go(t, U32.sub(i, 1)))
+      Lazy.stop(Json, U32.is_zero(idx), h, _u => at.go(t, U32.sub(idx, 1)))
     case other:
       JNull{}
 
 # an array's item at an index; JNull when it is not an array or has none
-def at(j: Json, i: U32) -> Json:
-  match j:
+def at(val: Json, idx: U32) -> Json:
+  match val:
     case JArr{items}:
-      at.go(items, i)
+      at.go(items, idx)
     case other:
       JNull{}
 
 # a string, or none when the value is not one
-def as_str(j: Json) -> Maybe<&2, String>:
-  match j:
+def as_str(val: Json) -> Maybe<&2, String>:
+  match val:
     case JStr{s}:
       Some{s}
     case JSpan{src, +n}:
@@ -356,32 +356,32 @@ def as_str(j: Json) -> Maybe<&2, String>:
       None{}
 
 # a boolean, or none when the value is not one
-def as_bool(j: Json) -> Maybe<&2, Bool>:
-  match j:
+def as_bool(val: Json) -> Maybe<&2, Bool>:
+  match val:
     case JBool{b}:
       Some{b}
     case other:
       None{}
 
 # a number's text, or none when the value is not a number
-def as_num(j: Json) -> Maybe<&2, String>:
-  match j:
+def as_num(val: Json) -> Maybe<&2, String>:
+  match val:
     case JNum{raw}:
       Some{raw}
     case other:
       None{}
 
 # a number as a U32, or none when it is not one or does not fit
-def as_u32(j: Json) -> Maybe<&2, U32>:
-  match j:
+def as_u32(val: Json) -> Maybe<&2, U32>:
+  match val:
     case JNum{raw}:
       U32.read(raw)
     case other:
       None{}
 
 # a number as an F32, or none when it is not one or does not fit
-def as_f32(j: Json) -> Maybe<&2, F32>:
-  match j:
+def as_f32(val: Json) -> Maybe<&2, F32>:
+  match val:
     case JNum{raw}:
       F32.read(raw)
     case other:
