@@ -2917,3 +2917,415 @@ def rev_grow(cut, nn, zz, ez, h_top, cc, rest, h_d, acc):
       rev_grow.cons(hd, tl, nn, h_top, cc, acc,
         rev_grow(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), {==},
           pred_ne_top(nn, nz_of(nn, ez), U32.is_eq(U32.sub(nn, 1), 4294967295), {==}), cc, rest, h_d, hd <> acc))
+
+# whether a class is Lex.CQuote{}
+def is_quote(cls: Lex.Class) -> Bool:
+  match cls:
+    case Lex.CQuote{}:
+      True{}
+    case _:
+      False{}
+
+# the last test of classify: a character past them all is COther, not Lex.CQuote{}
+law cls_quote_end:
+  for +cp: U32
+  for h_c: {Lex.COther{} == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_end(cp, h_c):
+  Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.COther{}, Lex.CQuote{}, h_c)))
+
+# classify's test for 9, once its answer is named
+law cls_quote_11:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 9) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Lex.COther{}) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_11(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CSpace{}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_end(cp, h_c)
+
+# classify's test for 13, once its answer is named
+law cls_quote_10:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 13) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_10(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CSpace{}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_11(cp, U32.is_eq(cp, 9), {==}, h_c)
+
+# classify's test for 10, once its answer is named
+law cls_quote_9:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 10) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_9(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CSpace{}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_10(cp, U32.is_eq(cp, 13), {==}, h_c)
+
+# classify's test for 32, once its answer is named
+law cls_quote_8:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 32) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_8(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CSpace{}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_9(cp, U32.is_eq(cp, 10), {==}, h_c)
+
+# classify's test for 92, once its answer is named
+law cls_quote_7:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 92) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_7(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CBack{}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_8(cp, U32.is_eq(cp, 32), {==}, h_c)
+
+# classify's test for 34, once its answer is named
+law cls_quote_6:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 34) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_6(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      ueq(cp, 34, eb)
+    case False{}:
+      cls_quote_7(cp, U32.is_eq(cp, 92), {==}, h_c)
+
+# classify's test for 44, once its answer is named
+law cls_quote_5:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 44) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_5(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CPunct{Lex.TComma{}}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_6(cp, U32.is_eq(cp, 34), {==}, h_c)
+
+# classify's test for 58, once its answer is named
+law cls_quote_4:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 58) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_4(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CPunct{Lex.TColon{}}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_5(cp, U32.is_eq(cp, 44), {==}, h_c)
+
+# classify's test for 125, once its answer is named
+law cls_quote_3:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 125) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_3(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CPunct{Lex.TCloseObj{}}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_4(cp, U32.is_eq(cp, 58), {==}, h_c)
+
+# classify's test for 123, once its answer is named
+law cls_quote_2:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 123) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))))))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_2(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CPunct{Lex.TOpenObj{}}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_3(cp, U32.is_eq(cp, 125), {==}, h_c)
+
+# classify's test for 93, once its answer is named
+law cls_quote_1:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 93) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TCloseArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 123), Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_1(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CPunct{Lex.TCloseArr{}}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_2(cp, U32.is_eq(cp, 123), {==}, h_c)
+
+# classify's test for 91, once its answer is named
+law cls_quote_0:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 91) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TOpenArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 93), Lex.CPunct{Lex.TCloseArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 123), Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))))))))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_0(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CPunct{Lex.TOpenArr{}}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_1(cp, U32.is_eq(cp, 93), {==}, h_c)
+
+# a character classify reads as Lex.CQuote{} is code point 34
+law cls_quote:
+  for +ch: Char
+  for h_c: {Lex.classify(ch) == Lex.CQuote{} : Lex.Class}
+  {Char.to_u32(ch) == 34 : U32}
+
+def cls_quote(ch, h_c):
+  cls_quote_0(Char.to_u32(ch), U32.is_eq(Char.to_u32(ch), 91), {==}, h_c)
+
+# whether a class is Lex.CBack{}
+def is_back(cls: Lex.Class) -> Bool:
+  match cls:
+    case Lex.CBack{}:
+      True{}
+    case _:
+      False{}
+
+# the last test of classify: a character past them all is COther, not Lex.CBack{}
+law cls_back_end:
+  for +cp: U32
+  for h_c: {Lex.COther{} == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_end(cp, h_c):
+  Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.COther{}, Lex.CBack{}, h_c)))
+
+# classify's test for 9, once its answer is named
+law cls_back_11:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 9) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Lex.COther{}) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_11(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CSpace{}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_end(cp, h_c)
+
+# classify's test for 13, once its answer is named
+law cls_back_10:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 13) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_10(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CSpace{}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_11(cp, U32.is_eq(cp, 9), {==}, h_c)
+
+# classify's test for 10, once its answer is named
+law cls_back_9:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 10) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_9(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CSpace{}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_10(cp, U32.is_eq(cp, 13), {==}, h_c)
+
+# classify's test for 32, once its answer is named
+law cls_back_8:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 32) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_8(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CSpace{}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_9(cp, U32.is_eq(cp, 10), {==}, h_c)
+
+# classify's test for 92, once its answer is named
+law cls_back_7:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 92) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_7(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      ueq(cp, 92, eb)
+    case False{}:
+      cls_back_8(cp, U32.is_eq(cp, 32), {==}, h_c)
+
+# classify's test for 34, once its answer is named
+law cls_back_6:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 34) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_6(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CQuote{}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_7(cp, U32.is_eq(cp, 92), {==}, h_c)
+
+# classify's test for 44, once its answer is named
+law cls_back_5:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 44) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_5(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CPunct{Lex.TComma{}}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_6(cp, U32.is_eq(cp, 34), {==}, h_c)
+
+# classify's test for 58, once its answer is named
+law cls_back_4:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 58) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_4(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CPunct{Lex.TColon{}}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_5(cp, U32.is_eq(cp, 44), {==}, h_c)
+
+# classify's test for 125, once its answer is named
+law cls_back_3:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 125) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_3(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CPunct{Lex.TCloseObj{}}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_4(cp, U32.is_eq(cp, 58), {==}, h_c)
+
+# classify's test for 123, once its answer is named
+law cls_back_2:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 123) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))))))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_2(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CPunct{Lex.TOpenObj{}}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_3(cp, U32.is_eq(cp, 125), {==}, h_c)
+
+# classify's test for 93, once its answer is named
+law cls_back_1:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 93) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TCloseArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 123), Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_1(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CPunct{Lex.TCloseArr{}}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_2(cp, U32.is_eq(cp, 123), {==}, h_c)
+
+# classify's test for 91, once its answer is named
+law cls_back_0:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 91) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TOpenArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 93), Lex.CPunct{Lex.TCloseArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 123), Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))))))))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_0(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CPunct{Lex.TOpenArr{}}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_1(cp, U32.is_eq(cp, 93), {==}, h_c)
+
+# a character classify reads as Lex.CBack{} is code point 92
+law cls_back:
+  for +ch: Char
+  for h_c: {Lex.classify(ch) == Lex.CBack{} : Lex.Class}
+  {Char.to_u32(ch) == 92 : U32}
+
+def cls_back(ch, h_c):
+  cls_back_0(Char.to_u32(ch), U32.is_eq(Char.to_u32(ch), 91), {==}, h_c)
