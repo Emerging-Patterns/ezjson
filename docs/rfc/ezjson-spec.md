@@ -245,7 +245,7 @@ REVIEW-4, JSON-TREE-6 on REVIEW-7.
 | JSON-PULL-1 | For every text `t` shorter than 2^32 characters, the events `next` yields from `cursor(t)` end in `EEnd` exactly when `parse(t)` is `Some{j}`, and then they are `events(j)`: the value's scalars, keys and container begins and ends in document order, with no event for a comma or a colon | Proved | pending | |
 | JSON-PULL-2 | Once `next` yields `EErr`, every later `next` on the returned cursor yields `EErr`, and `skip` returns a failed cursor | Proved | pending | |
 | JSON-PULL-3 | Once `next` yields `EEnd`, every later `next` on the returned cursor yields `EEnd` | Proved | pending | |
-| JSON-PULL-4 | For every cursor at a position where a value may start, `next(skip(c))` yields the event that follows that value's last event in the full stream from `c` | Proved | pending | |
+| JSON-PULL-4 | For every cursor whose unread text is shorter than 2^32 characters, at a position where a value may start, `next(skip(c))` yields the event that follows that value's last event in the full stream from `c` | Proved | pending | |
 | JSON-PULL-5 | `skip` at a position where no value may start (before an object key, at a close bracket, after the root, or on a failed cursor) returns a failed cursor (REVIEW-8) | Proved | pending | |
 | JSON-PULL-6 | `text(ev)` is `Some` of the decoded characters for a string or key event, span or owned, and of the spelling for a number event, and `None` for every other event | Proved | pending | |
 

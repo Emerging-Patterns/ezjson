@@ -230,8 +230,9 @@ walk on their sum (`walk_ob`). A skip spends two jumps on a bare word, and
 a word is at least one character, so twice the text's characters and one
 more are enough (`fu`, `ar_u`); the sum of the levels is named through a
 unit, `cplu`, and never expanded. That covers a text shorter than 2^32
-characters, the bound the laws carry. Past about 2^35 characters the budget
-runs out, so the row as worded is false there (SPEC.md, Left to prove).
+characters, the bound the laws and the row carry. Past about 2^35
+characters the budget runs out, which is why the row is bounded (SPEC.md,
+Left to prove).
 
 ## What parse does
 
