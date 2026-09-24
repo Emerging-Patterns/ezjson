@@ -22065,3 +22065,1480 @@ def parse_toks(xs, jj, h):
     V.WVal{}), []), List.reverse.go(&2, Lex.Tok, dens(xs), []), fin_ti(Parse.run(dens(xs), Parse.P{False{}, None{},
     Nil{}}), List.reverse.go(&2, Lex.Tok, dens(xs), []), jj, run_ti(xs, Parse.P{False{}, None{}, Nil{}}, [], ({==},
     {==})), h)), rr_id(dens(xs))))
+
+
+# JSON-TEXT-1: a text the character lexer reads without failing is lexemes
+
+# a lexeme: a punctuation character, a word, or a string's pieces
+type Lx is Data:
+  LP{ch: Char}
+  LW{w: String}
+  LS{ps: List<&2, Laws.Piece>}
+
+# a lexeme and the whitespace before it, reversed
+type It is Data:
+  It{rws: List<&2, Char>, lx: Lx}
+
+# a punctuation class's token
+def ptok.go(cls: Lex.Class) -> Lex.Tok:
+  match cls:
+    case Lex.CPunct{tt}:
+      tt
+    case _:
+      Lex.TBad{}
+
+# a punctuation character's token
+def ptok(ch: Char) -> Lex.Tok:
+  ptok.go(Lex.classify(ch))
+
+# a lexeme's token
+def lxtok(lx: Lx) -> Lex.Tok:
+  match lx:
+    case LP{ch}:
+      ptok(ch)
+    case LW{w}:
+      Lex.TWord{w}
+    case LS{ps}:
+      Lex.TStr{Laws.spelled(ps)}
+
+# lexemes' tokens, in the order the lexemes are listed
+def rtoks(its: List<&2, It>) -> List<&2, Lex.Tok>:
+  match its:
+    case Nil{}:
+      []
+    case It{_, lx} <> rest:
+      lxtok(lx) <> rtoks(rest)
+
+# a lexeme's characters, reversed onto acc
+def rlx(lx: Lx, acc: List<&2, Char>) -> List<&2, Char>:
+  match lx:
+    case LP{ch}:
+      ch <> acc
+    case LW{w}:
+      List.reverse.go(&2, Char, String.to_list(w), acc)
+    case LS{ps}:
+      '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> acc)
+
+# lexemes listed last first, and the whitespace before each, as the
+# characters they spell, reversed
+def ritems(its: List<&2, It>) -> List<&2, Char>:
+  match its:
+    case Nil{}:
+      []
+    case It{rws, lx} <> rest:
+      rlx(lx, List.append(&2, Char, rws, ritems(rest)))
+
+# every character is whitespace
+def allws(cs: List<&2, Char>) -> Bool:
+  match cs:
+    case Nil{}:
+      True{}
+    case ch <> tl:
+      Bool.and(Laws.is_ws(ch), allws(tl))
+
+# a lexeme is well spelled: a string's pieces are
+def lxok(lx: Lx) -> Bool:
+  match lx:
+    case LS{ps}:
+      Laws.spell_ok(ps)
+    case _:
+      True{}
+
+# every lexeme is well spelled and follows whitespace
+def itsok(its: List<&2, It>) -> Bool:
+  match its:
+    case Nil{}:
+      True{}
+    case It{rws, lx} <> rest:
+      Bool.and(allws(rws), Bool.and(lxok(lx), itsok(rest)))
+
+# pieces listed last first, spelled and reversed onto acc
+def rsp(ps: List<&2, Laws.Piece>, acc: List<&2, Char>) -> List<&2, Char>:
+  match ps:
+    case Nil{}:
+      acc
+    case pc <> rest:
+      List.reverse.go(&2, Char, String.to_list(Laws.piece.text(pc)), rsp(rest, acc))
+
+# the characters pieces listed last first stand for, last first
+def pchars(ps: List<&2, Laws.Piece>) -> List<&2, Char>:
+  match ps:
+    case Nil{}:
+      []
+    case pc <> rest:
+      Laws.piece.char(pc) <> pchars(rest)
+
+# both are true
+law and2:
+  for aa: Bool
+  for bb: Bool
+  for ha: {aa == True{} : Bool}
+  for hb: {bb == True{} : Bool}
+  {Bool.and(aa, bb) == True{} : Bool}
+
+def and2(aa, bb, ha, hb):
+  match aa:
+    case True{}:
+      hb
+    case False{}:
+      no({Bool.and(False{}, bb) == True{} : Bool}, ha)
+
+# a character by its code
+law chr_of:
+  for ch: Char
+  for +kk: U32
+  for ee: {Char.to_u32(ch) == kk : U32}
+  {ch == Chr{kk} : Char}
+
+def chr_of(ch, kk, ee):
+  match ch:
+    case Chr{uu}:
+      Equal.cong(U32, Char, zz => Chr{zz}, uu, kk, ee)
+
+# a string's characters reversed onto acc go through an append
+law srev_app:
+  for +aa: String
+  for +bb: String
+  for +acc: List<&2, Char>
+  {List.reverse.go(&2, Char, String.to_list(aa ++ bb), acc) == List.reverse.go(&2, Char, String.to_list(bb),
+    List.reverse.go(&2, Char, String.to_list(aa), acc)) : List<&2, Char>}
+
+def srev_app(aa, bb, acc):
+  match aa:
+    case SNil{}:
+      {==}
+    case SCon{+ch, +tl}:
+      srev_app(tl, bb, ch <> acc)
+
+# a buffer read back as text, reversed onto acc, is the buffer on acc
+law text_rc:
+  for +buf: List<&2, Char>
+  for +txt: String
+  for +acc: List<&2, Char>
+  {List.reverse.go(&2, Char, String.to_list(Lex.text.go(buf, txt)), acc) == List.reverse.go(&2, Char,
+    String.to_list(txt), List.append(&2, Char, buf, acc)) : List<&2, Char>}
+
+def text_rc(buf, txt, acc):
+  match buf:
+    case Nil{}:
+      {==}
+    case +ch <> +tl:
+      text_rc(tl, SCon{ch, txt}, acc)
+
+# a string's characters read back from pieces listed last first
+law text_pc:
+  for +ps: List<&2, Laws.Piece>
+  for +qs: List<&2, Laws.Piece>
+  {Lex.text.go(pchars(ps), Laws.spelled(qs)) == Laws.spelled(List.reverse.go(&2, Laws.Piece, ps, qs)) : String}
+
+def text_pc(ps, qs):
+  match ps:
+    case Nil{}:
+      {==}
+    case +pc <> +tl:
+      text_pc(tl, pc <> qs)
+
+# pieces listed last first, put back in order, spelled and reversed
+law spell_rev:
+  for +ps: List<&2, Laws.Piece>
+  for +qs: List<&2, Laws.Piece>
+  for +acc: List<&2, Char>
+  {List.reverse.go(&2, Char, String.to_list(Laws.spell(List.reverse.go(&2, Laws.Piece, ps, qs))),
+    acc) == List.reverse.go(&2, Char, String.to_list(Laws.spell(qs)), rsp(ps, acc)) : List<&2, Char>}
+
+def spell_rev(ps, qs, acc):
+  match ps:
+    case Nil{}:
+      {==}
+    case +pc <> +tl:
+      Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, String.to_list(Laws.spell(List.reverse.go(&2, Laws.Piece,
+        tl, pc <> qs))), acc), List.reverse.go(&2, Char, String.to_list(Laws.spell(pc <> qs)), rsp(tl, acc)),
+        List.reverse.go(&2, Char, String.to_list(Laws.spell(qs)), List.reverse.go(&2, Char,
+        String.to_list(Laws.piece.text(pc)), rsp(tl, acc))), spell_rev(tl, pc <> qs, acc),
+        srev_app(Laws.piece.text(pc), Laws.spell(qs), rsp(tl, acc)))
+
+# well spelled pieces stay well spelled put back in order
+law spell_ok_rev:
+  for +ps: List<&2, Laws.Piece>
+  for +qs: List<&2, Laws.Piece>
+  for +hp: {Laws.spell_ok(ps) == True{} : Bool}
+  for hq: {Laws.spell_ok(qs) == True{} : Bool}
+  {Laws.spell_ok(List.reverse.go(&2, Laws.Piece, ps, qs)) == True{} : Bool}
+
+def spell_ok_rev(ps, qs, hp, hq):
+  match ps:
+    case Nil{}:
+      hq
+    case +pc <> +tl:
+      spell_ok_rev(tl, pc <> qs, and_right(Laws.piece.ok(pc), Laws.spell_ok(tl), hp),
+        and2(Laws.piece.ok(pc), Laws.spell_ok(qs), and_left(Laws.piece.ok(pc), Laws.spell_ok(tl), hp), hq))
+
+
+# whether a class is whitespace's
+def is_space(cls: Lex.Class) -> Bool:
+  match cls:
+    case Lex.CSpace{}:
+      True{}
+    case _:
+      False{}
+
+# whether a class is neither a quotation mark's nor a reverse solidus'
+def notqb(cls: Lex.Class) -> Bool:
+  match cls:
+    case Lex.CQuote{}:
+      False{}
+    case Lex.CBack{}:
+      False{}
+    case _:
+      True{}
+
+# no class but whitespace's past classify's last test
+law cls_space_end:
+  for +cp: U32
+  for h_c: {Lex.COther{} == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_end(cp, h_c):
+  no({Laws.is_ws(Chr{cp}) == True{} : Bool}, Equal.cong(Lex.Class, Bool, xx => is_space(xx), Lex.COther{},
+    Lex.CSpace{}, h_c))
+
+# classify's test for 9, once its answer is named, read back as whitespace
+law cls_space_11:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 9) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Lex.COther{}) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_11(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      ek = Equal.sym(U32, cp, 9, ueq(cp, 9, eb))
+      %ek : {Laws.is_ws(Chr{_}) == True{} : Bool}
+      {==}
+    case False{}:
+      cls_space_end(cp, h_c)
+
+# classify's test for 13, once its answer is named, read back as whitespace
+law cls_space_10:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 13) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+    Lex.COther{})) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_10(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      ek = Equal.sym(U32, cp, 13, ueq(cp, 13, eb))
+      %ek : {Laws.is_ws(Chr{_}) == True{} : Bool}
+      {==}
+    case False{}:
+      cls_space_11(cp, U32.is_eq(cp, 9), {==}, h_c)
+
+# classify's test for 10, once its answer is named, read back as whitespace
+law cls_space_9:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 10) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_9(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      ek = Equal.sym(U32, cp, 10, ueq(cp, 10, eb))
+      %ek : {Laws.is_ws(Chr{_}) == True{} : Bool}
+      {==}
+    case False{}:
+      cls_space_10(cp, U32.is_eq(cp, 13), {==}, h_c)
+
+# classify's test for 32, once its answer is named, read back as whitespace
+law cls_space_8:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 32) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+    Lex.COther{})))) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_8(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      ek = Equal.sym(U32, cp, 32, ueq(cp, 32, eb))
+      %ek : {Laws.is_ws(Chr{_}) == True{} : Bool}
+      {==}
+    case False{}:
+      cls_space_9(cp, U32.is_eq(cp, 10), {==}, h_c)
+
+# classify's test for 92, once its answer is named, read back as whitespace
+law cls_space_7:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 92) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_7(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      no({Laws.is_ws(Chr{cp}) == True{} : Bool}, Equal.cong(Lex.Class, Bool, xx => is_space(xx), Lex.CBack{},
+        Lex.CSpace{}, h_c))
+    case False{}:
+      cls_space_8(cp, U32.is_eq(cp, 32), {==}, h_c)
+
+# classify's test for 34, once its answer is named, read back as whitespace
+law cls_space_6:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 34) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+    Lex.COther{})))))) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_6(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      no({Laws.is_ws(Chr{cp}) == True{} : Bool}, Equal.cong(Lex.Class, Bool, xx => is_space(xx), Lex.CQuote{},
+        Lex.CSpace{}, h_c))
+    case False{}:
+      cls_space_7(cp, U32.is_eq(cp, 92), {==}, h_c)
+
+# classify's test for 44, once its answer is named, read back as whitespace
+law cls_space_5:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 44) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_5(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      no({Laws.is_ws(Chr{cp}) == True{} : Bool}, Equal.cong(Lex.Class, Bool, xx => is_space(xx),
+        Lex.CPunct{Lex.TComma{}}, Lex.CSpace{}, h_c))
+    case False{}:
+      cls_space_6(cp, U32.is_eq(cp, 34), {==}, h_c)
+
+# classify's test for 58, once its answer is named, read back as whitespace
+law cls_space_4:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 58) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44),
+    Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp,
+    92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10),
+    Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9),
+    Lex.CSpace{}, Lex.COther{})))))))) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_4(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      no({Laws.is_ws(Chr{cp}) == True{} : Bool}, Equal.cong(Lex.Class, Bool, xx => is_space(xx),
+        Lex.CPunct{Lex.TColon{}}, Lex.CSpace{}, h_c))
+    case False{}:
+      cls_space_5(cp, U32.is_eq(cp, 44), {==}, h_c)
+
+# classify's test for 125, once its answer is named, read back as whitespace
+law cls_space_3:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 125) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58),
+    Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+    Lex.COther{}))))))))) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_3(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      no({Laws.is_ws(Chr{cp}) == True{} : Bool}, Equal.cong(Lex.Class, Bool, xx => is_space(xx),
+        Lex.CPunct{Lex.TCloseObj{}}, Lex.CSpace{}, h_c))
+    case False{}:
+      cls_space_4(cp, U32.is_eq(cp, 58), {==}, h_c)
+
+# classify's test for 123, once its answer is named, read back as whitespace
+law cls_space_2:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 123) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125),
+    Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))))))))) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_2(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      no({Laws.is_ws(Chr{cp}) == True{} : Bool}, Equal.cong(Lex.Class, Bool, xx => is_space(xx),
+        Lex.CPunct{Lex.TOpenObj{}}, Lex.CSpace{}, h_c))
+    case False{}:
+      cls_space_3(cp, U32.is_eq(cp, 125), {==}, h_c)
+
+# classify's test for 93, once its answer is named, read back as whitespace
+law cls_space_1:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 93) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TCloseArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 123),
+    Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44),
+    Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp,
+    92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10),
+    Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9),
+    Lex.CSpace{}, Lex.COther{}))))))))))) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_1(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      no({Laws.is_ws(Chr{cp}) == True{} : Bool}, Equal.cong(Lex.Class, Bool, xx => is_space(xx),
+        Lex.CPunct{Lex.TCloseArr{}}, Lex.CSpace{}, h_c))
+    case False{}:
+      cls_space_2(cp, U32.is_eq(cp, 123), {==}, h_c)
+
+# classify's test for 91, once its answer is named, read back as whitespace
+law cls_space_0:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 91) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TOpenArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 93),
+    Lex.CPunct{Lex.TCloseArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 123), Lex.CPunct{Lex.TOpenObj{}},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58),
+    Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+    Lex.COther{})))))))))))) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(Chr{cp}) == True{} : Bool}
+
+def cls_space_0(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      no({Laws.is_ws(Chr{cp}) == True{} : Bool}, Equal.cong(Lex.Class, Bool, xx => is_space(xx),
+        Lex.CPunct{Lex.TOpenArr{}}, Lex.CSpace{}, h_c))
+    case False{}:
+      cls_space_1(cp, U32.is_eq(cp, 93), {==}, h_c)
+
+# whether an answer is SOk
+def isur_sok(key: Lex.Sur) -> Bool:
+  match key:
+    case Lex.SOk{}:
+      True{}
+    case _:
+      False{}
+
+# whether an answer is SHi
+def isur_shi(key: Lex.Sur) -> Bool:
+  match key:
+    case Lex.SHi{}:
+      True{}
+    case _:
+      False{}
+
+# whether an answer is SLo
+def isur_slo(key: Lex.Sur) -> Bool:
+  match key:
+    case Lex.SLo{}:
+      True{}
+    case _:
+      False{}
+
+# SOk is not SHi
+law sur_ne_sok_shi:
+  for e: {Lex.SOk{} == Lex.SHi{} : Lex.Sur}
+  Empty
+
+def sur_ne_sok_shi(e):
+  true_false(Equal.cong(Lex.Sur, Bool, zz => isur_sok(zz), Lex.SOk{}, Lex.SHi{}, e))
+
+# SOk is not SLo
+law sur_ne_sok_slo:
+  for e: {Lex.SOk{} == Lex.SLo{} : Lex.Sur}
+  Empty
+
+def sur_ne_sok_slo(e):
+  true_false(Equal.cong(Lex.Sur, Bool, zz => isur_sok(zz), Lex.SOk{}, Lex.SLo{}, e))
+
+# SHi is not SOk
+law sur_ne_shi_sok:
+  for e: {Lex.SHi{} == Lex.SOk{} : Lex.Sur}
+  Empty
+
+def sur_ne_shi_sok(e):
+  true_false(Equal.cong(Lex.Sur, Bool, zz => isur_shi(zz), Lex.SHi{}, Lex.SOk{}, e))
+
+# SHi is not SLo
+law sur_ne_shi_slo:
+  for e: {Lex.SHi{} == Lex.SLo{} : Lex.Sur}
+  Empty
+
+def sur_ne_shi_slo(e):
+  true_false(Equal.cong(Lex.Sur, Bool, zz => isur_shi(zz), Lex.SHi{}, Lex.SLo{}, e))
+
+# SLo is not SOk
+law sur_ne_slo_sok:
+  for e: {Lex.SLo{} == Lex.SOk{} : Lex.Sur}
+  Empty
+
+def sur_ne_slo_sok(e):
+  true_false(Equal.cong(Lex.Sur, Bool, zz => isur_slo(zz), Lex.SLo{}, Lex.SOk{}, e))
+
+# SLo is not SHi
+law sur_ne_slo_shi:
+  for e: {Lex.SLo{} == Lex.SHi{} : Lex.Sur}
+  Empty
+
+def sur_ne_slo_shi(e):
+  true_false(Equal.cong(Lex.Sur, Bool, zz => isur_slo(zz), Lex.SLo{}, Lex.SHi{}, e))
+
+# a character classify reads as whitespace is whitespace
+law cls_space:
+  for ch: Char
+  for h_c: {Lex.classify(ch) == Lex.CSpace{} : Lex.Class}
+  {Laws.is_ws(ch) == True{} : Bool}
+
+def cls_space(ch, h_c):
+  match ch:
+    case Chr{+uu}:
+      cls_space_0(uu, U32.is_eq(uu, 91), {==}, h_c)
+
+# a character that is no quotation mark, reverse solidus or control is one a
+# string keeps, once its tests are named
+law rawc.at:
+  for +uu: U32
+  for b34: Bool
+  for b92: Bool
+  for e34: {U32.is_eq(uu, 34) == b34 : Bool}
+  for e92: {U32.is_eq(uu, 92) == b92 : Bool}
+  for cls: Lex.Class
+  for e: {Lex.classify(Chr{uu}) == cls : Lex.Class}
+  for hq: {notqb(cls) == True{} : Bool}
+  for hlt: {U32.is_lt(uu, 32) == False{} : Bool}
+  {Laws.raw_char(Chr{uu}) == True{} : Bool}
+
+def rawc.at(uu, b34, b92, e34, e92, cls, e, hq, hlt):
+  match b34:
+    case True{}:
+      cq = Equal.trans(Lex.Class, Lex.classify(Chr{34}), Lex.classify(Chr{uu}), cls, Equal.cong(U32, Lex.Class,
+        zz => Lex.classify(Chr{zz}), 34, uu, Equal.sym(U32, uu, 34, ueq(uu, 34, e34))), e)
+      no({Laws.raw_char(Chr{uu}) == True{} : Bool}, Equal.trans(Bool, False{}, notqb(cls), True{}, Equal.cong(Lex.Class,
+        Bool, zz => notqb(zz), Lex.CQuote{}, cls, cq), hq))
+    case False{}:
+      match b92:
+        case True{}:
+          cq = Equal.trans(Lex.Class, Lex.classify(Chr{92}), Lex.classify(Chr{uu}), cls, Equal.cong(U32, Lex.Class,
+            zz => Lex.classify(Chr{zz}), 92, uu, Equal.sym(U32, uu, 92, ueq(uu, 92, e92))), e)
+          no({Laws.raw_char(Chr{uu}) == True{} : Bool}, Equal.trans(Bool, False{}, notqb(cls), True{},
+            Equal.cong(Lex.Class, Bool, zz => notqb(zz), Lex.CBack{}, cls, cq), hq))
+        case False{}:
+          s34 = Equal.sym(Bool, U32.is_eq(uu, 34), False{}, e34)
+          s92 = Equal.sym(Bool, U32.is_eq(uu, 92), False{}, e92)
+          slt = Equal.sym(Bool, U32.is_lt(uu, 32), False{}, hlt)
+          %s34 : {Bool.not(Bool.or(_, Bool.or(U32.is_eq(uu, 92), U32.is_lt(uu, 32)))) == True{} : Bool}
+          %s92 : {Bool.not(Bool.or(False{}, Bool.or(_, U32.is_lt(uu, 32)))) == True{} : Bool}
+          %slt : {Bool.not(Bool.or(False{}, Bool.or(False{}, _))) == True{} : Bool}
+          {==}
+
+# a character that is no quotation mark, reverse solidus or control is one a
+# string keeps
+law rawc:
+  for ch: Char
+  for cls: Lex.Class
+  for e: {Lex.classify(ch) == cls : Lex.Class}
+  for hq: {notqb(cls) == True{} : Bool}
+  for hlt: {U32.is_lt(Char.to_u32(ch), 32) == False{} : Bool}
+  {Laws.raw_char(ch) == True{} : Bool}
+
+def rawc(ch, cls, e, hq, hlt):
+  match ch:
+    case Chr{+uu}:
+      rawc.at(uu, U32.is_eq(uu, 34), U32.is_eq(uu, 92), {==}, {==}, cls, e, hq, hlt)
+
+# unicode.sur, by its four comparisons
+def sb(b1: Bool, b2: Bool, b3: Bool, b4: Bool) -> Lex.Sur:
+  match b1 b2:
+    case True{} True{}:
+      Lex.SHi{}
+    case _ _:
+      Lex.unicode.sur.lo(b3, b4)
+
+# what unicode.sur's answer says of the comparisons
+def surg(b1: Bool, b2: Bool, b3: Bool, b4: Bool, key: Lex.Sur) -> Type:
+  match key:
+    case Lex.SOk{}:
+      {Bool.and(Bool.not(Bool.and(b1, b2)), Bool.not(Bool.and(b3, b4))) == True{} : Bool}
+    case Lex.SHi{}:
+      {Bool.and(b1, b2) == True{} : Bool}
+    case Lex.SLo{}:
+      {Bool.and(Bool.not(Bool.and(b1, b2)), Bool.and(b3, b4)) == True{} : Bool}
+
+# a surrogate test's answer, by its comparisons
+law sur_at:
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for b4: Bool
+  for key: Lex.Sur
+  for e: {sb(b1, b2, b3, b4) == key : Lex.Sur}
+  surg(b1, b2, b3, b4, key)
+
+def sur_at(b1, b2, b3, b4, key, e):
+  match b1 b2 b3 b4 key:
+    case True{} True{} True{} True{} Lex.SOk{}:
+      Empty.absurd(surg(True{}, True{}, True{}, True{}, Lex.SOk{}), sur_ne_shi_sok(e))
+    case True{} True{} True{} True{} Lex.SHi{}:
+      {==}
+    case True{} True{} True{} True{} Lex.SLo{}:
+      Empty.absurd(surg(True{}, True{}, True{}, True{}, Lex.SLo{}), sur_ne_shi_slo(e))
+    case True{} True{} True{} False{} Lex.SOk{}:
+      Empty.absurd(surg(True{}, True{}, True{}, False{}, Lex.SOk{}), sur_ne_shi_sok(e))
+    case True{} True{} True{} False{} Lex.SHi{}:
+      {==}
+    case True{} True{} True{} False{} Lex.SLo{}:
+      Empty.absurd(surg(True{}, True{}, True{}, False{}, Lex.SLo{}), sur_ne_shi_slo(e))
+    case True{} True{} False{} True{} Lex.SOk{}:
+      Empty.absurd(surg(True{}, True{}, False{}, True{}, Lex.SOk{}), sur_ne_shi_sok(e))
+    case True{} True{} False{} True{} Lex.SHi{}:
+      {==}
+    case True{} True{} False{} True{} Lex.SLo{}:
+      Empty.absurd(surg(True{}, True{}, False{}, True{}, Lex.SLo{}), sur_ne_shi_slo(e))
+    case True{} True{} False{} False{} Lex.SOk{}:
+      Empty.absurd(surg(True{}, True{}, False{}, False{}, Lex.SOk{}), sur_ne_shi_sok(e))
+    case True{} True{} False{} False{} Lex.SHi{}:
+      {==}
+    case True{} True{} False{} False{} Lex.SLo{}:
+      Empty.absurd(surg(True{}, True{}, False{}, False{}, Lex.SLo{}), sur_ne_shi_slo(e))
+    case True{} False{} True{} True{} Lex.SOk{}:
+      Empty.absurd(surg(True{}, False{}, True{}, True{}, Lex.SOk{}), sur_ne_slo_sok(e))
+    case True{} False{} True{} True{} Lex.SHi{}:
+      Empty.absurd(surg(True{}, False{}, True{}, True{}, Lex.SHi{}), sur_ne_slo_shi(e))
+    case True{} False{} True{} True{} Lex.SLo{}:
+      {==}
+    case True{} False{} True{} False{} Lex.SOk{}:
+      {==}
+    case True{} False{} True{} False{} Lex.SHi{}:
+      Empty.absurd(surg(True{}, False{}, True{}, False{}, Lex.SHi{}), sur_ne_sok_shi(e))
+    case True{} False{} True{} False{} Lex.SLo{}:
+      Empty.absurd(surg(True{}, False{}, True{}, False{}, Lex.SLo{}), sur_ne_sok_slo(e))
+    case True{} False{} False{} True{} Lex.SOk{}:
+      {==}
+    case True{} False{} False{} True{} Lex.SHi{}:
+      Empty.absurd(surg(True{}, False{}, False{}, True{}, Lex.SHi{}), sur_ne_sok_shi(e))
+    case True{} False{} False{} True{} Lex.SLo{}:
+      Empty.absurd(surg(True{}, False{}, False{}, True{}, Lex.SLo{}), sur_ne_sok_slo(e))
+    case True{} False{} False{} False{} Lex.SOk{}:
+      {==}
+    case True{} False{} False{} False{} Lex.SHi{}:
+      Empty.absurd(surg(True{}, False{}, False{}, False{}, Lex.SHi{}), sur_ne_sok_shi(e))
+    case True{} False{} False{} False{} Lex.SLo{}:
+      Empty.absurd(surg(True{}, False{}, False{}, False{}, Lex.SLo{}), sur_ne_sok_slo(e))
+    case False{} True{} True{} True{} Lex.SOk{}:
+      Empty.absurd(surg(False{}, True{}, True{}, True{}, Lex.SOk{}), sur_ne_slo_sok(e))
+    case False{} True{} True{} True{} Lex.SHi{}:
+      Empty.absurd(surg(False{}, True{}, True{}, True{}, Lex.SHi{}), sur_ne_slo_shi(e))
+    case False{} True{} True{} True{} Lex.SLo{}:
+      {==}
+    case False{} True{} True{} False{} Lex.SOk{}:
+      {==}
+    case False{} True{} True{} False{} Lex.SHi{}:
+      Empty.absurd(surg(False{}, True{}, True{}, False{}, Lex.SHi{}), sur_ne_sok_shi(e))
+    case False{} True{} True{} False{} Lex.SLo{}:
+      Empty.absurd(surg(False{}, True{}, True{}, False{}, Lex.SLo{}), sur_ne_sok_slo(e))
+    case False{} True{} False{} True{} Lex.SOk{}:
+      {==}
+    case False{} True{} False{} True{} Lex.SHi{}:
+      Empty.absurd(surg(False{}, True{}, False{}, True{}, Lex.SHi{}), sur_ne_sok_shi(e))
+    case False{} True{} False{} True{} Lex.SLo{}:
+      Empty.absurd(surg(False{}, True{}, False{}, True{}, Lex.SLo{}), sur_ne_sok_slo(e))
+    case False{} True{} False{} False{} Lex.SOk{}:
+      {==}
+    case False{} True{} False{} False{} Lex.SHi{}:
+      Empty.absurd(surg(False{}, True{}, False{}, False{}, Lex.SHi{}), sur_ne_sok_shi(e))
+    case False{} True{} False{} False{} Lex.SLo{}:
+      Empty.absurd(surg(False{}, True{}, False{}, False{}, Lex.SLo{}), sur_ne_sok_slo(e))
+    case False{} False{} True{} True{} Lex.SOk{}:
+      Empty.absurd(surg(False{}, False{}, True{}, True{}, Lex.SOk{}), sur_ne_slo_sok(e))
+    case False{} False{} True{} True{} Lex.SHi{}:
+      Empty.absurd(surg(False{}, False{}, True{}, True{}, Lex.SHi{}), sur_ne_slo_shi(e))
+    case False{} False{} True{} True{} Lex.SLo{}:
+      {==}
+    case False{} False{} True{} False{} Lex.SOk{}:
+      {==}
+    case False{} False{} True{} False{} Lex.SHi{}:
+      Empty.absurd(surg(False{}, False{}, True{}, False{}, Lex.SHi{}), sur_ne_sok_shi(e))
+    case False{} False{} True{} False{} Lex.SLo{}:
+      Empty.absurd(surg(False{}, False{}, True{}, False{}, Lex.SLo{}), sur_ne_sok_slo(e))
+    case False{} False{} False{} True{} Lex.SOk{}:
+      {==}
+    case False{} False{} False{} True{} Lex.SHi{}:
+      Empty.absurd(surg(False{}, False{}, False{}, True{}, Lex.SHi{}), sur_ne_sok_shi(e))
+    case False{} False{} False{} True{} Lex.SLo{}:
+      Empty.absurd(surg(False{}, False{}, False{}, True{}, Lex.SLo{}), sur_ne_sok_slo(e))
+    case False{} False{} False{} False{} Lex.SOk{}:
+      {==}
+    case False{} False{} False{} False{} Lex.SHi{}:
+      Empty.absurd(surg(False{}, False{}, False{}, False{}, Lex.SHi{}), sur_ne_sok_shi(e))
+    case False{} False{} False{} False{} Lex.SLo{}:
+      Empty.absurd(surg(False{}, False{}, False{}, False{}, Lex.SLo{}), sur_ne_sok_slo(e))
+
+# unicode.sur is sb of its comparisons
+law sur_sb:
+  for +cp: U32
+  for b1: Bool
+  for b2: Bool
+  {Lex.unicode.sur.hi(cp, b1, b2) == sb(b1, b2, U32.is_ge(cp, 56320), U32.is_le(cp, 57343)) : Lex.Sur}
+
+def sur_sb(_cp, b1, b2):
+  match b1 b2:
+    case True{} True{}:
+      {==}
+    case True{} False{}:
+      {==}
+    case False{} True{}:
+      {==}
+    case False{} False{}:
+      {==}
+
+# what unicode.sur's answer says of a code point
+def surc(+cp: U32, key: Lex.Sur) -> Type:
+  match key:
+    case Lex.SOk{}:
+      {Laws.non_sur(cp) == True{} : Bool}
+    case Lex.SHi{}:
+      {Laws.in_hi(cp) == True{} : Bool}
+    case Lex.SLo{}:
+      {Laws.lo_sur(cp) == True{} : Bool}
+
+# unicode.sur's answer read back
+law sur_inv:
+  for +cp: U32
+  for key: Lex.Sur
+  for e: {Lex.unicode.sur(cp) == key : Lex.Sur}
+  surc(cp, key)
+
+def sur_inv(cp, key, e):
+  match key:
+    case Lex.SOk{}:
+      sur_at(U32.is_ge(cp, 55296), U32.is_le(cp, 56319), U32.is_ge(cp, 56320), U32.is_le(cp, 57343), Lex.SOk{},
+        Equal.trans(Lex.Sur, sb(U32.is_ge(cp, 55296), U32.is_le(cp, 56319), U32.is_ge(cp, 56320), U32.is_le(cp,
+        57343)), Lex.unicode.sur(cp), Lex.SOk{}, Equal.sym(Lex.Sur, Lex.unicode.sur(cp), sb(U32.is_ge(cp, 55296),
+        U32.is_le(cp, 56319), U32.is_ge(cp, 56320), U32.is_le(cp, 57343)), sur_sb(cp, U32.is_ge(cp, 55296),
+        U32.is_le(cp, 56319))), e))
+    case Lex.SHi{}:
+      sur_at(U32.is_ge(cp, 55296), U32.is_le(cp, 56319), U32.is_ge(cp, 56320), U32.is_le(cp, 57343), Lex.SHi{},
+        Equal.trans(Lex.Sur, sb(U32.is_ge(cp, 55296), U32.is_le(cp, 56319), U32.is_ge(cp, 56320), U32.is_le(cp,
+        57343)), Lex.unicode.sur(cp), Lex.SHi{}, Equal.sym(Lex.Sur, Lex.unicode.sur(cp), sb(U32.is_ge(cp, 55296),
+        U32.is_le(cp, 56319), U32.is_ge(cp, 56320), U32.is_le(cp, 57343)), sur_sb(cp, U32.is_ge(cp, 55296),
+        U32.is_le(cp, 56319))), e))
+    case Lex.SLo{}:
+      sur_at(U32.is_ge(cp, 55296), U32.is_le(cp, 56319), U32.is_ge(cp, 56320), U32.is_le(cp, 57343), Lex.SLo{},
+        Equal.trans(Lex.Sur, sb(U32.is_ge(cp, 55296), U32.is_le(cp, 56319), U32.is_ge(cp, 56320), U32.is_le(cp,
+        57343)), Lex.unicode.sur(cp), Lex.SLo{}, Equal.sym(Lex.Sur, Lex.unicode.sur(cp), sb(U32.is_ge(cp, 55296),
+        U32.is_le(cp, 56319), U32.is_ge(cp, 56320), U32.is_le(cp, 57343)), sur_sb(cp, U32.is_ge(cp, 55296),
+        U32.is_le(cp, 56319))), e))
+
+
+# the lexer's state between tokens: its tokens are the lexemes', and each
+# lexeme is well spelled and follows whitespace, as does what is read since
+def ic(its: List<&2, It>, rws: List<&2, Char>, toks: List<&2, Lex.Tok>) -> Type:
+  ({toks == rtoks(its) : List<&2, Lex.Tok>} & ({itsok(its) == True{} : Bool} & {allws(rws) == True{} : Bool}))
+
+# the lexer's state inside a string: ic, and its buffer holds the characters
+# of well spelled pieces
+def sc(
+  its: List<&2, It>,
+  rws: List<&2, Char>,
+  ps: List<&2, Laws.Piece>,
+  buf: List<&2, Char>,
+  toks: List<&2, Lex.Tok>
+) -> Type:
+  (ic(its, rws, toks) & ({buf == pchars(ps) : List<&2, Char>} & {Laws.spell_ok(ps) == True{} : Bool}))
+
+# the digits of a \u escape read so far, by how many are left, and what the
+# text read so far is: them on top of pre
+def uj(left: Nat, +acc: U32, +pre: List<&2, Char>, +rc: List<&2, Char>) -> Type:
+  match left:
+    case 0n:
+      &d1: Char -> &d2: Char -> &d3: Char -> ({Laws.hexd(d1) == True{} : Bool} & ({Laws.hexd(d2) == True{} : Bool} &
+        ({Laws.hexd(d3) == True{} : Bool} & ({acc == Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, d1), d2), d3) : U32} &
+        {rc == d3 <> d2 <> d1 <> pre : List<&2, Char>}))))
+    case 1n+l1:
+      match l1:
+        case 0n:
+          &d1: Char -> &d2: Char -> ({Laws.hexd(d1) == True{} : Bool} & ({Laws.hexd(d2) == True{} : Bool} &
+            ({acc == Laws.hex.acc(Laws.hex.acc(0, d1), d2) : U32} & {rc == d2 <> d1 <> pre : List<&2, Char>})))
+        case 1n+l2:
+          match l2:
+            case 0n:
+              &d1: Char -> ({Laws.hexd(d1) == True{} : Bool} & ({acc == Laws.hex.acc(0, d1) : U32} &
+                {rc == d1 <> pre : List<&2, Char>}))
+            case 1n+l3:
+              match l3:
+                case 0n:
+                  ({acc == 0 : U32} & {rc == pre : List<&2, Char>})
+                case 1n+_l4:
+                  Empty
+
+# a high surrogate's four digits
+def hj(+hi: U32, +h1: Char, +h2: Char, +h3: Char, +h4: Char) -> Type:
+  ({Laws.hexd(h1) == True{} : Bool} & ({Laws.hexd(h2) == True{} : Bool} & ({Laws.hexd(h3) == True{} : Bool} &
+    ({Laws.hexd(h4) == True{} : Bool} & ({hi == Laws.hex4(h1, h2, h3, h4) : U32} & {Laws.in_hi(hi) == True{} :
+    Bool})))))
+
+# the lexer's state, by its mode, as lexemes read and what is read since, the
+# text read so far reversed as rc
+def jm(md: Lex.Mode, +buf: List<&2, Char>, +toks: List<&2, Lex.Tok>, +rc: List<&2, Char>) -> Type:
+  match md:
+    case Lex.Idle{}:
+      &its: List<&2, It> -> &rws: List<&2, Char> -> (ic(its, rws, toks) & {rc == List.append(&2, Char, rws,
+        ritems(its)) : List<&2, Char>})
+    case Lex.Word{}:
+      &its: List<&2, It> -> &rws: List<&2, Char> -> (ic(its, rws, toks) & {rc == List.append(&2, Char, buf,
+        List.append(&2, Char, rws, ritems(its))) : List<&2, Char>})
+    case Lex.Str{}:
+      &its: List<&2, It> -> &rws: List<&2, Char> -> &ps: List<&2, Laws.Piece> -> (sc(its, rws, ps, buf,
+        toks) & {rc == rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))) : List<&2, Char>})
+    case Lex.Esc{}:
+      &its: List<&2, It> -> &rws: List<&2, Char> -> &ps: List<&2, Laws.Piece> -> (sc(its, rws, ps, buf,
+        toks) & {rc == '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))) : List<&2, Char>})
+    case Lex.Uni{left, acc}:
+      &its: List<&2, It> -> &rws: List<&2, Char> -> &ps: List<&2, Laws.Piece> -> (sc(its, rws, ps, buf,
+        toks) & uj(left, acc, 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))), rc))
+    case Lex.Hi{hi}:
+      &its: List<&2, It> -> &rws: List<&2, Char> -> &ps: List<&2,
+        Laws.Piece> -> &h1: Char -> &h2: Char -> &h3: Char -> &h4: Char -> (sc(its, rws, ps, buf,
+        toks) & (hj(hi, h1, h2, h3, h4) & {rc == h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2,
+          Char, rws, ritems(its))) : List<&2, Char>}))
+    case Lex.HiEsc{hi}:
+      &its: List<&2, It> -> &rws: List<&2, Char> -> &ps: List<&2,
+        Laws.Piece> -> &h1: Char -> &h2: Char -> &h3: Char -> &h4: Char -> (sc(its, rws, ps, buf,
+        toks) & (hj(hi, h1, h2, h3, h4) & {rc == '\\' <> h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps,
+          '"' <> List.append(&2, Char, rws, ritems(its))) : List<&2, Char>}))
+    case Lex.Lo{left, acc, hi}:
+      &its: List<&2, It> -> &rws: List<&2, Char> -> &ps: List<&2,
+        Laws.Piece> -> &h1: Char -> &h2: Char -> &h3: Char -> &h4: Char -> (sc(its, rws, ps, buf,
+        toks) & (hj(hi, h1, h2, h3, h4) & uj(left, acc, 'u' <> '\\' <> h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps,
+          '"' <> List.append(&2, Char, rws, ritems(its))), rc)))
+    case Lex.Bad{}:
+      Unit
+
+# the lexer's state as lexemes read and what is read since
+def jl(st: Lex.Lex, +rc: List<&2, Char>) -> Type:
+  match st:
+    case Lex.Lex{md, buf, toks}:
+      jm(md, buf, toks, rc)
+
+# jl through one character from mode Lex.Idle
+law j_idle:
+  for cls: Lex.Class
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for +e: {Lex.classify(ch) == cls : Lex.Class}
+  for h: jl(Lex.Lex{Lex.Idle{}, bf, tk}, rc)
+  jl(Lex.step(Lex.Idle{}, cls, ch, bf, tk), ch <> rc)
+
+def j_idle(cls, ch, _bf, tk, rc, e, h):
+  match cls:
+    case Lex.CPunct{+tt}:
+      (+its, (+rws, ((etk, (hok, hws)), erc))) = h
+      (It{rws, LP{ch}} <> its, ([], ((Equal.trans(List<&2, Lex.Tok>, tt <> tk, ptok(ch) <> tk, ptok(ch) <> rtoks(its),
+        Equal.cong(Lex.Tok, List<&2, Lex.Tok>, zz => zz <> tk, tt, ptok(ch), Equal.sym(Lex.Tok, ptok(ch), tt,
+        Equal.cong(Lex.Class, Lex.Tok, zz => ptok.go(zz), Lex.classify(ch), Lex.CPunct{tt}, e))), Equal.cong(List<&2,
+        Lex.Tok>, List<&2, Lex.Tok>, zz => ptok(ch) <> zz, tk, rtoks(its), etk)), (and2(allws(rws), itsok(its), hws,
+        hok), {==})), Equal.cong(List<&2, Char>, List<&2, Char>, zz => ch <> zz, rc, List.append(&2, Char, rws,
+        ritems(its)), erc))))
+    case Lex.CQuote{}:
+      (+its, (+rws, (icp, erc))) = h
+      (its, (rws, ([], ((icp, ({==}, {==})), Equal.trans(List<&2, Char>, ch <> rc, '"' <> rc, '"' <> List.append(&2,
+        Char, rws, ritems(its)), Equal.cong(Char, List<&2, Char>, zz => zz <> rc, ch, '"', chr_of(ch, 34, cls_quote(ch,
+        e))), Equal.cong(List<&2, Char>, List<&2, Char>, zz => '"' <> zz, rc, List.append(&2, Char, rws, ritems(its)),
+        erc))))))
+    case Lex.CSpace{}:
+      (+its, (+rws, ((etk, (hok, hws)), erc))) = h
+      (its, (ch <> rws, ((etk, (hok, and2(Laws.is_ws(ch), allws(rws), cls_space(ch, e), hws))), Equal.cong(List<&2,
+        Char>, List<&2, Char>, zz => ch <> zz, rc, List.append(&2, Char, rws, ritems(its)), erc))))
+    case Lex.CBack{}:
+      Unit{}
+    case Lex.COther{}:
+      (+its, (+rws, (icp, erc))) = h
+      (its, (rws, (icp, Equal.cong(List<&2, Char>, List<&2, Char>, zz => ch <> zz, rc, List.append(&2, Char, rws,
+        ritems(its)), erc))))
+
+# jl through one character from mode Lex.Word
+law j_word:
+  for cls: Lex.Class
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for +e: {Lex.classify(ch) == cls : Lex.Class}
+  for h: jl(Lex.Lex{Lex.Word{}, bf, tk}, rc)
+  jl(Lex.step(Lex.Word{}, cls, ch, bf, tk), ch <> rc)
+
+def j_word(cls, ch, bf, tk, rc, e, h):
+  match cls:
+    case Lex.CPunct{+tt}:
+      (+its, (+rws, ((etk, (hok, hws)), erc))) = h
+      (It{[], LP{ch}} <> It{rws, LW{Lex.text(bf)}} <> its, ([], ((Equal.trans(List<&2, Lex.Tok>,
+        tt <> Lex.TWord{Lex.text(bf)} <> tk, ptok(ch) <> Lex.TWord{Lex.text(bf)} <> tk,
+        ptok(ch) <> Lex.TWord{Lex.text(bf)} <> rtoks(its), Equal.cong(Lex.Tok, List<&2, Lex.Tok>,
+        zz => zz <> Lex.TWord{Lex.text(bf)} <> tk, tt, ptok(ch), Equal.sym(Lex.Tok, ptok(ch), tt, Equal.cong(Lex.Class,
+        Lex.Tok, zz => ptok.go(zz), Lex.classify(ch), Lex.CPunct{tt}, e))), Equal.cong(List<&2, Lex.Tok>, List<&2,
+        Lex.Tok>, zz => ptok(ch) <> Lex.TWord{Lex.text(bf)} <> zz, tk, rtoks(its), etk)), (and2(allws(rws), itsok(its),
+        hws, hok), {==})), Equal.trans(List<&2, Char>, ch <> rc, ch <> List.append(&2, Char, bf, List.append(&2, Char,
+        rws, ritems(its))), ch <> List.reverse.go(&2, Char, String.to_list(Lex.text(bf)), List.append(&2, Char, rws,
+        ritems(its))), Equal.cong(List<&2, Char>, List<&2, Char>, zz => ch <> zz, rc, List.append(&2, Char, bf,
+        List.append(&2, Char, rws, ritems(its))), erc), Equal.cong(List<&2, Char>, List<&2, Char>, zz => ch <> zz,
+        List.append(&2, Char, bf, List.append(&2, Char, rws, ritems(its))), List.reverse.go(&2, Char,
+        String.to_list(Lex.text(bf)), List.append(&2, Char, rws, ritems(its))), Equal.sym(List<&2, Char>,
+        List.reverse.go(&2, Char, String.to_list(Lex.text(bf)), List.append(&2, Char, rws, ritems(its))),
+        List.append(&2, Char, bf, List.append(&2, Char, rws, ritems(its))), text_rc(bf, "", List.append(&2, Char, rws,
+        ritems(its)))))))))
+    case Lex.CQuote{}:
+      (+its, (+rws, ((etk, (hok, hws)), erc))) = h
+      (It{rws, LW{Lex.text(bf)}} <> its, ([], ([], (((Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+        zz => Lex.TWord{Lex.text(bf)} <> zz, tk, rtoks(its), etk), (and2(allws(rws), itsok(its), hws, hok),
+        {==})), ({==}, {==})), Equal.trans(List<&2, Char>, ch <> rc, '"' <> rc, '"' <> List.reverse.go(&2, Char,
+          String.to_list(Lex.text(bf)), List.append(&2, Char, rws, ritems(its))), Equal.cong(Char, List<&2, Char>,
+          zz => zz <> rc, ch, '"', chr_of(ch, 34, cls_quote(ch, e))), Equal.trans(List<&2, Char>, '"' <> rc,
+          '"' <> List.append(&2, Char, bf, List.append(&2, Char, rws, ritems(its))), '"' <> List.reverse.go(&2, Char,
+          String.to_list(Lex.text(bf)), List.append(&2, Char, rws, ritems(its))), Equal.cong(List<&2, Char>, List<&2,
+          Char>, zz => '"' <> zz, rc, List.append(&2, Char, bf, List.append(&2, Char, rws, ritems(its))), erc),
+          Equal.cong(List<&2, Char>, List<&2, Char>, zz => '"' <> zz, List.append(&2, Char, bf, List.append(&2, Char,
+          rws, ritems(its))), List.reverse.go(&2, Char, String.to_list(Lex.text(bf)), List.append(&2, Char, rws,
+          ritems(its))), Equal.sym(List<&2, Char>, List.reverse.go(&2, Char, String.to_list(Lex.text(bf)),
+          List.append(&2, Char, rws, ritems(its))), List.append(&2, Char, bf, List.append(&2, Char, rws, ritems(its))),
+          text_rc(bf, "", List.append(&2, Char, rws, ritems(its)))))))))))
+    case Lex.CSpace{}:
+      (+its, (+rws, ((etk, (hok, hws)), erc))) = h
+      (It{rws, LW{Lex.text(bf)}} <> its, ([ch], ((Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+        zz => Lex.TWord{Lex.text(bf)} <> zz, tk, rtoks(its), etk), (and2(allws(rws), itsok(its), hws, hok),
+        and2(Laws.is_ws(ch), allws([]), cls_space(ch, e), {==}))), Equal.trans(List<&2, Char>, ch <> rc,
+          ch <> List.append(&2, Char, bf, List.append(&2, Char, rws, ritems(its))), ch <> List.reverse.go(&2, Char,
+          String.to_list(Lex.text(bf)), List.append(&2, Char, rws, ritems(its))), Equal.cong(List<&2, Char>, List<&2,
+          Char>, zz => ch <> zz, rc, List.append(&2, Char, bf, List.append(&2, Char, rws, ritems(its))), erc),
+          Equal.cong(List<&2, Char>, List<&2, Char>, zz => ch <> zz, List.append(&2, Char, bf, List.append(&2, Char,
+          rws, ritems(its))), List.reverse.go(&2, Char, String.to_list(Lex.text(bf)), List.append(&2, Char, rws,
+          ritems(its))), Equal.sym(List<&2, Char>, List.reverse.go(&2, Char, String.to_list(Lex.text(bf)),
+          List.append(&2, Char, rws, ritems(its))), List.append(&2, Char, bf, List.append(&2, Char, rws, ritems(its))),
+          text_rc(bf, "", List.append(&2, Char, rws, ritems(its)))))))))
+    case Lex.CBack{}:
+      Unit{}
+    case Lex.COther{}:
+      (+its, (+rws, (icp, erc))) = h
+      (its, (rws, (icp, Equal.cong(List<&2, Char>, List<&2, Char>, zz => ch <> zz, rc, List.append(&2, Char, bf,
+        List.append(&2, Char, rws, ritems(its))), erc))))
+
+# jl through a character a string keeps, once whether it is a control is named
+law j_raw:
+  for b: Bool
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for cls: Lex.Class
+  for e: {Lex.classify(ch) == cls : Lex.Class}
+  for hq: {notqb(cls) == True{} : Bool}
+  for hlt: {U32.is_lt(Char.to_u32(ch), 32) == b : Bool}
+  for h: jl(Lex.Lex{Lex.Str{}, bf, tk}, rc)
+  jl(Lex.step.str.go(ch, bf, tk, b), ch <> rc)
+
+def j_raw(b, ch, bf, _tk, rc, cls, e, hq, hlt, h):
+  match b:
+    case True{}:
+      Unit{}
+    case False{}:
+      (+its, (+rws, (+ps, ((icp, (ebf, hps)), erc)))) = h
+      (its, (rws, (Laws.PRaw{ch} <> ps, ((icp, (Equal.cong(List<&2, Char>, List<&2, Char>, zz => ch <> zz, bf,
+        pchars(ps), ebf), and2(Laws.raw_char(ch),
+        Laws.spell_ok(ps), rawc(ch, cls, e, hq, hlt), hps))), Equal.cong(List<&2, Char>, List<&2, Char>,
+          zz => ch <> zz, rc, rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))), erc)))))
+
+# jl through one character from mode Lex.Str
+law j_str:
+  for cls: Lex.Class
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for +e: {Lex.classify(ch) == cls : Lex.Class}
+  for h: jl(Lex.Lex{Lex.Str{}, bf, tk}, rc)
+  jl(Lex.step(Lex.Str{}, cls, ch, bf, tk), ch <> rc)
+
+def j_str(cls, ch, bf, tk, rc, e, h):
+  match cls:
+    case Lex.CQuote{}:
+      (+its, (+rws, (+ps, (((etk, (hok, hws)), (ebf, hps)), erc)))) = h
+      (It{rws, LS{List.reverse.go(&2, Laws.Piece, ps, [])}} <> its, ([], ((Equal.trans(List<&2, Lex.Tok>,
+        Lex.TStr{Lex.text(bf)} <> tk, Lex.TStr{Laws.spelled(List.reverse.go(&2, Laws.Piece, ps, []))} <> tk,
+        Lex.TStr{Laws.spelled(List.reverse.go(&2, Laws.Piece, ps, []))} <> rtoks(its), Equal.cong(String, List<&2,
+        Lex.Tok>, zz => Lex.TStr{zz} <> tk, Lex.text(bf), Laws.spelled(List.reverse.go(&2, Laws.Piece, ps, [])),
+        Equal.trans(String, Lex.text.go(bf, ""), Lex.text.go(pchars(ps), ""), Laws.spelled(List.reverse.go(&2,
+        Laws.Piece, ps, [])), Equal.cong(List<&2, Char>, String, zz => Lex.text.go(zz, ""), bf, pchars(ps), ebf),
+        text_pc(ps, []))), Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+        zz => Lex.TStr{Laws.spelled(List.reverse.go(&2, Laws.Piece, ps, []))} <> zz, tk, rtoks(its), etk)),
+        (and2(allws(rws), Bool.and(Laws.spell_ok(List.reverse.go(&2, Laws.Piece, ps, [])), itsok(its)), hws,
+        and2(Laws.spell_ok(List.reverse.go(&2, Laws.Piece, ps, [])), itsok(its), spell_ok_rev(ps, [], hps, {==}),
+          hok)), {==})), Equal.trans(List<&2, Char>, ch <> rc, '"' <> rc, '"' <> List.reverse.go(&2, Char,
+          String.to_list(Laws.spell(List.reverse.go(&2, Laws.Piece, ps, []))), '"' <> List.append(&2, Char, rws,
+          ritems(its))), Equal.cong(Char, List<&2, Char>, zz => zz <> rc, ch, '"', chr_of(ch, 34, cls_quote(ch, e))),
+          Equal.trans(List<&2, Char>, '"' <> rc, '"' <> rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))),
+          '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(List.reverse.go(&2, Laws.Piece, ps, []))),
+          '"' <> List.append(&2, Char, rws, ritems(its))), Equal.cong(List<&2, Char>, List<&2, Char>, zz => '"' <> zz,
+          rc, rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))), erc), Equal.cong(List<&2, Char>, List<&2, Char>,
+          zz => '"' <> zz, rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))), List.reverse.go(&2, Char,
+          String.to_list(Laws.spell(List.reverse.go(&2, Laws.Piece, ps, []))), '"' <> List.append(&2, Char, rws,
+          ritems(its))), Equal.sym(List<&2, Char>, List.reverse.go(&2, Char,
+          String.to_list(Laws.spell(List.reverse.go(&2, Laws.Piece, ps, []))), '"' <> List.append(&2, Char, rws,
+          ritems(its))), rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))), spell_rev(ps, [],
+          '"' <> List.append(&2, Char, rws, ritems(its))))))))))
+    case Lex.CBack{}:
+      (+its, (+rws, (+ps, (scp, erc)))) = h
+      (its, (rws, (ps, (scp, Equal.trans(List<&2, Char>, ch <> rc, '\\' <> rc, '\\' <> rsp(ps, '"' <> List.append(&2,
+        Char, rws, ritems(its))), Equal.cong(Char, List<&2, Char>, zz => zz <> rc, ch, '\\', chr_of(ch, 92,
+        cls_back(ch, e))), Equal.cong(List<&2, Char>, List<&2, Char>, zz => '\\' <> zz, rc, rsp(ps,
+        '"' <> List.append(&2, Char, rws, ritems(its))), erc))))))
+    case Lex.CPunct{+tt}:
+      j_raw(U32.is_lt(Char.to_u32(ch), 32), ch, bf, tk, rc, Lex.CPunct{tt}, e, {==}, {==}, h)
+    case Lex.CSpace{}:
+      j_raw(U32.is_lt(Char.to_u32(ch), 32), ch, bf, tk, rc, Lex.CSpace{}, e, {==}, {==}, h)
+    case Lex.COther{}:
+      j_raw(U32.is_lt(Char.to_u32(ch), 32), ch, bf, tk, rc, Lex.COther{}, e, {==}, {==}, h)
+
+# jl through the character after a backslash that is not u, by what it stands for
+law j_eput:
+  for mb: Maybe<&2, Char>
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for +em: {Lex.unescape(ch) == mb : Maybe<&2, Char>}
+  for h: jl(Lex.Lex{Lex.Esc{}, bf, tk}, rc)
+  jl(Lex.escape.put(mb, bf, tk), ch <> rc)
+
+def j_eput(mb, ch, bf, _tk, rc, em, h):
+  match mb:
+    case Some{+c2}:
+      (+its, (+rws, (+ps, ((icp, (ebf, hps)), erc)))) = h
+      (its, (rws, (Laws.PEsc{ch} <> ps, ((icp, (Equal.trans(List<&2, Char>, c2 <> bf, c2 <> pchars(ps),
+        Laws.some_or(Laws.unesc(ch), ch) <> pchars(ps), Equal.cong(List<&2, Char>, List<&2, Char>, zz => c2 <> zz, bf,
+        pchars(ps), ebf), Equal.cong(Char, List<&2, Char>, zz => zz <> pchars(ps), c2, Laws.some_or(Laws.unesc(ch),
+        ch), Equal.sym(Char, Laws.some_or(Laws.unesc(ch), ch), c2, Equal.cong(Maybe<&2, Char>, Char,
+        zz => Laws.some_or(zz, ch), Laws.unesc(ch), Some{c2}, em)))), and2(Laws.has_char(Laws.unesc(ch)),
+        Laws.spell_ok(ps),
+        Equal.cong(Maybe<&2, Char>, Bool, zz => Laws.has_char(zz), Laws.unesc(ch), Some{c2}, em), hps))),
+        Equal.cong(List<&2, Char>, List<&2, Char>, zz => ch <> zz, rc, '\\' <> rsp(ps, '"' <> List.append(&2, Char,
+          rws, ritems(its))), erc)))))
+    case None{}:
+      Unit{}
+
+# jl through the character after a backslash, once whether it is u is named
+law j_esc:
+  for b: Bool
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for eu: {U32.is_eq(Char.to_u32(ch), 117) == b : Bool}
+  for h: jl(Lex.Lex{Lex.Esc{}, bf, tk}, rc)
+  jl(Lex.escape.go(ch, bf, tk, b), ch <> rc)
+
+def j_esc(b, ch, bf, tk, rc, eu, h):
+  match b:
+    case True{}:
+      (+its, (+rws, (+ps, (scp, erc)))) = h
+      (its, (rws, (ps, (scp, ({==}, Equal.trans(List<&2, Char>, ch <> rc, 'u' <> rc, 'u' <> '\\' <> rsp(ps,
+        '"' <> List.append(&2, Char, rws, ritems(its))), Equal.cong(Char, List<&2, Char>, zz => zz <> rc, ch, 'u',
+        chr_of(ch, 117, ueq(Char.to_u32(ch), 117, eu))), Equal.cong(List<&2, Char>, List<&2, Char>, zz => 'u' <> zz,
+        rc, '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))), erc)))))))
+    case False{}:
+      j_eput(Lex.unescape(ch), ch, bf, tk, rc, {==}, h)
+
+# jl through the character after a high surrogate's escape, once whether it is
+# a backslash is named
+law j_hi:
+  for b: Bool
+  for +hi: U32
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for eb: {U32.is_eq(Char.to_u32(ch), 92) == b : Bool}
+  for h: jl(Lex.Lex{Lex.Hi{hi}, bf, tk}, rc)
+  jl(Lex.step.hi.go(hi, bf, tk, b), ch <> rc)
+
+def j_hi(b, _hi, ch, _bf, _tk, rc, eb, h):
+  match b:
+    case True{}:
+      (+its, (+rws, (+ps, (+h1, (+h2, (+h3, (+h4, (scp, (hjp, erc))))))))) = h
+      (its, (rws, (ps, (h1, (h2, (h3, (h4, (scp, (hjp, Equal.trans(List<&2, Char>, ch <> rc, '\\' <> rc,
+        '\\' <> h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))),
+        Equal.cong(Char, List<&2, Char>, zz => zz <> rc, ch, '\\', chr_of(ch, 92, ueq(Char.to_u32(ch), 92, eb))),
+        Equal.cong(List<&2, Char>, List<&2, Char>, zz => '\\' <> zz, rc, h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps,
+        '"' <> List.append(&2, Char, rws, ritems(its))), erc)))))))))))
+    case False{}:
+      Unit{}
+
+# jl through the character after a high surrogate's escape and a backslash,
+# once whether it is u is named
+law j_hiesc:
+  for b: Bool
+  for +hi: U32
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for eb: {U32.is_eq(Char.to_u32(ch), 117) == b : Bool}
+  for h: jl(Lex.Lex{Lex.HiEsc{hi}, bf, tk}, rc)
+  jl(Lex.step.hiesc.go(hi, bf, tk, b), ch <> rc)
+
+def j_hiesc(b, _hi, ch, _bf, _tk, rc, eb, h):
+  match b:
+    case True{}:
+      (+its, (+rws, (+ps, (+h1, (+h2, (+h3, (+h4, (scp, (hjp, erc))))))))) = h
+      (its, (rws, (ps, (h1, (h2, (h3, (h4, (scp, (hjp, ({==}, Equal.trans(List<&2, Char>, ch <> rc, 'u' <> rc,
+        'u' <> '\\' <> h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))),
+        Equal.cong(Char, List<&2, Char>, zz => zz <> rc, ch, 'u', chr_of(ch, 117, ueq(Char.to_u32(ch), 117, eb))),
+        Equal.cong(List<&2, Char>, List<&2, Char>, zz => 'u' <> zz, rc,
+        '\\' <> h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))),
+        erc))))))))))))
+    case False{}:
+      Unit{}
+
+# jl through a \u escape's four digits and the code point they spell, by what
+# kind of code point it is
+law j_uend:
+  for key: Lex.Sur
+  for +d1: Char
+  for +d2: Char
+  for +d3: Char
+  for +d4: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for +its: List<&2, It>
+  for +rws: List<&2, Char>
+  for +ps: List<&2, Laws.Piece>
+  for ek: {Lex.unicode.sur(Laws.hex4(d1, d2, d3, d4)) == key : Lex.Sur}
+  for hd1: {Laws.hexd(d1) == True{} : Bool}
+  for hd2: {Laws.hexd(d2) == True{} : Bool}
+  for hd3: {Laws.hexd(d3) == True{} : Bool}
+  for hd4: {Laws.hexd(d4) == True{} : Bool}
+  for scp: sc(its, rws, ps, bf, tk)
+  for erc: {rc == d3 <> d2 <> d1 <> 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))) : List<&2,
+    Char>}
+  jl(Lex.unicode.end.go(Laws.hex4(d1, d2, d3, d4), bf, tk, key), d4 <> rc)
+
+def j_uend(key, d1, d2, d3, d4, bf, _tk, rc, its, rws, ps, ek, hd1, hd2, hd3, hd4, scp, erc):
+  match key:
+    case Lex.SOk{}:
+      (icp, (ebf, hps)) = scp
+      (its, (rws, (Laws.PU{d1, d2, d3, d4} <> ps, ((icp, (Equal.cong(List<&2, Char>, List<&2, Char>,
+        zz => Char.from_u32(Laws.hex4(d1, d2, d3, d4)) <> zz, bf, pchars(ps), ebf),
+        and2(Laws.piece.ok(Laws.PU{d1, d2, d3, d4}), Laws.spell_ok(ps), and2(Bool.and(Laws.hexd(d1),
+          Bool.and(Laws.hexd(d2), Bool.and(Laws.hexd(d3), Laws.hexd(d4)))), Laws.non_sur(Laws.hex4(d1, d2, d3, d4)),
+        and2(Laws.hexd(d1), Bool.and(Laws.hexd(d2), Bool.and(Laws.hexd(d3), Laws.hexd(d4))), hd1, and2(Laws.hexd(d2),
+          Bool.and(Laws.hexd(d3), Laws.hexd(d4)), hd2, and2(Laws.hexd(d3), Laws.hexd(d4), hd3, hd4))),
+          sur_inv(Laws.hex4(d1, d2, d3, d4), Lex.SOk{}, ek)), hps))),
+        Equal.cong(List<&2, Char>, List<&2, Char>, zz => d4 <> zz, rc, d3 <> d2 <> d1 <> 'u' <> '\\' <> rsp(ps,
+          '"' <> List.append(&2, Char, rws, ritems(its))), erc)))))
+    case Lex.SHi{}:
+      (its, (rws, (ps, (d1, (d2, (d3, (d4, (scp, ((hd1, (hd2, (hd3, (hd4, ({==}, sur_inv(Laws.hex4(d1, d2, d3, d4),
+        Lex.SHi{}, ek)))))), Equal.cong(List<&2, Char>, List<&2, Char>, zz => d4 <> zz, rc,
+        d3 <> d2 <> d1 <> 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))), erc))))))))))
+    case Lex.SLo{}:
+      Unit{}
+
+# jl through one hex digit of a \u escape, by how many are left
+law j_uput:
+  for left: Nat
+  for +acc: U32
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for +its: List<&2, It>
+  for +rws: List<&2, Char>
+  for +ps: List<&2, Laws.Piece>
+  for +eh: {Lex.hex.ok(Char.to_u32(ch)) == True{} : Bool}
+  for scp: sc(its, rws, ps, bf, tk)
+  for uh: uj(left, acc, 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))), rc)
+  jl(Lex.unicode.put(left, acc, Lex.hex(ch), bf, tk), ch <> rc)
+
+def j_uput(left, acc, ch, bf, tk, rc, its, rws, ps, eh, scp, uh):
+  match left:
+    case 0n:
+      (+d1, (+d2, (+d3, (hd1, (hd2, (hd3, (ea, erc))))))) = uh
+      ea2 = Equal.sym(U32, acc, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, d1), d2), d3), ea)
+      %ea2 : jl(Lex.unicode.end(U32.add(U32.mul(_, 16), Lex.hex(ch)), bf, tk), ch <> rc)
+      j_uend(Lex.unicode.sur(Laws.hex4(d1, d2, d3, ch)), d1, d2, d3, ch, bf, tk, rc, its, rws, ps, {==}, hd1, hd2, hd3,
+        eh, scp, erc)
+    case 1n+l1:
+      match l1:
+        case 0n:
+          (+d1, (+d2, (hd1, (hd2, (ea, erc))))) = uh
+          (its, (rws, (ps, (scp, (d1, (d2, (ch, (hd1, (hd2, (eh, (Equal.cong(U32, U32, zz => U32.add(U32.mul(zz, 16),
+            Lex.hex(ch)), acc, Laws.hex.acc(Laws.hex.acc(0, d1), d2), ea), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => ch <> zz, rc, d2 <> d1 <> 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))),
+            erc))))))))))))
+        case 1n+l2:
+          match l2:
+            case 0n:
+              (+d1, (hd1, (ea, erc))) = uh
+              (its, (rws, (ps, (scp, (d1, (ch, (hd1, (eh, (Equal.cong(U32, U32, zz => U32.add(U32.mul(zz, 16),
+                Lex.hex(ch)), acc, Laws.hex.acc(0, d1), ea), Equal.cong(List<&2, Char>, List<&2, Char>, zz => ch <> zz,
+                rc, d1 <> 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws, ritems(its))), erc))))))))))
+            case 1n+l3:
+              match l3:
+                case 0n:
+                  (ea, erc) = uh
+                  (its, (rws, (ps, (scp, (ch, (eh, (Equal.cong(U32, U32, zz => U32.add(U32.mul(zz, 16), Lex.hex(ch)),
+                    acc, 0, ea), Equal.cong(List<&2, Char>, List<&2, Char>, zz => ch <> zz, rc, 'u' <> '\\' <> rsp(ps,
+                    '"' <> List.append(&2, Char, rws, ritems(its))), erc))))))))
+                case 1n+_l4:
+                  match uh:
+
+# jl through a character of a \u escape, once whether it is a hex digit is named
+law j_uni:
+  for b: Bool
+  for left: Nat
+  for +acc: U32
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for +eh: {Lex.hex.ok(Char.to_u32(ch)) == b : Bool}
+  for h: jl(Lex.Lex{Lex.Uni{left, acc}, bf, tk}, rc)
+  jl(Lex.unicode.go(left, acc, ch, bf, tk, b), ch <> rc)
+
+def j_uni(b, left, acc, ch, bf, tk, rc, eh, h):
+  match b:
+    case True{}:
+      (+its, (+rws, (+ps, (scp, uh)))) = h
+      j_uput(left, acc, ch, bf, tk, rc, its, rws, ps, eh, scp, uh)
+    case False{}:
+      Unit{}
+
+# jl through a low surrogate's \u escape's four digits and the code point they
+# spell, by what kind of code point it is
+law j_lend:
+  for key: Lex.Sur
+  for +d1: Char
+  for +d2: Char
+  for +d3: Char
+  for +d4: Char
+  for +hi: U32
+  for +h1: Char
+  for +h2: Char
+  for +h3: Char
+  for +h4: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for +its: List<&2, It>
+  for +rws: List<&2, Char>
+  for +ps: List<&2, Laws.Piece>
+  for ek: {Lex.unicode.sur(Laws.hex4(d1, d2, d3, d4)) == key : Lex.Sur}
+  for hd1: {Laws.hexd(d1) == True{} : Bool}
+  for hd2: {Laws.hexd(d2) == True{} : Bool}
+  for hd3: {Laws.hexd(d3) == True{} : Bool}
+  for hd4: {Laws.hexd(d4) == True{} : Bool}
+  for scp: sc(its, rws, ps, bf, tk)
+  for hjp: hj(hi, h1, h2, h3, h4)
+  for erc: {rc == d3 <> d2 <> d1 <> 'u' <> '\\' <> h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps,
+    '"' <> List.append(&2, Char, rws, ritems(its))) : List<&2, Char>}
+  jl(Lex.unicode.low.end.go(Laws.hex4(d1, d2, d3, d4), hi, bf, tk, key), d4 <> rc)
+
+def j_lend(key, d1, d2, d3, d4, hi, h1, h2, h3, h4, bf, _tk, rc, its, rws, ps, ek, hd1, hd2, hd3, hd4, scp, hjp, erc):
+  match key:
+    case Lex.SLo{}:
+      (icp, (ebf, hps)) = scp
+      (hh1, (hh2, (hh3, (hh4, (+ehi, hin))))) = hjp
+      (its, (rws, (Laws.PPair{h1, h2, h3, h4, d1, d2, d3, d4} <> ps, ((icp, (Equal.trans(List<&2, Char>,
+        Char.from_u32(Lex.unicode.pair(hi, Laws.hex4(d1, d2, d3, d4))) <> bf, Char.from_u32(Lex.unicode.pair(hi,
+        Laws.hex4(d1, d2, d3, d4))) <> pchars(ps), Char.from_u32(Lex.unicode.pair(Laws.hex4(h1, h2, h3, h4),
+        Laws.hex4(d1, d2, d3, d4))) <> pchars(ps), Equal.cong(List<&2, Char>, List<&2, Char>,
+        zz => Char.from_u32(Lex.unicode.pair(hi, Laws.hex4(d1, d2, d3, d4))) <> zz, bf, pchars(ps), ebf),
+        Equal.cong(U32, List<&2, Char>, zz => Char.from_u32(Lex.unicode.pair(zz, Laws.hex4(d1, d2, d3,
+        d4))) <> pchars(ps), hi, Laws.hex4(h1, h2, h3, h4), ehi)), and2(Laws.piece.ok(Laws.PPair{h1, h2, h3, h4, d1,
+        d2, d3, d4}), Laws.spell_ok(ps), and2(Bool.and(Laws.hexd(h1), Bool.and(Laws.hexd(h2), Bool.and(Laws.hexd(h3),
+        Laws.hexd(h4)))), Bool.and(Bool.and(Laws.hexd(d1), Bool.and(Laws.hexd(d2), Bool.and(Laws.hexd(d3),
+        Laws.hexd(d4)))), Bool.and(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(d1, d2, d3, d4)))),
+        and2(Laws.hexd(h1), Bool.and(Laws.hexd(h2), Bool.and(Laws.hexd(h3), Laws.hexd(h4))), hh1, and2(Laws.hexd(h2),
+        Bool.and(Laws.hexd(h3), Laws.hexd(h4)), hh2, and2(Laws.hexd(h3), Laws.hexd(h4), hh3, hh4))),
+        and2(Bool.and(Laws.hexd(d1), Bool.and(Laws.hexd(d2), Bool.and(Laws.hexd(d3), Laws.hexd(d4)))),
+        Bool.and(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(d1, d2, d3, d4))), and2(Laws.hexd(d1),
+        Bool.and(Laws.hexd(d2), Bool.and(Laws.hexd(d3), Laws.hexd(d4))), hd1, and2(Laws.hexd(d2),
+        Bool.and(Laws.hexd(d3), Laws.hexd(d4)), hd2, and2(Laws.hexd(d3), Laws.hexd(d4), hd3, hd4))),
+        and2(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(d1, d2, d3, d4)), Equal.trans(Bool,
+        Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.in_hi(hi), True{}, Equal.cong(U32, Bool, zz => Laws.in_hi(zz),
+        Laws.hex4(h1, h2, h3, h4), hi, Equal.sym(U32, hi, Laws.hex4(h1, h2, h3, h4), ehi)), hin), sur_inv(Laws.hex4(d1,
+        d2, d3, d4), Lex.SLo{}, ek)))), hps))),
+        Equal.cong(List<&2, Char>, List<&2, Char>, zz => d4 <> zz, rc,
+          d3 <> d2 <> d1 <> 'u' <> '\\' <> h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2, Char,
+          rws, ritems(its))), erc)))))
+    case Lex.SOk{}:
+      Unit{}
+    case Lex.SHi{}:
+      Unit{}
+
+# jl through one hex digit of a low surrogate's \u escape, by how many are left
+law j_lput:
+  for left: Nat
+  for +acc: U32
+  for +hi: U32
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for +its: List<&2, It>
+  for +rws: List<&2, Char>
+  for +ps: List<&2, Laws.Piece>
+  for +h1: Char
+  for +h2: Char
+  for +h3: Char
+  for +h4: Char
+  for +eh: {Lex.hex.ok(Char.to_u32(ch)) == True{} : Bool}
+  for scp: sc(its, rws, ps, bf, tk)
+  for hjp: hj(hi, h1, h2, h3, h4)
+  for uh: uj(left, acc, 'u' <> '\\' <> h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws,
+    ritems(its))), rc)
+  jl(Lex.unicode.low.put(left, acc, hi, Lex.hex(ch), bf, tk), ch <> rc)
+
+def j_lput(left, acc, hi, ch, bf, tk, rc, its, rws, ps, h1, h2, h3, h4, eh, scp, hjp, uh):
+  match left:
+    case 0n:
+      (+d1, (+d2, (+d3, (hd1, (hd2, (hd3, (ea, erc))))))) = uh
+      ea2 = Equal.sym(U32, acc, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, d1), d2), d3), ea)
+      %ea2 : jl(Lex.unicode.low.end(U32.add(U32.mul(_, 16), Lex.hex(ch)), hi, bf, tk), ch <> rc)
+      j_lend(Lex.unicode.sur(Laws.hex4(d1, d2, d3, ch)), d1, d2, d3, ch, hi, h1, h2, h3, h4, bf, tk, rc, its, rws, ps,
+        {==}, hd1, hd2, hd3, eh, scp, hjp, erc)
+    case 1n+l1:
+      match l1:
+        case 0n:
+          (+d1, (+d2, (hd1, (hd2, (ea, erc))))) = uh
+          (its, (rws, (ps, (h1, (h2, (h3, (h4, (scp, (hjp, (d1, (d2, (ch, (hd1, (hd2, (eh, (Equal.cong(U32, U32,
+            zz => U32.add(U32.mul(zz, 16), Lex.hex(ch)), acc, Laws.hex.acc(Laws.hex.acc(0, d1), d2), ea),
+            Equal.cong(List<&2, Char>, List<&2, Char>, zz => ch <> zz, rc,
+            d2 <> d1 <> 'u' <> '\\' <> h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps, '"' <> List.append(&2, Char, rws,
+            ritems(its))), erc)))))))))))))))))
+        case 1n+l2:
+          match l2:
+            case 0n:
+              (+d1, (hd1, (ea, erc))) = uh
+              (its, (rws, (ps, (h1, (h2, (h3, (h4, (scp, (hjp, (d1, (ch, (hd1, (eh, (Equal.cong(U32, U32,
+                zz => U32.add(U32.mul(zz, 16), Lex.hex(ch)), acc, Laws.hex.acc(0, d1), ea), Equal.cong(List<&2, Char>,
+                List<&2, Char>, zz => ch <> zz, rc, d1 <> 'u' <> '\\' <> h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps,
+                '"' <> List.append(&2, Char, rws, ritems(its))), erc)))))))))))))))
+            case 1n+l3:
+              match l3:
+                case 0n:
+                  (ea, erc) = uh
+                  (its, (rws, (ps, (h1, (h2, (h3, (h4, (scp, (hjp, (ch, (eh, (Equal.cong(U32, U32,
+                    zz => U32.add(U32.mul(zz, 16), Lex.hex(ch)), acc, 0, ea), Equal.cong(List<&2, Char>, List<&2,
+                    Char>, zz => ch <> zz, rc, 'u' <> '\\' <> h4 <> h3 <> h2 <> h1 <> 'u' <> '\\' <> rsp(ps,
+                    '"' <> List.append(&2, Char, rws, ritems(its))), erc)))))))))))))
+                case 1n+_l4:
+                  match uh:
+
+# jl through a character of a low surrogate's \u escape, once whether it is a
+# hex digit is named
+law j_lo:
+  for b: Bool
+  for left: Nat
+  for +acc: U32
+  for +hi: U32
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for +eh: {Lex.hex.ok(Char.to_u32(ch)) == b : Bool}
+  for h: jl(Lex.Lex{Lex.Lo{left, acc, hi}, bf, tk}, rc)
+  jl(Lex.unicode.low.go(left, acc, hi, ch, bf, tk, b), ch <> rc)
+
+def j_lo(b, left, acc, hi, ch, bf, tk, rc, eh, h):
+  match b:
+    case True{}:
+      (+its, (+rws, (+ps, (+h1, (+h2, (+h3, (+h4, (scp, (hjp, uh))))))))) = h
+      j_lput(left, acc, hi, ch, bf, tk, rc, its, rws, ps, h1, h2, h3, h4, eh, scp, hjp, uh)
+    case False{}:
+      Unit{}
+
+# jl through one character, by the lexer's mode
+law jm_step:
+  for md: Lex.Mode
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +ch: Char
+  for +rc: List<&2, Char>
+  for h: jl(Lex.Lex{md, bf, tk}, rc)
+  jl(Lex.feed(ch, Lex.Lex{md, bf, tk}), ch <> rc)
+
+def jm_step(md, bf, tk, ch, rc, h):
+  match md:
+    case Lex.Idle{}:
+      j_idle(Lex.classify(ch), ch, bf, tk, rc, {==}, h)
+    case Lex.Word{}:
+      j_word(Lex.classify(ch), ch, bf, tk, rc, {==}, h)
+    case Lex.Str{}:
+      j_str(Lex.classify(ch), ch, bf, tk, rc, {==}, h)
+    case Lex.Esc{}:
+      j_esc(U32.is_eq(Char.to_u32(ch), 117), ch, bf, tk, rc, {==}, h)
+    case Lex.Uni{left, +acc}:
+      j_uni(Lex.hex.ok(Char.to_u32(ch)), left, acc, ch, bf, tk, rc, {==}, h)
+    case Lex.Hi{+hi}:
+      j_hi(U32.is_eq(Char.to_u32(ch), 92), hi, ch, bf, tk, rc, {==}, h)
+    case Lex.HiEsc{+hi}:
+      j_hiesc(U32.is_eq(Char.to_u32(ch), 117), hi, ch, bf, tk, rc, {==}, h)
+    case Lex.Lo{left, +acc, +hi}:
+      j_lo(Lex.hex.ok(Char.to_u32(ch)), left, acc, hi, ch, bf, tk, rc, {==}, h)
+    case Lex.Bad{}:
+      Unit{}
+
+# jl through one character
+law jstep:
+  for st: Lex.Lex
+  for +ch: Char
+  for +rc: List<&2, Char>
+  for h: jl(st, rc)
+  jl(Lex.feed(ch, st), ch <> rc)
+
+def jstep(st, ch, rc, h):
+  match st:
+    case Lex.Lex{md, +bf, +tk}:
+      jm_step(md, bf, tk, ch, rc, h)
+
+# jl through every character
+law jrun:
+  for cs: List<&2, Char>
+  for +st: Lex.Lex
+  for +rc: List<&2, Char>
+  for h: jl(st, rc)
+  jl(Lex.run(cs, st), List.reverse.go(&2, Char, cs, rc))
+
+def jrun(cs, st, rc, h):
+  match cs:
+    case Nil{}:
+      h
+    case +ch <> +tl:
+      jrun(tl, Lex.feed(ch, st), ch <> rc, jstep(st, ch, rc, h))

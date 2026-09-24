@@ -154,6 +154,17 @@ the tokens it has read, reversed (`rs`, `ti`): a frame's cells, the
 separator after them, and a key and colon waiting for a value; a frame
 waiting after a value holds cells (`sok`). Each token keeps it
 (`step_ti`), and a finished state has read its root's tokens (`fin_ti`).
+Its lexer step: the character lexer's state after any text is described by
+`jl`, one case per mode. Between tokens or in a word, the text read is the
+lexemes read (`Lx`, `It`: a punctuation character, a word, or a string's
+pieces, each after its whitespace), then whitespace, then the word; in a
+string, it is also the pieces read so far and, in an escape, the escape's
+characters so far (`uj` for a `\u` escape's digits, `hj` for a high
+surrogate's). Each character keeps it (`jstep`, with a lemma per mode:
+`j_idle`, `j_word`, `j_str`, `j_esc`, `j_uni`, `j_hi`, `j_hiesc`, `j_lo`), so
+the whole text does (`jrun`). The lexemes' tokens are the lexer's, and each
+string's pieces are well spelled; the facts about a character come back out of
+the lexer's own tests (`cls_space`, `rawc`, `sur_inv`).
 
 ## What parse does
 
