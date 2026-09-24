@@ -1882,3 +1882,133 @@ def Laws.skip_close_obj(ws, rest, stack, h_ws):
     go_done(3n, rest, Pull.SEv{Pull.EErr{}}, "", [], Pull.GSkip{0n}, False{}, True{}))
   %gd : {Pull.skip.use(Pull.next.fin(Pull.next.grow(32n, 1n, _))) == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
   {==}
+
+# U32 increment and decrement, bit by bit. Word.adc adds the low bit first;
+# with a zero second word it adds or takes away only the carry
+
+# adding the carry then taking it back, from the lowest bit up, is nothing
+law adc_inc_dec:
+  for +qq: Nat
+  for +aw: Word(qq)
+  for cc: Bool
+  {Word.adc(qq, Word.adc(qq, aw, Word.zero(qq), False{}, cc), Word.zero(qq), True{}, Bool.not(cc)) == aw : Word(qq)}
+
+def adc_inc_dec(qq, aw, cc):
+  match qq:
+    case 0n:
+      match aw:
+        case WNil{}:
+          {==}
+    case 1n+(+pp):
+      match aw cc:
+        case WCon{False{}, +at} False{}:
+          Equal.cong(Word(pp), Word.Con<pp>, ww => WCon{False{}, ww},
+            Word.adc(pp, Word.adc(pp, at, Word.zero(pp), False{}, False{}), Word.zero(pp), True{}, True{}), at,
+            adc_inc_dec(pp, at, False{}))
+        case WCon{True{}, +at} False{}:
+          Equal.cong(Word(pp), Word.Con<pp>, ww => WCon{True{}, ww},
+            Word.adc(pp, Word.adc(pp, at, Word.zero(pp), False{}, False{}), Word.zero(pp), True{}, True{}), at,
+            adc_inc_dec(pp, at, False{}))
+        case WCon{False{}, +at} True{}:
+          Equal.cong(Word(pp), Word.Con<pp>, ww => WCon{False{}, ww},
+            Word.adc(pp, Word.adc(pp, at, Word.zero(pp), False{}, False{}), Word.zero(pp), True{}, True{}), at,
+            adc_inc_dec(pp, at, False{}))
+        case WCon{True{}, +at} True{}:
+          Equal.cong(Word(pp), Word.Con<pp>, ww => WCon{True{}, ww},
+            Word.adc(pp, Word.adc(pp, at, Word.zero(pp), False{}, True{}), Word.zero(pp), True{}, False{}), at,
+            adc_inc_dec(pp, at, True{}))
+
+# taking the carry away then adding it back, from the lowest bit up, is nothing
+law adc_dec_inc:
+  for +qq: Nat
+  for +aw: Word(qq)
+  for cc: Bool
+  {Word.adc(qq, Word.adc(qq, aw, Word.zero(qq), True{}, cc), Word.zero(qq), False{}, Bool.not(cc)) == aw : Word(qq)}
+
+def adc_dec_inc(qq, aw, cc):
+  match qq:
+    case 0n:
+      match aw:
+        case WNil{}:
+          {==}
+    case 1n+(+pp):
+      match aw cc:
+        case WCon{False{}, +at} True{}:
+          Equal.cong(Word(pp), Word.Con<pp>, ww => WCon{False{}, ww},
+            Word.adc(pp, Word.adc(pp, at, Word.zero(pp), True{}, True{}), Word.zero(pp), False{}, False{}), at,
+            adc_dec_inc(pp, at, True{}))
+        case WCon{True{}, +at} True{}:
+          Equal.cong(Word(pp), Word.Con<pp>, ww => WCon{True{}, ww},
+            Word.adc(pp, Word.adc(pp, at, Word.zero(pp), True{}, True{}), Word.zero(pp), False{}, False{}), at,
+            adc_dec_inc(pp, at, True{}))
+        case WCon{False{}, +at} False{}:
+          Equal.cong(Word(pp), Word.Con<pp>, ww => WCon{False{}, ww},
+            Word.adc(pp, Word.adc(pp, at, Word.zero(pp), True{}, False{}), Word.zero(pp), False{}, True{}), at,
+            adc_dec_inc(pp, at, False{}))
+        case WCon{True{}, +at} False{}:
+          Equal.cong(Word(pp), Word.Con<pp>, ww => WCon{True{}, ww},
+            Word.adc(pp, Word.adc(pp, at, Word.zero(pp), True{}, True{}), Word.zero(pp), False{}, False{}), at,
+            adc_dec_inc(pp, at, True{}))
+
+# one more then one less is the same U32
+law u32_dec_inc:
+  for +uu: U32
+  {U32.sub(U32.add(uu, 1), 1) == uu : U32}
+
+def u32_dec_inc(uu):
+  match uu:
+    case U32{WCon{False{}, +at}}:
+      Equal.cong(Word(31n), U32, ww => U32{WCon{False{}, ww}},
+        Word.adc(31n, Word.adc(31n, at, Word.zero(31n), False{}, False{}), Word.zero(31n), True{}, True{}), at,
+        adc_inc_dec(31n, at, False{}))
+    case U32{WCon{True{}, +at}}:
+      Equal.cong(Word(31n), U32, ww => U32{WCon{True{}, ww}},
+        Word.adc(31n, Word.adc(31n, at, Word.zero(31n), False{}, True{}), Word.zero(31n), True{}, False{}), at,
+        adc_inc_dec(31n, at, True{}))
+
+# one less then one more is the same U32
+law u32_inc_dec:
+  for +uu: U32
+  {U32.add(U32.sub(uu, 1), 1) == uu : U32}
+
+def u32_inc_dec(uu):
+  match uu:
+    case U32{WCon{False{}, +at}}:
+      Equal.cong(Word(31n), U32, ww => U32{WCon{False{}, ww}},
+        Word.adc(31n, Word.adc(31n, at, Word.zero(31n), True{}, False{}), Word.zero(31n), False{}, True{}), at,
+        adc_dec_inc(31n, at, False{}))
+    case U32{WCon{True{}, +at}}:
+      Equal.cong(Word(31n), U32, ww => U32{WCon{True{}, ww}},
+        Word.adc(31n, Word.adc(31n, at, Word.zero(31n), True{}, True{}), Word.zero(31n), False{}, False{}), at,
+        adc_dec_inc(31n, at, True{}))
+
+# one more than a U32 below the top is not zero, once the answer is named
+law inc_nonzero.at:
+  for +uu: U32
+  for bb: Bool
+  for eb: {U32.is_zero(U32.add(uu, 1)) == bb : Bool}
+  for h_top: {U32.is_eq(uu, 4294967295) == False{} : Bool}
+  {U32.is_zero(U32.add(uu, 1)) == False{} : Bool}
+
+def inc_nonzero.at(uu, bb, eb, h_top):
+  match bb:
+    case False{}:
+      eb
+    case True{}:
+      e0 = ueq(U32.add(uu, 1), 0, eb)
+      back = Equal.sym(U32, U32.sub(U32.add(uu, 1), 1), uu, u32_dec_inc(uu))
+      down = Equal.cong(U32, U32, xx => U32.sub(xx, 1), U32.add(uu, 1), 0, e0)
+      at_top = Equal.trans(U32, uu, U32.sub(U32.add(uu, 1), 1), 4294967295, back, down)
+      top = Equal.cong(U32, Bool, xx => U32.is_eq(xx, 4294967295), uu, 4294967295, at_top)
+      Empty.absurd({U32.is_zero(U32.add(uu, 1)) == False{} : Bool},
+        true_false(Equal.trans(Bool, True{}, U32.is_eq(uu, 4294967295), False{},
+          Equal.sym(Bool, U32.is_eq(uu, 4294967295), True{}, top), h_top)))
+
+# one more than a U32 below the top is not zero
+law inc_nonzero:
+  for +uu: U32
+  for h_top: {U32.is_eq(uu, 4294967295) == False{} : Bool}
+  {U32.is_zero(U32.add(uu, 1)) == False{} : Bool}
+
+def inc_nonzero(uu, h_top):
+  inc_nonzero.at(uu, U32.is_zero(U32.add(uu, 1)), {==}, h_top)
