@@ -31,7 +31,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | ID | Requirement | Level | Status | Law |
 | :---- | :---- | :---- | :---- | :---- |
 | JSON-TEXT-1 | For texts shorter than 2^32 - 1 characters, all of them code points (at most U+10FFFF): `parse(t)` is `Some` exactly when `t` matches RFC 8259's `JSON-text` rule (§2 to §7) and holds no `\u` escape of an unpaired surrogate (§8.2) | Proved | proved | LAWS.bend text_some; LAWS.bend text_derives |
-| JSON-TEXT-2 | For texts shorter than 2^32 - 1 characters: inserting any run of U+0020, U+0009, U+000A and U+000D before or after any token of a JSON text leaves `parse`'s result the same value; inserting any other character there, except a digit or `-` (which can make or extend a number), makes it `None` (§2) | Proved | pending |  |
+| JSON-TEXT-2 | For texts shorter than 2^32 - 1 characters: inserting any run of U+0020, U+0009, U+000A and U+000D before or after any token of a JSON text leaves `parse`'s result the same value; inserting any other character there, except a digit or `-` (which can make or extend a number), makes it `None` (§2) | Proved | proved | LAWS.bend ws_same; LAWS.bend ins_none |
 | JSON-TEXT-3 | For texts shorter than 2^32 - 1 characters: for every two well-formed values `j` and `k`, `parse(print(j) ++ " " ++ print(k))` is `None`: a text holds exactly one value (§2) | Proved | proved | LAWS.bend two_none |
 | JSON-TEXT-4 | For texts shorter than 2^32 - 1 characters: a bare word parses exactly when it is `null`, `true`, `false` or a number, and the literals are only the lowercase words (§3) | Proved | proved | LAWS.bend bare_word |
 | JSON-TEXT-5 | For texts shorter than 2^32 - 1 characters: for every text `t`, `parse` of U+FEFF followed by `t` is `None` (§8.1) | Proved | proved | LAWS.bend bom_none |
@@ -98,6 +98,6 @@ These assumptions sit outside the proofs. They are the complete list of Trusted 
 | ID | Assumption | Why it is trusted |
 | :---- | :---- | :---- |
 | JSON-TRUST-1 | The Bend checker is sound: a proof it accepts proves its law. | It cannot be checked from inside Bend; this is EZ-TRUST-1. ezjson pins bend 2.0.25 through the flake. |
-| JSON-TRUST-2 | `U32.read` and `F32.read` in Bend's base library read a decimal spelling as documented, rounding to nearest for F32. | Foreign to this project; `as_u32` and `as_f32` forward to them. |
+| JSON-TRUST-2 | `F32.read` in Bend's base library reads a decimal spelling as documented, rounding to nearest. | Foreign to this project; `as_f32` forwards to it. `U32.read` is no longer trusted: JSON-TREE-6's `as_u32_num` is proved through it as written. |
 | JSON-TRUST-3 | The cursor does not keep a parse tree or the text it has passed: memory while walking a large text stays proportional to the open containers and the events the caller holds. | A law sees values, not heap shape. The `scale` flake check walks a 563 KiB and a 615 KiB text with the cursor as an integration check. |
 | JSON-TRUST-4 | The proof-gate runner fails the build unless the first line of `bend PROOF.bend` is `All terms check.` | It is ez's `mkProofs`, run by `nix flake check` in CI; this is EZ-TRUST-4. |
