@@ -271,22 +271,6 @@ def Laws.has_not_obj(val, key, h_kind):
 def Laws.has_empty(_key):
   {==}
 
-# a stop that answers true on a match is Bool.or
-law stop_or:
-  for cond: Bool
-  for rest: Bool
-  {Lazy.stop(Bool, cond, True{}, _u => rest) == Bool.or(cond, rest) : Bool}
-
-def stop_or(cond, _rest):
-  match cond:
-    case True{}:
-      {==}
-    case False{}:
-      {==}
-
-def Laws.has_first(k2, _vv, ps, key):
-  stop_or(V.find.eq(k2, key), V.has.go(V.obj.go(ps), key))
-
 # len.go counts the cells arr.go builds
 law len_arr_go:
   for xs: List<&2, V.Json>
@@ -481,3 +465,255 @@ def Laws.print_non_scalar(ch, h_non):
     == String.from_list([Char.from_u32(65533)]) : String}
   {==}
 
+# a bit compares equal to itself
+law fin_self:
+  for bb: Bool
+  {Word.cmp.fin(bb, bb, EQ{}) == EQ{} : Cmp}
+
+def fin_self(bb):
+  match bb:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# words compare equal to themselves
+law weq_refl:
+  for n: Nat
+  for +ww: Word(n)
+  {Word.cmp(n, ww, ww) == EQ{} : Cmp}
+
+def weq_refl(n, ww):
+  match n:
+    case 0n:
+      {==}
+    case 1n+pp:
+      match ww:
+        case WCon{bb, tt}:
+          ih = Equal.sym(Cmp, Word.cmp(pp, tt, tt), EQ{}, weq_refl(pp, tt))
+          %ih : {Word.cmp.fin(bb, bb, _) == EQ{} : Cmp}
+          fin_self(bb)
+
+# a character compares equal to itself
+law char_eq_refl:
+  for +ch: Char
+  {Char.is_eq(ch, ch) == True{} : Bool}
+
+def char_eq_refl(ch):
+  match ch:
+    case Chr{U32{ww}}:
+      rf = Equal.sym(Cmp, Word.cmp(32n, ww, ww), EQ{}, weq_refl(32n, ww))
+      %rf : {Cmp.is_eq(_) == True{} : Bool}
+      {==}
+
+# words that compare equal, bit by bit past the first: the rest equal, the
+# first bits the same. From bolt's cfg4.weq.arm
+law weq.arm:
+  for -pp: Nat
+  for -at: Word(pp)
+  for -bt: Word(pp)
+  for cc: Cmp
+  for ec: {Word.cmp(pp, at, bt) == cc : Cmp}
+  for ih: {Cmp.is_eq(Word.cmp(pp, at, bt)) == True{} : Bool} -> {at == bt : Word(pp)}
+  for ab: Bool
+  for bb: Bool
+  for ee: {Cmp.is_eq(Word.cmp.fin(ab, bb, cc)) == True{} : Bool}
+  {WCon{ab, at} == WCon{bb, bt} : Word.Con<pp>}
+
+def weq.arm(pp, at, bt, cc, ec, ih, ab, bb, ee):
+  match cc:
+    case LT{}:
+      Empty.absurd({WCon{ab, at} == WCon{bb, bt} : Word.Con<pp>}, false_true(ee))
+    case GT{}:
+      Empty.absurd({WCon{ab, at} == WCon{bb, bt} : Word.Con<pp>}, false_true(ee))
+    case EQ{}:
+      match ab bb:
+        case False{} False{}:
+          Equal.cong(Word(pp), Word.Con<pp>, ww => WCon{False{}, ww}, at, bt,
+            ih(Equal.cong(Cmp, Bool, xx => Cmp.is_eq(xx), Word.cmp(pp, at, bt), EQ{}, ec)))
+        case True{} True{}:
+          Equal.cong(Word(pp), Word.Con<pp>, ww => WCon{True{}, ww}, at, bt,
+            ih(Equal.cong(Cmp, Bool, xx => Cmp.is_eq(xx), Word.cmp(pp, at, bt), EQ{}, ec)))
+        case False{} True{}:
+          Empty.absurd({WCon{False{}, at} == WCon{True{}, bt} : Word.Con<pp>}, false_true(ee))
+        case True{} False{}:
+          Empty.absurd({WCon{True{}, at} == WCon{False{}, bt} : Word.Con<pp>}, false_true(ee))
+
+# words that compare equal are equal. From bolt's cfg4.weq
+law weq:
+  for n: Nat
+  for aw: Word(n)
+  for bw: Word(n)
+  for ee: {Cmp.is_eq(Word.cmp(n, aw, bw)) == True{} : Bool}
+  {aw == bw : Word(n)}
+
+def weq(n, aw, bw, ee):
+  match n:
+    case 0n:
+      match aw bw:
+        case WNil{} WNil{}:
+          {==}
+    case 1n+(+pp):
+      match aw bw:
+        case WCon{ab, +at} WCon{bb, +bt}:
+          weq.arm(pp, at, bt, Word.cmp(pp, at, bt), {==}, xx => weq(pp, at, bt, xx), ab, bb, ee)
+
+# U32s that compare equal are equal. From bolt's cfg4.ueq
+law ueq:
+  for au: U32
+  for bu: U32
+  for ee: {U32.is_eq(au, bu) == True{} : Bool}
+  {au == bu : U32}
+
+def ueq(au, bu, ee):
+  match au bu:
+    case U32{xw} U32{yw}:
+      Equal.cong(Word(32n), U32, ww => U32{ww}, xw, yw, weq(32n, xw, yw, ee))
+
+# find.eq holds of a string and itself
+law find_eq_refl:
+  for +txt: String
+  {V.find.eq.go(txt, txt, True{}) == True{} : Bool}
+
+def find_eq_refl(txt):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{ch, tl}:
+      rf = Equal.sym(Bool, Char.is_eq(ch, ch), True{}, char_eq_refl(ch))
+      %rf : {V.find.eq.go(tl, tl, _) == True{} : Bool}
+      find_eq_refl(tl)
+
+# two strings whose first characters' codes are equal and whose rests are equal
+law find_eq_cons:
+  for +xu: U32
+  for +yu: U32
+  for -xs: String
+  for -ys: String
+  for got: ({U32.is_eq(xu, yu) == True{} : Bool} & {xs == ys : String})
+  {SCon{Chr{xu}, xs} == SCon{Chr{yu}, ys} : String}
+
+def find_eq_cons(xu, yu, xs, ys, got):
+  (eu, es) = got
+  ex = ueq(xu, yu, eu)
+  %ex : {SCon{Chr{xu}, xs} == SCon{Chr{_}, ys} : String}
+  %es : {SCon{Chr{xu}, xs} == SCon{Chr{xu}, _} : String}
+  {==}
+
+# find.eq holds only of equal strings, and only while the characters so far agreed
+law find_eq_sound:
+  for +lhs: String
+  for +rhs: String
+  for same: Bool
+  for ee: {V.find.eq.go(lhs, rhs, same) == True{} : Bool}
+  ({same == True{} : Bool} & {lhs == rhs : String})
+
+def find_eq_sound(lhs, rhs, same, ee):
+  match lhs rhs same:
+    case SNil{} SNil{} True{}:
+      ({==}, {==})
+    case SNil{} SNil{} False{}:
+      Empty.absurd(({False{} == True{} : Bool} & {SNil{} == SNil{} : String}), false_true(ee))
+    case SNil{} SCon{hh, tt} sm:
+      Empty.absurd(({sm == True{} : Bool} & {SNil{} == SCon{hh, tt} : String}), false_true(ee))
+    case SCon{hh, tt} SNil{} sm:
+      Empty.absurd(({sm == True{} : Bool} & {SCon{hh, tt} == SNil{} : String}), false_true(ee))
+    case SCon{Chr{+xu}, +xs} SCon{Chr{+yu}, +ys} True{}:
+      ({==}, find_eq_cons(xu, yu, xs, ys, find_eq_sound(xs, ys, U32.is_eq(xu, yu), ee)))
+    case SCon{xc, xs} SCon{yc, ys} False{}:
+      Empty.absurd(({False{} == True{} : Bool} & {SCon{xc, xs} == SCon{yc, ys} : String}), false_true(ee))
+
+
+# find.eq holding of two different strings is impossible
+law find_eq_clash:
+  for -lhs: String
+  for -rhs: String
+  for got: ({True{} == True{} : Bool} & {lhs == rhs : String})
+  for h_ne: {lhs != rhs : String}
+  Empty
+
+def find_eq_clash(_lhs, _rhs, got, h_ne):
+  (_st, same) = got
+  h_ne(same)
+
+# find.eq is false of two different strings, once its answer is named
+law find_eq_false.at:
+  for +lhs: String
+  for +rhs: String
+  for bb: Bool
+  for eb: {V.find.eq.go(lhs, rhs, True{}) == bb : Bool}
+  for h_ne: {lhs != rhs : String}
+  {V.find.eq.go(lhs, rhs, True{}) == False{} : Bool}
+
+def find_eq_false.at(lhs, rhs, bb, eb, h_ne):
+  match bb:
+    case False{}:
+      eb
+    case True{}:
+      Empty.absurd({V.find.eq.go(lhs, rhs, True{}) == False{} : Bool},
+        find_eq_clash(lhs, rhs, find_eq_sound(lhs, rhs, True{}, eb), h_ne))
+
+# find.eq is false of two different strings
+law find_eq_false:
+  for +lhs: String
+  for +rhs: String
+  for h_ne: {lhs != rhs : String}
+  {V.find.eq.go(lhs, rhs, True{}) == False{} : Bool}
+
+def find_eq_false(lhs, rhs, h_ne):
+  find_eq_false.at(lhs, rhs, V.find.eq.go(lhs, rhs, True{}), {==}, h_ne)
+
+def Laws.get_empty(_key):
+  {==}
+
+# a key that matched: its value, whatever pairs follow
+law get_hit.rest:
+  for ps: List<&1, String & V.Json>
+  for +key: String
+  for vv: V.Json
+  {V.find.at(V.obj.go(ps), key, True{}, vv) == vv : V.Json}
+
+def get_hit.rest(ps, _key, _vv):
+  match ps:
+    case Nil{}:
+      {==}
+    case (_k3, _v3) <> _tl:
+      {==}
+
+def Laws.get_hit(k2, vv, ps, key, h_eq):
+  ek = Equal.sym(String, k2, key, h_eq)
+  %ek : {V.find.at(V.obj.go(ps), key, V.find.eq.go(_, key, True{}), vv) == vv : V.Json}
+  rf = Equal.sym(Bool, V.find.eq.go(key, key, True{}), True{}, find_eq_refl(key))
+  %rf : {V.find.at(V.obj.go(ps), key, _, vv) == vv : V.Json}
+  get_hit.rest(ps, key, vv)
+
+# a key that missed: the rest of the pairs answer, as get on them would
+law get_miss.rest:
+  for ps: List<&1, String & V.Json>
+  for +key: String
+  for vv: V.Json
+  {V.find.at(V.obj.go(ps), key, False{}, vv) == Ezjson.get(Ezjson.obj(ps), key) : V.Json}
+
+def get_miss.rest(ps, _key, _vv):
+  match ps:
+    case Nil{}:
+      {==}
+    case (_k3, _v3) <> _tl:
+      {==}
+
+def Laws.get_miss(k2, vv, ps, key, h_ne):
+  nf = Equal.sym(Bool, V.find.eq.go(k2, key, True{}), False{}, find_eq_false(k2, key, h_ne))
+  %nf : {V.find.at(V.obj.go(ps), key, _, vv) == Ezjson.get(Ezjson.obj(ps), key) : V.Json}
+  get_miss.rest(ps, key, vv)
+
+def Laws.has_hit(k2, _vv, ps, key, h_eq):
+  ek = Equal.sym(String, k2, key, h_eq)
+  %ek : {Lazy.stop(Bool, V.find.eq.go(_, key, True{}), True{}, _u => V.has.go(V.obj.go(ps), key)) == True{} : Bool}
+  rf = Equal.sym(Bool, V.find.eq.go(key, key, True{}), True{}, find_eq_refl(key))
+  %rf : {Lazy.stop(Bool, _, True{}, _u => V.has.go(V.obj.go(ps), key)) == True{} : Bool}
+  {==}
+
+def Laws.has_miss(k2, _vv, ps, key, h_ne):
+  nf = Equal.sym(Bool, V.find.eq.go(k2, key, True{}), False{}, find_eq_false(k2, key, h_ne))
+  %nf : {Lazy.stop(Bool, _, True{}, _u => V.has.go(V.obj.go(ps), key)) == Ezjson.has(Ezjson.obj(ps), key) : Bool}
+  {==}

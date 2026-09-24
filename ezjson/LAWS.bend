@@ -174,6 +174,32 @@ law as_f32_unread:
   for h_read: {F32.read(raw) == None{} : Maybe<&2, F32>}
   {Ezjson.as_f32(V.JNum{raw}) == None{} : Maybe<&2, F32>}
 
+# LAW: an object with no pairs reads null at every key
+# JSON-TREE-4
+law get_empty:
+  for key: String
+  {Ezjson.get(Ezjson.obj([]), key) == Ezjson.null() : V.Json}
+
+# LAW: get reads the first pair's value when its key is the key asked for
+# JSON-TREE-4
+law get_hit:
+  for +k2: String
+  for vv: V.Json
+  for ps: List<&1, String & V.Json>
+  for +key: String
+  for h_eq: {k2 == key : String}
+  {Ezjson.get(Ezjson.obj((k2, vv) <> ps), key) == vv : V.Json}
+
+# LAW: get skips a first pair whose key differs and reads the rest
+# JSON-TREE-4
+law get_miss:
+  for +k2: String
+  for vv: V.Json
+  for ps: List<&1, String & V.Json>
+  for +key: String
+  for h_ne: {k2 != key : String}
+  {Ezjson.get(Ezjson.obj((k2, vv) <> ps), key) == Ezjson.get(Ezjson.obj(ps), key) : V.Json}
+
 # LAW: has is false on a value that is not an object, for every key
 # JSON-TREE-8
 law has_not_obj:
@@ -188,15 +214,25 @@ law has_empty:
   for key: String
   {Ezjson.has(Ezjson.obj([]), key) == False{} : Bool}
 
-# LAW: an object has a key when its first key matches it, or the rest has it
+# LAW: an object has a key when its first key is that key
 # JSON-TREE-8
-law has_first:
-  for k2: String
+law has_hit:
+  for +k2: String
   for vv: V.Json
   for ps: List<&1, String & V.Json>
   for +key: String
-  {Ezjson.has(Ezjson.obj((k2, vv) <> ps), key)
-    == Bool.or(V.find.eq(k2, key), Ezjson.has(Ezjson.obj(ps), key)) : Bool}
+  for h_eq: {k2 == key : String}
+  {Ezjson.has(Ezjson.obj((k2, vv) <> ps), key) == True{} : Bool}
+
+# LAW: an object whose first key differs has the key exactly when the rest has it
+# JSON-TREE-8
+law has_miss:
+  for +k2: String
+  for vv: V.Json
+  for ps: List<&1, String & V.Json>
+  for +key: String
+  for h_ne: {k2 != key : String}
+  {Ezjson.has(Ezjson.obj((k2, vv) <> ps), key) == Ezjson.has(Ezjson.obj(ps), key) : Bool}
 
 # LAW: len of an array is how many elements built it
 # JSON-TREE-9

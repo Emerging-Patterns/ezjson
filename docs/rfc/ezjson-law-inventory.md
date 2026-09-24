@@ -357,9 +357,10 @@ requirement depends on.
 | Lint first | done | bolt pin `5b05a1b` to v1.4.2 (`9a8fd99`); 248 S004 and 2 S003 fixed; `laws` at warn. 922-text harness and interface probe byte-identical before and after |
 | One | done | SPEC.md (31 Proved rows, 4 Trusted); all 99 closed laws and their helpers deleted; `closed`, `unsafe` and `trace` at error, `coverage` at warn; README points at SPEC.md. Also 12 quantified laws: JSON-TREE-1, JSON-TREE-2 and JSON-NUM-3 proved; JSON-TREE-3 and 4 partial (the not-a-container halves) |
 | Behavior changes | in progress | `as_f32` overflow landed, JSON-TREE-7 proved (3 laws); `has` and `len` added, JSON-TREE-9 proved (3 laws), JSON-TREE-8 partial (3 laws); `wf` added and `print` writes U+FFFD for a non-scalar, JSON-PRINT-3 partial (4 laws), JSON-STR-5 partial (1 law). README hash fixed to v0.4.2's `0xd9c8…`, checked offline: all seven files of `089d520` match the per-file sha256 bolt's ledger records for that hash. `0xa3c2…` was written in #2 to #4, before the first tagged release. Done |
-| Two to five | open | see the RFC's Rollout |
+| Two | in progress | JSON-TREE-4 and JSON-TREE-8 proved: `get` and `has` on a built object are characterized by an empty object, a first key equal to the one asked for, and a first key that differs, with keys compared by `==`. That rests on `find.eq` being string equality (`find_eq_refl`, `find_eq_sound`, `find_eq_false`), which uses bolt's word-equality lemmas (`weq`, `ueq`), copied with attribution. Next: JSON-NUM-1, JSON-TREE-3, JSON-TREE-6 |
+| Three to five | open | see the RFC's Rollout |
 
-Laws now: 26, all quantified, 0 closed. `coverage` warnings: 93.
+Laws now: 30, all quantified, 0 closed. `coverage` warnings: 93.
 Every new proof was broken on purpose (an absurd case replaced by `{==}`,
 a rewrite removed, a statement changed) and the gate failed each time.
 

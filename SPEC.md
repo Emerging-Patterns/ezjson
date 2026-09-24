@@ -67,11 +67,11 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | JSON-TREE-1 | `as_bool(bool(b)) == Some{b}`, `as_str(str(s)) == Some{s}`, and `as_num(num(s)) == Some{s}` when `num.ok(s)` | Proved | proved | ezjson/LAWS.bend as_bool_bool; ezjson/LAWS.bend as_str_str; ezjson/LAWS.bend as_num_num |
 | JSON-TREE-2 | Each of `as_bool`, `as_str`, `as_num`, `as_u32`, `as_f32` is `None` on every value of another kind | Proved | proved | ezjson/LAWS.bend as_bool_kind; ezjson/LAWS.bend as_str_kind; ezjson/LAWS.bend as_num_kind; ezjson/LAWS.bend as_u32_kind; ezjson/LAWS.bend as_f32_kind |
 | JSON-TREE-3 | `at(arr(xs), i)` is the `i`-th element of `xs` when `i` is less than its length, and `null()` otherwise; `at(j, i)` is `null()` for every `j` that is not an array | Proved | pending | ezjson/LAWS.bend at_not_arr |
-| JSON-TREE-4 | `get(obj(ps), k)` is the value of the first pair in `ps` whose key is `k`, and `null()` when there is none; `get(j, k)` is `null()` for every `j` that is not an object | Proved | pending | ezjson/LAWS.bend get_not_obj |
+| JSON-TREE-4 | `get(obj(ps), k)` is the value of the first pair in `ps` whose key is `k`, and `null()` when there is none; `get(j, k)` is `null()` for every `j` that is not an object | Proved | proved | ezjson/LAWS.bend get_not_obj; ezjson/LAWS.bend get_empty; ezjson/LAWS.bend get_hit; ezjson/LAWS.bend get_miss |
 | JSON-TREE-5 | For every text `t` with `parse(t) == Some{j}`, every reader (`get`, `at`, `as_*`) gives on `j` the result it gives on the owned value `same` as `j`: a span reads as its characters | Proved | pending |  |
 | JSON-TREE-6 | `as_u32(num(s))` is `Some{n}` exactly when `s` is one or more ASCII digits, with no leading zero unless `s` is `0`, whose value `n` is at most 4294967295 | Proved | pending |  |
 | JSON-TREE-7 | For every number value whose text is `s`: when `F32.read(s)` is `Some{x}` with `F32.abs(x)` at most 3.4028235e38 (the largest finite F32), `as_f32` is `Some{x}`; when that read is infinite or `None`, `as_f32` is `None` | Proved | proved | ezjson/LAWS.bend as_f32_fits; ezjson/LAWS.bend as_f32_overflow; ezjson/LAWS.bend as_f32_unread |
-| JSON-TREE-8 | `has(obj(ps), k)` is true exactly when some pair in `ps` has key `k`, and `has(j, k)` is false for every `j` that is not an object | Proved | pending | ezjson/LAWS.bend has_not_obj; ezjson/LAWS.bend has_empty; ezjson/LAWS.bend has_first |
+| JSON-TREE-8 | `has(obj(ps), k)` is true exactly when some pair in `ps` has key `k`, and `has(j, k)` is false for every `j` that is not an object | Proved | proved | ezjson/LAWS.bend has_not_obj; ezjson/LAWS.bend has_empty; ezjson/LAWS.bend has_hit; ezjson/LAWS.bend has_miss |
 | JSON-TREE-9 | `len(arr(xs))` is the length of `xs`, `len(obj(ps))` the length of `ps`, and `len(j)` is 0 for every scalar | Proved | proved | ezjson/LAWS.bend len_arr; ezjson/LAWS.bend len_obj; ezjson/LAWS.bend len_scalar |
 
 ### The pull cursor (JSON-PULL)
@@ -92,10 +92,8 @@ Every pending row with no Law entry is unproved in full; the RFC's Rollout says 
 | ID | Proved so far | Missing |
 | :---- | :---- | :---- |
 | JSON-TREE-3 | `at` on a value that is not an array is `null()` at every index (`at_not_arr`) | `at(arr(xs), i)` is the `i`-th element, or `null()` past the end |
-| JSON-TREE-4 | `get` on a value that is not an object is `null()` for every key (`get_not_obj`) | `get(obj(ps), k)` is the first pair's value with key `k`, or `null()` |
 | JSON-STR-5 | a code point that is not a scalar value is written as U+FFFD (`print_non_scalar`) | what is written for each scalar value: `"`, `\` and U+0000 to U+001F escaped, everything else as itself |
 | JSON-PRINT-3 | `null`, `bool`, `str` and `num` build well-formed values, and `arr` and `obj` do from well-formed values (`wf_scalars`, `wf_num`, `wf_arr`, `wf_obj`) | every value `parse` returns is well-formed |
-| JSON-TREE-8 | `has` is false on a non-object (`has_not_obj`) and on `obj([])` (`has_empty`); on `obj((k2, v) <> ps)` it is `find.eq(k2, k)` or `has(obj(ps), k)` (`has_first`) | that `find.eq(a, b)` is true exactly when `a == b`, the string lemma JSON-TREE-4 and JSON-STR-4 also need |
 
 ## Trust boundary
 
