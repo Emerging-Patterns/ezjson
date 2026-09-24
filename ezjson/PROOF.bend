@@ -1157,3 +1157,158 @@ def at_go_nth(xs, idx):
 def Laws.at_arr(xs, idx):
   at_go_nth(xs, idx)
 
+# a U32 that is not k compares unequal to it, once the answer is named
+law neq_at:
+  for +cp: U32
+  for +kk: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, kk) == bb : Bool}
+  for contra: {cp == kk : U32} -> Empty
+  {U32.is_eq(cp, kk) == False{} : Bool}
+
+def neq_at(cp, kk, bb, eb, contra):
+  match bb:
+    case False{}:
+      eb
+    case True{}:
+      Empty.absurd({U32.is_eq(cp, kk) == False{} : Bool}, contra(ueq(cp, kk, eb)))
+
+# a code point of U+0020 or more is none of the controls
+law ctl_clash:
+  for +uu: U32
+  for kk: U32
+  for h_kk: {U32.is_lt(kk, 32) == True{} : Bool}
+  for h_ctl: {U32.is_lt(uu, 32) == False{} : Bool}
+  for ee: {uu == kk : U32}
+  Empty
+
+def ctl_clash(uu, kk, h_kk, h_ctl, ee):
+  lt = Equal.cong(U32, Bool, xx => U32.is_lt(xx, 32), uu, kk, ee)
+  true_false(Equal.trans(Bool, True{}, U32.is_lt(uu, 32), False{},
+    Equal.trans(Bool, True{}, U32.is_lt(kk, 32), U32.is_lt(uu, 32), Equal.sym(Bool, U32.is_lt(kk, 32), True{}, h_kk),
+      Equal.sym(Bool, U32.is_lt(uu, 32), U32.is_lt(kk, 32), lt)), h_ctl))
+
+# a character that differs from Chr{kk} has a different code
+law chr_clash:
+  for +uu: U32
+  for kk: U32
+  for h_ne: {Chr{uu} != Chr{kk} : Char}
+  for ee: {uu == kk : U32}
+  Empty
+
+def chr_clash(uu, kk, h_ne, ee):
+  h_ne(Equal.cong(U32, Char, xx => Chr{xx}, uu, kk, ee))
+
+def Laws.esc_quote(ch, h_eq):
+  ec = Equal.sym(Char, ch, '"', h_eq)
+  %ec : {Print.escape.char(_) == "\\\"" : String}
+  {==}
+
+def Laws.esc_backslash(ch, h_eq):
+  ec = Equal.sym(Char, ch, '\\', h_eq)
+  %ec : {Print.escape.char(_) == "\\\\" : String}
+  {==}
+
+def Laws.esc_b(ch, h_eq):
+  ec = Equal.sym(Char, ch, '\u{8}', h_eq)
+  %ec : {Print.escape.char(_) == "\\b" : String}
+  {==}
+
+def Laws.esc_f(ch, h_eq):
+  ec = Equal.sym(Char, ch, '\u{c}', h_eq)
+  %ec : {Print.escape.char(_) == "\\f" : String}
+  {==}
+
+def Laws.esc_n(ch, h_eq):
+  ec = Equal.sym(Char, ch, '\n', h_eq)
+  %ec : {Print.escape.char(_) == "\\n" : String}
+  {==}
+
+def Laws.esc_r(ch, h_eq):
+  ec = Equal.sym(Char, ch, '\r', h_eq)
+  %ec : {Print.escape.char(_) == "\\r" : String}
+  {==}
+
+def Laws.esc_t(ch, h_eq):
+  ec = Equal.sym(Char, ch, '\t', h_eq)
+  %ec : {Print.escape.char(_) == "\\t" : String}
+  {==}
+
+def Laws.esc_plain(ch, h_scalar, h_ctl, h_quote, h_back):
+  match ch:
+    case Chr{+u}:
+      sc = Equal.sym(Bool, Laws.non_scalar(u), False{}, h_scalar)
+      %sc : {Print.escape.scalar(u, Chr{u}, Bool.not(_)) == String.from_list([Chr{u}]) : String}
+      n34 = Equal.sym(Bool, U32.is_eq(u, 34), False{},
+        neq_at(u, 34, U32.is_eq(u, 34), {==}, cc => chr_clash(u, 34, h_quote, cc)))
+      %n34 : {Bool.pick(String, _, "\\\"",
+        Bool.pick(String, U32.is_eq(u, 92), "\\\\",
+          Bool.pick(String, U32.is_eq(u, 8), "\\b",
+            Bool.pick(String, U32.is_eq(u, 12), "\\f",
+              Bool.pick(String, U32.is_eq(u, 10), "\\n",
+                Bool.pick(String, U32.is_eq(u, 13), "\\r",
+                  Bool.pick(String, U32.is_eq(u, 9), "\\t", Print.escape.rest(u, Chr{u}))))))))
+        == String.from_list([Chr{u}]) : String}
+      n92 = Equal.sym(Bool, U32.is_eq(u, 92), False{},
+        neq_at(u, 92, U32.is_eq(u, 92), {==}, cc => chr_clash(u, 92, h_back, cc)))
+      %n92 : {Bool.pick(String, False{}, "\\\"",
+        Bool.pick(String, _, "\\\\",
+          Bool.pick(String, U32.is_eq(u, 8), "\\b",
+            Bool.pick(String, U32.is_eq(u, 12), "\\f",
+              Bool.pick(String, U32.is_eq(u, 10), "\\n",
+                Bool.pick(String, U32.is_eq(u, 13), "\\r",
+                  Bool.pick(String, U32.is_eq(u, 9), "\\t", Print.escape.rest(u, Chr{u}))))))))
+        == String.from_list([Chr{u}]) : String}
+      n8 = Equal.sym(Bool, U32.is_eq(u, 8), False{},
+        neq_at(u, 8, U32.is_eq(u, 8), {==}, cc => ctl_clash(u, 8, {==}, h_ctl, cc)))
+      %n8 : {Bool.pick(String, False{}, "\\\"",
+        Bool.pick(String, False{}, "\\\\",
+          Bool.pick(String, _, "\\b",
+            Bool.pick(String, U32.is_eq(u, 12), "\\f",
+              Bool.pick(String, U32.is_eq(u, 10), "\\n",
+                Bool.pick(String, U32.is_eq(u, 13), "\\r",
+                  Bool.pick(String, U32.is_eq(u, 9), "\\t", Print.escape.rest(u, Chr{u}))))))))
+        == String.from_list([Chr{u}]) : String}
+      n12 = Equal.sym(Bool, U32.is_eq(u, 12), False{},
+        neq_at(u, 12, U32.is_eq(u, 12), {==}, cc => ctl_clash(u, 12, {==}, h_ctl, cc)))
+      %n12 : {Bool.pick(String, False{}, "\\\"",
+        Bool.pick(String, False{}, "\\\\",
+          Bool.pick(String, False{}, "\\b",
+            Bool.pick(String, _, "\\f",
+              Bool.pick(String, U32.is_eq(u, 10), "\\n",
+                Bool.pick(String, U32.is_eq(u, 13), "\\r",
+                  Bool.pick(String, U32.is_eq(u, 9), "\\t", Print.escape.rest(u, Chr{u}))))))))
+        == String.from_list([Chr{u}]) : String}
+      n10 = Equal.sym(Bool, U32.is_eq(u, 10), False{},
+        neq_at(u, 10, U32.is_eq(u, 10), {==}, cc => ctl_clash(u, 10, {==}, h_ctl, cc)))
+      %n10 : {Bool.pick(String, False{}, "\\\"",
+        Bool.pick(String, False{}, "\\\\",
+          Bool.pick(String, False{}, "\\b",
+            Bool.pick(String, False{}, "\\f",
+              Bool.pick(String, _, "\\n",
+                Bool.pick(String, U32.is_eq(u, 13), "\\r",
+                  Bool.pick(String, U32.is_eq(u, 9), "\\t", Print.escape.rest(u, Chr{u}))))))))
+        == String.from_list([Chr{u}]) : String}
+      n13 = Equal.sym(Bool, U32.is_eq(u, 13), False{},
+        neq_at(u, 13, U32.is_eq(u, 13), {==}, cc => ctl_clash(u, 13, {==}, h_ctl, cc)))
+      %n13 : {Bool.pick(String, False{}, "\\\"",
+        Bool.pick(String, False{}, "\\\\",
+          Bool.pick(String, False{}, "\\b",
+            Bool.pick(String, False{}, "\\f",
+              Bool.pick(String, False{}, "\\n",
+                Bool.pick(String, _, "\\r",
+                  Bool.pick(String, U32.is_eq(u, 9), "\\t", Print.escape.rest(u, Chr{u}))))))))
+        == String.from_list([Chr{u}]) : String}
+      n9 = Equal.sym(Bool, U32.is_eq(u, 9), False{},
+        neq_at(u, 9, U32.is_eq(u, 9), {==}, cc => ctl_clash(u, 9, {==}, h_ctl, cc)))
+      %n9 : {Bool.pick(String, False{}, "\\\"",
+        Bool.pick(String, False{}, "\\\\",
+          Bool.pick(String, False{}, "\\b",
+            Bool.pick(String, False{}, "\\f",
+              Bool.pick(String, False{}, "\\n",
+                Bool.pick(String, False{}, "\\r",
+                  Bool.pick(String, _, "\\t", Print.escape.rest(u, Chr{u}))))))))
+        == String.from_list([Chr{u}]) : String}
+      ct = Equal.sym(Bool, U32.is_lt(u, 32), False{}, h_ctl)
+      %ct : {Print.escape.rest.go(u, Chr{u}, _) == String.from_list([Chr{u}]) : String}
+      {==}
