@@ -165,8 +165,8 @@ def step.span.use(+raw: String) -> (V.Json & Bool):
 def step.span.chk(src: String, +nn: U32) -> (V.Json & Bool):
   step.span.use(V.span.str(src, nn, U32.is_zero(nn)))
 
-def step.span.go(src: String, nn: U32, lhs: Bool, flag: Bool, ch: Bool) -> (V.Json & Bool):
-  match lhs flag ch:
+def step.span.go(src: String, nn: U32, is_null: Bool, is_true: Bool, is_false: Bool) -> (V.Json & Bool):
+  match is_null is_true is_false:
     case True{} x y:
       (V.JNull{}, True{})
     case False{} True{} y:

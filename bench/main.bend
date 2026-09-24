@@ -105,32 +105,32 @@ def cmd.json.rt(src: String, dst: String) -> IO(Unit):
     cmd.json.rt.go(dst, Ezjson.parse(s))
 
 # fold a Json tree into a checksum so timed work is not DCE'd
-def json.sum(val: V.Json, +lhs: U32) -> U32:
+def json.sum(val: V.Json, +acc: U32) -> U32:
   match val:
     case V.JNull{}:
-      (lhs + 1 : U32)
+      (acc + 1 : U32)
     case V.JBool{True{}}:
-      (lhs + 2 : U32)
+      (acc + 2 : U32)
     case V.JBool{False{}}:
-      (lhs + 3 : U32)
+      (acc + 3 : U32)
     case V.JNum{raw}:
-      (lhs + U32.from_nat(String.length(raw)) + 4 : U32)
+      (acc + U32.from_nat(String.length(raw)) + 4 : U32)
     case V.JStr{s}:
-      (lhs + U32.from_nat(String.length(s)) + 5 : U32)
+      (acc + U32.from_nat(String.length(s)) + 5 : U32)
     case V.JSpan{_src, +n}:
-      (lhs + n + 5 : U32)
+      (acc + n + 5 : U32)
     case V.JArr{items}:
-      json.sum(items, (lhs + 6 : U32))
+      json.sum(items, (acc + 6 : U32))
     case V.JObj{pairs}:
-      json.sum(pairs, (lhs + 7 : U32))
+      json.sum(pairs, (acc + 7 : U32))
     case V.JNil{}:
-      lhs
+      acc
     case V.JCons{h, t}:
-      json.sum(t, json.sum(h, lhs))
+      json.sum(t, json.sum(h, acc))
     case V.JPair{k, v, r}:
-      json.sum(r, json.sum(v, (lhs + U32.from_nat(String.length(k)) : U32)))
+      json.sum(r, json.sum(v, (acc + U32.from_nat(String.length(k)) : U32)))
     case V.JBind{_src, +n, v, r}:
-      json.sum(r, json.sum(v, (lhs + n : U32)))
+      json.sum(r, json.sum(v, (acc + n : U32)))
 
 # fold a successful parse into the checksum
 def step.dec(+sum: U32, mb: Maybe<&2, V.Json>) -> U32:
@@ -604,112 +604,112 @@ def bench.pull.text(path: String, +nn: U32) -> IO(Unit):
     bench.pull.text.go(s, k, nn)
 
 # fallthrough for unknown commands
-def run.f.at(zero: Bool, +cmd: String, _a: String, _b: String, _c: String) -> IO(Unit):
-  match zero:
+def run.f.at(hit: Bool, +cmd: String, _a: String, _b: String, _c: String) -> IO(Unit):
+  match hit:
     case True{}:
       IO.print("pong")
     case False{}:
       die.msg("unknown command " ++ cmd)
 
 # dispatch the ping command
-def run.f(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
-  run.f.at(String.eq(cmd, "ping"), cmd, lhs, flag, ch)
+def run.f(+cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  run.f.at(String.eq(cmd, "ping"), cmd, arg1, arg2, arg3)
 
 # dispatch bench-pull-text
-def run.i.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +chr: String) -> IO(Unit):
-  match zero:
+def run.i.at(hit: Bool, +cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  match hit:
     case True{}:
-      bench.pull.text(lhs, u32.arg(flag))
+      bench.pull.text(arg1, u32.arg(arg2))
     case False{}:
-      run.f(cmd, lhs, flag, chr)
+      run.f(cmd, arg1, arg2, arg3)
 
 # try bench-pull-text then fall through
-def run.i(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
-  run.i.at(String.eq(cmd, "bench-pull-text"), cmd, lhs, flag, ch)
+def run.i(+cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  run.i.at(String.eq(cmd, "bench-pull-text"), cmd, arg1, arg2, arg3)
 
 # dispatch bench-pull-skip
-def run.h.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +chr: String) -> IO(Unit):
-  match zero:
+def run.h.at(hit: Bool, +cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  match hit:
     case True{}:
-      bench.pull.skip(lhs, u32.arg(flag))
+      bench.pull.skip(arg1, u32.arg(arg2))
     case False{}:
-      run.i(cmd, lhs, flag, chr)
+      run.i(cmd, arg1, arg2, arg3)
 
 # try bench-pull-skip then fall through
-def run.h(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
-  run.h.at(String.eq(cmd, "bench-pull-skip"), cmd, lhs, flag, ch)
+def run.h(+cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  run.h.at(String.eq(cmd, "bench-pull-skip"), cmd, arg1, arg2, arg3)
 
 # dispatch bench-pull-walk
-def run.g.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +chr: String) -> IO(Unit):
-  match zero:
+def run.g.at(hit: Bool, +cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  match hit:
     case True{}:
-      bench.pull.walk(lhs, u32.arg(flag))
+      bench.pull.walk(arg1, u32.arg(arg2))
     case False{}:
-      run.h(cmd, lhs, flag, chr)
+      run.h(cmd, arg1, arg2, arg3)
 
 # try bench-pull-walk then fall through
-def run.g(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
-  run.g.at(String.eq(cmd, "bench-pull-walk"), cmd, lhs, flag, ch)
+def run.g(+cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  run.g.at(String.eq(cmd, "bench-pull-walk"), cmd, arg1, arg2, arg3)
 
 # dispatch bench-json-enc
-def run.e.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +chr: String) -> IO(Unit):
-  match zero:
+def run.e.at(hit: Bool, +cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  match hit:
     case True{}:
-      bench.json.enc(lhs, u32.arg(flag))
+      bench.json.enc(arg1, u32.arg(arg2))
     case False{}:
-      run.g(cmd, lhs, flag, chr)
+      run.g(cmd, arg1, arg2, arg3)
 
 # try bench-json-enc then fall through
-def run.e(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
-  run.e.at(String.eq(cmd, "bench-json-enc"), cmd, lhs, flag, ch)
+def run.e(+cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  run.e.at(String.eq(cmd, "bench-json-enc"), cmd, arg1, arg2, arg3)
 
 # dispatch bench-json-dec
-def run.d.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +chr: String) -> IO(Unit):
-  match zero:
+def run.d.at(hit: Bool, +cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  match hit:
     case True{}:
-      bench.json.dec(lhs, u32.arg(flag))
+      bench.json.dec(arg1, u32.arg(arg2))
     case False{}:
-      run.e(cmd, lhs, flag, chr)
+      run.e(cmd, arg1, arg2, arg3)
 
 # try bench-json-dec then fall through
-def run.d(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
-  run.d.at(String.eq(cmd, "bench-json-dec"), cmd, lhs, flag, ch)
+def run.d(+cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  run.d.at(String.eq(cmd, "bench-json-dec"), cmd, arg1, arg2, arg3)
 
 # dispatch json-rt
-def run.c.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
-  match zero:
+def run.c.at(hit: Bool, +cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  match hit:
     case True{}:
-      cmd.json.rt(lhs, flag)
+      cmd.json.rt(arg1, arg2)
     case False{}:
-      run.d(cmd, lhs, flag, ch)
+      run.d(cmd, arg1, arg2, arg3)
 
 # try json-rt then fall through
-def run.c(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
-  run.c.at(String.eq(cmd, "json-rt"), cmd, lhs, flag, ch)
+def run.c(+cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  run.c.at(String.eq(cmd, "json-rt"), cmd, arg1, arg2, arg3)
 
 # dispatch json-enc
-def run.b.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
-  match zero:
+def run.b.at(hit: Bool, +cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  match hit:
     case True{}:
-      cmd.json.enc(lhs, flag)
+      cmd.json.enc(arg1, arg2)
     case False{}:
-      run.c(cmd, lhs, flag, ch)
+      run.c(cmd, arg1, arg2, arg3)
 
 # try json-enc then fall through
-def run.b(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
-  run.b.at(String.eq(cmd, "json-enc"), cmd, lhs, flag, ch)
+def run.b(+cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  run.b.at(String.eq(cmd, "json-enc"), cmd, arg1, arg2, arg3)
 
 # dispatch json-dec
-def run.named.at(zero: Bool, +cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
-  match zero:
+def run.named.at(hit: Bool, +cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  match hit:
     case True{}:
-      cmd.json.dec(lhs, flag)
+      cmd.json.dec(arg1, arg2)
     case False{}:
-      run.b(cmd, lhs, flag, ch)
+      run.b(cmd, arg1, arg2, arg3)
 
 # try json-dec then fall through
-def run.named(+cmd: String, +lhs: String, +flag: String, +ch: String) -> IO(Unit):
-  run.named.at(String.eq(cmd, "json-dec"), cmd, lhs, flag, ch)
+def run.named(+cmd: String, +arg1: String, +arg2: String, +arg3: String) -> IO(Unit):
+  run.named.at(String.eq(cmd, "json-dec"), cmd, arg1, arg2, arg3)
 
 # the first four argv strings, empty when missing
 def args.of4(xs: List<String>) -> String & String & String & String:

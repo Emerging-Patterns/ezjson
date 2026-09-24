@@ -1019,9 +1019,9 @@ def uni.end.go(
   stack: List<&2, Frame>,
   goal: Goal,
   done: Bool,
-  key: Lex.Sur
+  sur: Lex.Sur
 ) -> St:
-  match key:
+  match sur:
     case Lex.SOk{}:
       S{MCopy{Char.from_u32(cp) <> buf}, stack, goal, done, False{}}
     case Lex.SHi{}:
@@ -1168,9 +1168,9 @@ def lo.end.go(
   stack: List<&2, Frame>,
   goal: Goal,
   done: Bool,
-  key: Lex.Sur
+  sur: Lex.Sur
 ) -> St:
-  match key:
+  match sur:
     case Lex.SLo{}:
       S{MCopy{Char.from_u32(Lex.unicode.pair(hi, lo)) <> buf}, stack, goal, done, False{}}
     case other:
@@ -1294,10 +1294,10 @@ def sk.uni.end.go(
   stack: List<&2, Frame>,
   goal: Goal,
   done: Bool,
-  key: Lex.Sur,
+  sur: Lex.Sur,
   cp: U32
 ) -> St:
-  match key:
+  match sur:
     case Lex.SOk{}:
       S{MSkStr{}, stack, goal, done, False{}}
     case Lex.SHi{}:
@@ -1382,8 +1382,8 @@ def sk.hiesc(stack: List<&2, Frame>, goal: Goal, done: Bool, hi: U32, is_u: Bool
       err.st(goal)
 
 # the low half of a skipped pair is in, or it is not one
-def sk.lo.end(_tl: String, stack: List<&2, Frame>, goal: Goal, done: Bool, key: Lex.Sur) -> St:
-  match key:
+def sk.lo.end(_tl: String, stack: List<&2, Frame>, goal: Goal, done: Bool, sur: Lex.Sur) -> St:
+  match sur:
     case Lex.SLo{}:
       S{MSkStr{}, stack, goal, done, False{}}
     case other:

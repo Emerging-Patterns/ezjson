@@ -296,8 +296,8 @@ def find.eq.go(left: String, right: String, same: Bool) -> Bool:
     case l r s:
       False{}
 
-def find.eq(lhs: String, flag: String) -> Bool:
-  find.eq.go(lhs, flag, True{})
+def find.eq(lhs: String, rhs: String) -> Bool:
+  find.eq.go(lhs, rhs, True{})
 
 # the matched value, or the next pair when the key differs
 def find.at(rest: Json, +key: String, eq: Bool, vv: Json) -> Json:
