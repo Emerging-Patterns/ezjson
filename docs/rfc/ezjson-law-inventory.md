@@ -339,7 +339,8 @@ requirement depends on.
 - The README's import line names `0xa3c2445eb44c5d8406e6229be518fccb`.
   bolt's ledger records v0.4.2 at this same commit as
   `0xd9c8d4d2899ddda845dfa7525a3568ea` (reading; the hub was not reachable
-  to confirm which one the hub serves).
+  to confirm which one the hub serves). Resolved: the seven files at
+  `089d520` match the file hashes bolt's ledger records for `0xd9c8…`.
 - bolt's spec (v1.4.2, `docs/rfc/bolt-spec.md` and BOLT-TRUST-8) says "a
   surrogate-pair `\u` escape comes back as invalid UTF-8 (that bug is in
   ezjson)". It does not reproduce in ezjson v0.4.2: `parse` then `print` of
@@ -355,7 +356,7 @@ requirement depends on.
 | Decisions | done | every REVIEW item resolved as recommended |
 | Lint first | done | bolt pin `5b05a1b` to v1.4.2 (`9a8fd99`); 248 S004 and 2 S003 fixed; `laws` at warn. 922-text harness and interface probe byte-identical before and after |
 | One | done | SPEC.md (31 Proved rows, 4 Trusted); all 99 closed laws and their helpers deleted; `closed`, `unsafe` and `trace` at error, `coverage` at warn; README points at SPEC.md. Also 12 quantified laws: JSON-TREE-1, JSON-TREE-2 and JSON-NUM-3 proved; JSON-TREE-3 and 4 partial (the not-a-container halves) |
-| Behavior changes | in progress | `as_f32` overflow landed, JSON-TREE-7 proved (3 laws); `has` and `len` added, JSON-TREE-9 proved (3 laws), JSON-TREE-8 partial (3 laws); `wf` added and `print` writes U+FFFD for a non-scalar, JSON-PRINT-3 partial (4 laws), JSON-STR-5 partial (1 law). Left: README hash, which needs the hub |
+| Behavior changes | in progress | `as_f32` overflow landed, JSON-TREE-7 proved (3 laws); `has` and `len` added, JSON-TREE-9 proved (3 laws), JSON-TREE-8 partial (3 laws); `wf` added and `print` writes U+FFFD for a non-scalar, JSON-PRINT-3 partial (4 laws), JSON-STR-5 partial (1 law). README hash fixed to v0.4.2's `0xd9c8…`, checked offline: all seven files of `089d520` match the per-file sha256 bolt's ledger records for that hash. `0xa3c2…` was written in #2 to #4, before the first tagged release. Done |
 | Two to five | open | see the RFC's Rollout |
 
 Laws now: 26, all quantified, 0 closed. `coverage` warnings: 93.

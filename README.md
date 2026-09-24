@@ -20,7 +20,7 @@ keeps the spelling it was parsed with. `num` builds one from that text, and
 builds null when the text is not a JSON number.
 
 ```
-import 0xa3c2445eb44c5d8406e6229be518fccb/main.bend as Ezjson
+import 0xd9c8d4d2899ddda845dfa7525a3568ea/main.bend as Ezjson
 
 def compact(s: String) -> String:
   match Ezjson.parse(s):
@@ -61,8 +61,8 @@ Walk a large object or array one event at a time. `skip` drops a subtree
 you do not need. `text` copies an owned string when you need one.
 
 ```
-import 0xa3c2445eb44c5d8406e6229be518fccb/main.bend as Ezjson
-import 0xa3c2445eb44c5d8406e6229be518fccb/pull.bend as Pull
+import 0xd9c8d4d2899ddda845dfa7525a3568ea/main.bend as Ezjson
+import 0xd9c8d4d2899ddda845dfa7525a3568ea/pull.bend as Pull
 
 def owned(cur: Pull.Cur) -> (String & Pull.Cur):
   (ev, rest) = Ezjson.next(cur)

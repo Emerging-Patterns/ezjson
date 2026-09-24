@@ -301,7 +301,7 @@ master's results against the branch's in the description.
 | `print` writes U+FFFD for a code point that is not a scalar value (landed) | JSON-STR-1, JSON-STR-5, JSON-PRINT-1 | REVIEW-3 |
 | add `wf` (landed) | JSON-PRINT-1, JSON-PRINT-3 | REVIEW-3 |
 | add `has` and `len` (landed) | JSON-TREE-8, JSON-TREE-9 | REVIEW-5 |
-| README import hash | none (docs) | REVIEW-13 |
+| README import hash (landed: v0.4.2's hash; the next release's hash replaces it at publish) | none (docs) | REVIEW-13 |
 
 ### How we will know it worked
 
