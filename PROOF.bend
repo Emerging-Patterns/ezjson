@@ -1,12 +1,12 @@
-# ezjson: the proofs. `bend ezjson/PROOF.bend` is the gate.
+# ezjson: the proofs. `bend PROOF.bend` is the gate.
 import Base
-import ./value.bend as V
+import ./src/value.bend as V
 import ./main.bend as Ezjson
-import ./lazy.bend as Lazy
-import ./lex.bend as Lex
-import ./parse.bend as Parse
-import ./print.bend as Print
-import ./pull.bend as Pull
+import ./src/lazy.bend as Lazy
+import ./src/lex.bend as Lex
+import ./src/parse.bend as Parse
+import ./src/print.bend as Print
+import ./src/pull.bend as Pull
 import ./LAWS.bend as Laws
 
 # Unit for True, Empty for False: tells them apart

@@ -1,4 +1,4 @@
-# ezjson/print: a value as compact JSON text.
+# src/print: a value as compact JSON text.
 import Base
 import ./value.bend as V
 

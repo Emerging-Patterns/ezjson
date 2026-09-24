@@ -2,7 +2,7 @@
 
 Read at `089d520` (v0.4.2, main). Bend 2.0.25 from the release archive the
 flake pins (sha256 `91c0e264…f9ccd4`, checked). The proof gate was run as
-`bend ezjson/PROOF.bend`. The linter was run two ways: the bolt the flake
+`bend PROOF.bend`. The linter was run two ways: the bolt the flake
 pins (`5b05a1b`, between v0.4.0 and v0.5.0) and bolt v1.4.2 (`bolt --gpu off`
 over the whole tree, with `BEND_LIB` laid out by hand from bolt's
 `ez.lock.toml`, because this environment cannot reach the hub). No nix was
@@ -32,7 +32,7 @@ Reasons for `none`: `helper pin` (one private helper on one input),
 
 | Check | Result |
 | :---- | :---- |
-| `bend ezjson/PROOF.bend` | first line `All terms check.`, exit 0, 5.5 s |
+| `bend PROOF.bend` | first line `All terms check.`, exit 0, 5.5 s |
 | pinned bolt (`5b05a1b`), whole tree | `clean`, exit 0 |
 | bolt v1.4.2, whole tree | 454 errors: 105 L001 (`coverage`), 99 L002 (`closed`), 248 S004, 2 S003 |
 | `scale/main.bend` built from a fresh `git archive` | `rows=32000 skip-rows=k:n#1 nest=105001 skip-nest=k:n#1`, matching the four greps in `scale/default.nix` |
@@ -46,7 +46,7 @@ quantified law. Of the 248 S004 findings, 99 are in `bench/main.bend`.
 
 | File | Laws | Quantified | Closed | Quantified by `{==}` | Points toward nothing |
 | :---- | --: | --: | --: | --: | --: |
-| `ezjson/LAWS.bend` | 99 | 0 | 99 | 0 | 42 |
+| `LAWS.bend` | 99 | 0 | 99 | 0 | 42 |
 
 Of the 42 pointing toward nothing, 25 pin one private helper on one input
 and 17 check that a `main.bend` wrapper forwards, on one input.

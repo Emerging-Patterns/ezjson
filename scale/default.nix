@@ -15,7 +15,8 @@ let
     dontUnpack = true;
     nativeBuildInputs = [ bend llvm.clang ];
     buildPhase = ''
-      cp -r ${self}/ezjson ./ezjson
+      cp ${self}/main.bend ./main.bend
+      cp -r ${self}/src ./src
       mkdir -p scale
       cp ${self}/scale/main.bend scale/main.bend
       cd scale

@@ -1,4 +1,4 @@
-# ezjson/lazy: `stop` returns `val` when `cond` holds, and otherwise calls rest.
+# src/lazy: `stop` returns `val` when `cond` holds, and otherwise calls rest.
 import Base
 
 # `val` when `cond`, else what rest gives: the early exit of a search

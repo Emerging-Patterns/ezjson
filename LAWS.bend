@@ -1,11 +1,11 @@
 # ezjson: the laws. Each law carries the SPEC.md row it proves, or proves part
-# of, on its own comment line. PROOF.bend fills them; `bend ezjson/PROOF.bend`
+# of, on its own comment line. PROOF.bend fills them; `bend PROOF.bend`
 # is the gate.
 import Base
-import ./value.bend as V
+import ./src/value.bend as V
 import ./main.bend as Ezjson
-import ./print.bend as Print
-import ./pull.bend as Pull
+import ./src/print.bend as Print
+import ./src/pull.bend as Pull
 
 # a boolean
 def is_bool(val: V.Json) -> Bool:

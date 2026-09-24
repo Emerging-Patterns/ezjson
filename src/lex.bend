@@ -1,4 +1,4 @@
-# ezjson/lex: a JSON text as tokens. A string is decoded: \", \\, \/, \b, \f,
+# src/lex: a JSON text as tokens. A string is decoded: \", \\, \/, \b, \f,
 # \n, \r, \t, and \uXXXX. A \u escape of a surrogate pair is one code point.
 import Base
 
