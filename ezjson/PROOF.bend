@@ -2652,3 +2652,268 @@ law pass.feed:
 
 def pass.feed(ch, md, bf, tt):
   pass.step(md, Lex.classify(ch), ch, bf, tt)
+
+# a token with a span replaced by the characters it covers
+def den(tok: Lex.Tok) -> Lex.Tok:
+  match tok:
+    case Lex.TStrS{cut, +nn}:
+      Lex.TStr{V.span.str(cut, nn, U32.is_zero(nn))}
+    case Lex.TWordS{cut, +nn}:
+      Lex.TWord{V.span.str(cut, nn, U32.is_zero(nn))}
+    case other:
+      other
+
+# tokens with their spans replaced
+def dens(toks: List<&2, Lex.Tok>) -> List<&2, Lex.Tok>:
+  match toks:
+    case Nil{}:
+      Nil{}
+    case hd <> tl:
+      den(hd) <> dens(tl)
+
+# a lexer state with its tokens' spans replaced
+def dlex(lx: Lex.Lex) -> Lex.Lex:
+  match lx:
+    case Lex.Lex{md, bf, tk}:
+      Lex.Lex{md, bf, dens(tk)}
+
+# replacing spans goes through an append
+law dens_app:
+  for +aa: List<&2, Lex.Tok>
+  for bb: List<&2, Lex.Tok>
+  {dens(List.append(&2, Lex.Tok, aa, bb)) == List.append(&2, Lex.Tok, dens(aa), dens(bb)) : List<&2, Lex.Tok>}
+
+def dens_app(aa, bb):
+  match aa:
+    case Nil{}:
+      {==}
+    case hd <> tl:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, xx => den(hd) <> xx,
+        dens(List.append(&2, Lex.Tok, tl, bb)), List.append(&2, Lex.Tok, dens(tl), dens(bb)), dens_app(tl, bb))
+
+# replacing spans goes through a reversal
+law dens_rev:
+  for +aa: List<&2, Lex.Tok>
+  for acc: List<&2, Lex.Tok>
+  {dens(List.reverse.go(&2, Lex.Tok, aa, acc)) == List.reverse.go(&2, Lex.Tok, dens(aa), dens(acc)) : List<&2, Lex.Tok>}
+
+def dens_rev(aa, acc):
+  match aa:
+    case Nil{}:
+      {==}
+    case hd <> tl:
+      dens_rev(tl, hd <> acc)
+
+# replacing spans goes through lex.app
+law dlex_app:
+  for lx: Lex.Lex
+  for tt: List<&2, Lex.Tok>
+  {dlex(lex.app(lx, tt)) == lex.app(dlex(lx), dens(tt)) : Lex.Lex}
+
+def dlex_app(lx, tt):
+  match lx:
+    case Lex.Lex{md, bf, tk}:
+      Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{md, bf, xx},
+        dens(List.append(&2, Lex.Tok, tk, tt)), List.append(&2, Lex.Tok, dens(tk), dens(tt)), dens_app(tk, tt))
+
+# the tokens a finished lexer gives, with spans replaced, depend only on its
+# state with spans replaced
+law dens_finish:
+  for lx: Lex.Lex
+  {dens(Lex.finish(lx)) == Lex.finish(dlex(lx)) : List<&2, Lex.Tok>}
+
+def dens_finish(lx):
+  match lx:
+    case Lex.Lex{Lex.Idle{}, bf, tk}:
+      dens_rev(tk, [])
+    case Lex.Lex{Lex.Word{}, bf, tk}:
+      dens_rev(Lex.TWord{Lex.text(bf)} <> tk, [])
+    case Lex.Lex{Lex.Str{}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+    case Lex.Lex{Lex.Esc{}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+    case Lex.Lex{Lex.Uni{_, _}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+    case Lex.Lex{Lex.Hi{_}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+    case Lex.Lex{Lex.HiEsc{_}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+    case Lex.Lex{Lex.Lo{_, _, _}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+    case Lex.Lex{Lex.Bad{}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+
+# feed as a function of a lexer state with its spans replaced
+def feedg(+ch: Char, lx: Lex.Lex) -> Lex.Lex:
+  match lx:
+    case Lex.Lex{md, bf, dd}:
+      lex.app(dlex(Lex.feed(ch, Lex.Lex{md, bf, []})), dd)
+
+# feeding, then replacing spans, is feedg of the replaced state
+law dlex_feed_g:
+  for +ch: Char
+  for +lx: Lex.Lex
+  {dlex(Lex.feed(ch, lx)) == feedg(ch, dlex(lx)) : Lex.Lex}
+
+def dlex_feed_g(ch, lx):
+  match lx:
+    case Lex.Lex{md, bf, tk}:
+      Equal.trans(Lex.Lex, dlex(Lex.feed(ch, Lex.Lex{md, bf, tk})), dlex(lex.app(Lex.feed(ch, Lex.Lex{md, bf, []}),
+        tk)),
+        lex.app(dlex(Lex.feed(ch, Lex.Lex{md, bf, []})), dens(tk)),
+        Equal.cong(Lex.Lex, Lex.Lex, xx => dlex(xx), Lex.feed(ch, Lex.Lex{md, bf, tk}),
+          lex.app(Lex.feed(ch, Lex.Lex{md, bf, []}), tk), pass.feed(ch, md, bf, tk)),
+        dlex_app(Lex.feed(ch, Lex.Lex{md, bf, []}), tk))
+
+# two lexer states the same up to spans stay so after one character
+law dlex_feed:
+  for +ch: Char
+  for +l1: Lex.Lex
+  for +l2: Lex.Lex
+  for ee: {dlex(l1) == dlex(l2) : Lex.Lex}
+  {dlex(Lex.feed(ch, l1)) == dlex(Lex.feed(ch, l2)) : Lex.Lex}
+
+def dlex_feed(ch, l1, l2, ee):
+  Equal.trans(Lex.Lex, dlex(Lex.feed(ch, l1)), feedg(ch, dlex(l2)), dlex(Lex.feed(ch, l2)),
+    Equal.trans(Lex.Lex, dlex(Lex.feed(ch, l1)), feedg(ch, dlex(l1)), feedg(ch, dlex(l2)),
+      dlex_feed_g(ch, l1), Equal.cong(Lex.Lex, Lex.Lex, xx => feedg(ch, xx), dlex(l1), dlex(l2), ee)),
+    Equal.sym(Lex.Lex, dlex(Lex.feed(ch, l2)), feedg(ch, dlex(l2)), dlex_feed_g(ch, l2)))
+
+# appending nothing
+law append_nil:
+  for +txt: String
+  {txt ++ "" == txt : String}
+
+def append_nil(txt):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{hd, tl}:
+      Equal.cong(String, String, xx => SCon{hd, xx}, tl ++ "", tl, append_nil(tl))
+
+# a reversed prefix of no characters is the accumulator
+law rev_zero:
+  for +src: String
+  for +nn: U32
+  for acc: List<&2, Char>
+  {Lex.tokens.rev(src, nn, True{}, acc) == acc : List<&2, Char>}
+
+def rev_zero(src, _nn, _acc):
+  match src:
+    case SNil{}:
+      {==}
+    case SCon{_, _}:
+      {==}
+
+# a span of no characters is empty, whatever the count
+law span_true:
+  for +src: String
+  for +nn: U32
+  {V.span.str(src, nn, True{}) == "" : String}
+
+def span_true(src, _nn):
+  match src:
+    case SNil{}:
+      {==}
+    case SCon{_, _}:
+      {==}
+
+# reading a reversed prefix back gives the span's characters, in order
+law text_rev:
+  for +src: String
+  for +nn: U32
+  for zz: Bool
+  for acc: List<&2, Char>
+  for aa: String
+  {Lex.text.go(Lex.tokens.rev(src, nn, zz, acc), aa) == Lex.text.go(acc, V.span.str(src, nn, zz) ++ aa) : String}
+
+def text_rev(src, nn, zz, acc, aa):
+  match src zz:
+    case ss True{}:
+      rz = Equal.sym(List<&2, Char>, Lex.tokens.rev(ss, nn, True{}, acc), acc, rev_zero(ss, nn, acc))
+      %rz : {Lex.text.go(_, aa) == Lex.text.go(acc, V.span.str(ss, nn, True{}) ++ aa) : String}
+      st = Equal.sym(String, V.span.str(ss, nn, True{}), "", span_true(ss, nn))
+      %st : {Lex.text.go(acc, aa) == Lex.text.go(acc, _ ++ aa) : String}
+      {==}
+    case SNil{} False{}:
+      {==}
+    case SCon{hd, tl} False{}:
+      text_rev(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), hd <> acc, aa)
+
+# the text of a reversed prefix is the span
+law text_span:
+  for +src: String
+  for +nn: U32
+  for +zz: Bool
+  {Lex.text(Lex.tokens.rev(src, nn, zz, [])) == V.span.str(src, nn, zz) : String}
+
+def text_span(src, nn, zz):
+  Equal.trans(String, Lex.text(Lex.tokens.rev(src, nn, zz, [])), V.span.str(src, nn, zz) ++ "", V.span.str(src, nn, zz),
+    text_rev(src, nn, zz, [], ""), append_nil(V.span.str(src, nn, zz)))
+
+# the first character of a string, or U+0000
+def head0(txt: String) -> Char:
+  match txt:
+    case SNil{}:
+      Char.from_u32(0)
+    case SCon{hd, _}:
+      hd
+
+# a reversed prefix one longer, past the first character, the rest given
+law rev_grow.cons:
+  for +hd: Char
+  for +tl: String
+  for +nn: U32
+  for h_top: {U32.is_eq(nn, 4294967295) == False{} : Bool}
+  for cc: Char
+  for +acc: List<&2, Char>
+  for ih: {Lex.tokens.rev(tl, U32.add(U32.sub(nn, 1), 1), U32.is_zero(U32.add(U32.sub(nn, 1), 1)), hd <> acc)
+    == cc <> Lex.tokens.rev(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), hd <> acc) : List<&2, Char>}
+  {Lex.tokens.rev(SCon{hd, tl}, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), acc)
+    == cc <> Lex.tokens.rev(SCon{hd, tl}, nn, False{}, acc) : List<&2, Char>}
+
+def rev_grow.cons(hd, tl, nn, h_top, cc, acc, ih):
+  z1 = Equal.sym(Bool, U32.is_zero(U32.add(nn, 1)), False{}, inc_nonzero(nn, h_top))
+  %z1 : {Lex.tokens.rev(SCon{hd, tl}, U32.add(nn, 1), _, acc)
+    == cc <> Lex.tokens.rev(SCon{hd, tl}, nn, False{}, acc) : List<&2, Char>}
+  d1 = Equal.sym(U32, U32.sub(U32.add(nn, 1), 1), nn, u32_dec_inc(nn))
+  %d1 : {Lex.tokens.rev(tl, _, U32.is_zero(_), hd <> acc)
+    == cc <> Lex.tokens.rev(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), hd <> acc) : List<&2, Char>}
+  i1 = u32_inc_dec(nn)
+  %i1 : {Lex.tokens.rev(tl, _, U32.is_zero(_), hd <> acc)
+    == cc <> Lex.tokens.rev(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), hd <> acc) : List<&2, Char>}
+  ih
+
+# a reversed prefix one longer is the next character in front, below the top
+law rev_grow:
+  for +cut: String
+  for +nn: U32
+  for zz: Bool
+  for +ez: {U32.is_zero(nn) == zz : Bool}
+  for h_top: {U32.is_eq(nn, 4294967295) == False{} : Bool}
+  for +cc: Char
+  for rest: String
+  for h_d: {sdrop(cut, nn, zz) == SCon{cc, rest} : String}
+  for +acc: List<&2, Char>
+  {Lex.tokens.rev(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), acc)
+    == cc <> Lex.tokens.rev(cut, nn, zz, acc) : List<&2, Char>}
+
+def rev_grow(cut, nn, zz, ez, h_top, cc, rest, h_d, acc):
+  match cut zz:
+    case SNil{} True{}:
+      Empty.absurd({Lex.tokens.rev(SNil{}, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), acc)
+        == cc <> Lex.tokens.rev(SNil{}, nn, True{}, acc) : List<&2, Char>}, nil_cons(cc, rest, h_d))
+    case SNil{} False{}:
+      Empty.absurd({Lex.tokens.rev(SNil{}, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), acc)
+        == cc <> Lex.tokens.rev(SNil{}, nn, False{}, acc) : List<&2, Char>}, nil_cons(cc, rest, h_d))
+    case SCon{hd, tl} True{}:
+      e0 = Equal.sym(U32, nn, 0, ueq(nn, 0, ez))
+      %e0 : {Lex.tokens.rev(SCon{hd, tl}, U32.add(_, 1), U32.is_zero(U32.add(_, 1)), acc) == cc <> acc : List<&2, Char>}
+      rz = Equal.sym(List<&2, Char>, Lex.tokens.rev(tl, 0, True{}, hd <> acc), hd <> acc, rev_zero(tl, 0, hd <> acc))
+      %rz : {_ == cc <> acc : List<&2, Char>}
+      Equal.cong(Char, List<&2, Char>, xx => xx <> acc, hd, cc,
+        Equal.cong(String, Char, xx => head0(xx), SCon{hd, tl}, SCon{cc, rest}, h_d))
+    case SCon{hd, tl} False{}:
+      rev_grow.cons(hd, tl, nn, h_top, cc, acc,
+        rev_grow(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), {==},
+          pred_ne_top(nn, nz_of(nn, ez), U32.is_eq(U32.sub(nn, 1), 4294967295), {==}), cc, rest, h_d, hd <> acc))
