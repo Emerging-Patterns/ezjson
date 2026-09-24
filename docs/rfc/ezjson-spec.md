@@ -350,7 +350,7 @@ trusted in all but name. It is JSON-TRUST-3, with `scale` behind it.
 | Phase | What lands | What it leaves true |
 | :---- | :---- | :---- |
 | Lint first | bolt pin to v1.4.2, `laws` at warn; S003 and S004 fixed (99 of them in `bench/`) | lint clean except law rules |
-| One | SPEC.md from these tables, all pending; all 99 closed laws deleted; `closed` and `trace` at error; README Compliance points at SPEC.md | the gate is honest: SPEC.md says nothing is proved yet, and nothing claims otherwise |
+| One | SPEC.md from these tables; all 99 closed laws deleted; `closed` and `trace` at error; README Compliance points at SPEC.md. The first quantified laws landed with it: JSON-TREE-1, JSON-TREE-2 and JSON-NUM-3 proved, and the not-a-container halves of JSON-TREE-3 and 4 | the gate is honest: SPEC.md says what is proved, and nothing claims more |
 | Behavior changes | `as_f32` overflow; `wf` and U+FFFD in `print`; `has` and `len`; README hash; one PR each | the rows that needed them can be proved |
 | Two | JSON-NUM-1 to 3, JSON-TREE-1 to 4, 6, 8, 9, JSON-STR-5: structural inductions on small defs | the interface is proved |
 | Three | JSON-STR-1, JSON-PRINT-1 to 3, JSON-TREE-5 | the headline is proved |

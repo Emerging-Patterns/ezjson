@@ -66,36 +66,15 @@ def owned(cur: Pull.Cur) -> (String & Pull.Cur):
   (Maybe.default(&2, String, Ezjson.text(ev), ""), Ezjson.skip(rest))
 ```
 
-## Compliance
+## Specification
 
-Closed equalities in `ezjson/LAWS.bend`, proved in `ezjson/PROOF.bend`
-(`bend ezjson/PROOF.bend`), check these parts of
-[RFC 8259](https://www.rfc-editor.org/rfc/rfc8259):
-
-- §2: insignificant whitespace is only space, tab, line feed, and carriage
-  return, and a text holds one value.
-- §3: `null`, `true`, `false`, a number, a string, an array, and an object
-  parse as those kinds. The literals are lowercase.
-- §4 and §5: `{}` and `[]` are values, a member name is a string, and a
-  trailing comma is rejected.
-- §6: a number keeps its spelling. `NaN`, `Infinity`, a leading `+`, and a
-  leading zero are rejected.
-- §7: a raw U+0000–U+001F in a string is rejected. `\u0000`–`\u001F` and the
-  short escapes decode. A lone surrogate is rejected, and a surrogate pair
-  is one code point.
-- §8.1: a leading U+FEFF is rejected, and `print` does not emit one.
-- §8.3: an escape and the same character unescaped compare equal, including
-  an object name.
-- §10: `print` escapes U+0000–U+001F.
-
-The same sections hold for the cursor. `pull_atoms`, `pull_nums`,
-`pull_text`, `pull_ws`, `pull_one`, `pull_bad`, and `pull_struct` read
-those values one event at a time. `pull_skip` drops a value.
-`pull_span`, `pull_rows`, and `pull_rows_skip` walk a large object with
-many string array elements as events, not as one `parse` tree.
-`pull_steps` counts the events of a 24-number array (begin, each number,
-end, and done). `public_cursor`, `public_next`, `public_skip`, and
-`public_text` are the wrappers in `main.bend`.
+[SPEC.md](SPEC.md) lists every behavior ezjson guarantees, by ID: conformance
+to [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259) and the behavior of
+each def in `main.bend`. A row is either proved by a quantified law in
+`ezjson/LAWS.bend`, checked by `bend ezjson/PROOF.bend` (the first line must be
+`All terms check.`), or listed in its trust boundary. A row marked pending is
+not guaranteed yet. [docs/rfc/ezjson-spec.md](docs/rfc/ezjson-spec.md) has the
+reasoning and the rollout.
 
 `scale/` is a compiled size check that pull-walks large string-row and
 nested-array documents without calling `parse`: 32000 string rows

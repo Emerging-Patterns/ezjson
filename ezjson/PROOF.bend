@@ -1,300 +1,222 @@
-# ezjson: the proofs. `bend PROOF.bend` is the gate.
+# ezjson: the proofs. `bend ezjson/PROOF.bend` is the gate.
 import Base
+import ./value.bend as V
+import ./main.bend as Ezjson
 import ./LAWS.bend as Laws
 
-def Laws.roundtrip_null():
-  {==}
-
-def Laws.roundtrip_bools():
-  {==}
-
-def Laws.roundtrip_nums():
-  {==}
-
-def Laws.roundtrip_space():
-  {==}
-
-def Laws.roundtrip_escapes():
-  {==}
-
-def Laws.roundtrip_nest():
-  {==}
-
-def Laws.parse_empty():
-  {==}
-
-def Laws.parse_unclosed_arr():
-  {==}
-
-def Laws.parse_stray():
-  {==}
-
-def Laws.parse_two_roots():
-  {==}
-
-def Laws.parse_unclosed_str():
-  {==}
-
-def Laws.parse_mismatch():
-  {==}
-
-def Laws.print_msg():
-  {==}
-
-def Laws.get_uri():
-  {==}
-
-def Laws.get_id():
-  {==}
-
-def Laws.get_missing():
-  {==}
-
-def Laws.get_not_num():
-  {==}
-
-def Laws.parse_obj_not_str():
-  {==}
-
-def Laws.parse_path_chain():
-  {==}
-
-def Laws.arr_first():
-  {==}
-
-def Laws.find_missing():
-  {==}
-
-def Laws.reverse_nil():
-  {==}
-
-def Laws.print_quote():
-  {==}
-
-def Laws.print_escape():
-  {==}
-
-def Laws.parse_word_null():
-  {==}
-
-def Laws.parse_word_true():
-  {==}
-
-def Laws.parse_word_false():
-  {==}
-
-def Laws.parse_word_num():
-  {==}
-
-def Laws.parse_finish():
-  {==}
-
-def Laws.parse_result_bad():
-  {==}
-
-def Laws.parse_close_arr_empty():
-  {==}
-
-def Laws.parse_close_obj_empty():
-  {==}
-
-def Laws.parse_put_root():
-  {==}
-
-def Laws.parse_step_word():
-  {==}
-
-def Laws.lex_text():
-  {==}
-
-def Laws.lex_unescape_n():
-  {==}
-
-def Laws.lex_hex_A():
-  {==}
-
-def Laws.lex_classify_space():
-  {==}
-
-def Laws.lex_tokens_null():
-  {==}
-
-def Laws.lex_feed_digit():
-  {==}
-
-def Laws.lex_run_empty():
-  {==}
-
-def Laws.lex_step_quote():
-  {==}
-
-def Laws.lex_escape_n():
-  {==}
-
-def Laws.lex_unicode():
-  {==}
-
-def Laws.lex_finish_idle():
-  {==}
-
-def Laws.value_obj():
-  {==}
-
-def Laws.lazy_stop_true():
-  {==}
-
-def Laws.public_parse():
-  {==}
-
-def Laws.public_print():
-  {==}
-
-def Laws.public_obj():
-  {==}
-
-def Laws.public_arr():
-  {==}
-
-def Laws.public_num():
-  {==}
-
-def Laws.public_get():
-  {==}
-
-def Laws.parse_seps():
-  {==}
-
-def Laws.parse_number():
-  {==}
-
-def Laws.parse_bad_text():
-  {==}
-
-def Laws.parse_surrogate():
-  {==}
-
-def Laws.public_null():
-  {==}
-
-def Laws.public_bool():
-  {==}
-
-def Laws.public_str():
-  {==}
-
-def Laws.public_at():
-  {==}
-
-def Laws.public_as_bool():
-  {==}
-
-def Laws.public_as_num():
-  {==}
-
-def Laws.public_as_u32():
-  {==}
-
-def Laws.public_as_f32():
-  {==}
-
-def Laws.rfc_values():
-  {==}
-
-def Laws.rfc_literals():
-  {==}
-
-def Laws.rfc_ws():
-  {==}
-
-def Laws.rfc_raw_controls():
-  {==}
-
-def Laws.rfc_ws_ctl():
-  {==}
-
-def Laws.rfc_one():
-  {==}
-
-def Laws.rfc_u_controls():
-  {==}
-
-def Laws.rfc_escapes():
-  {==}
-
-def Laws.rfc_gen_ctrl():
-  {==}
-
-def Laws.rfc_cmp():
-  {==}
-
-def Laws.rfc_name():
-  {==}
-
-def Laws.rfc_numbers():
-  {==}
-
-def Laws.rfc_struct():
-  {==}
-
-def Laws.rfc_line_sep():
-  {==}
-
-def Laws.rfc_bom():
-  {==}
-
-def Laws.pull_atoms():
-  {==}
-
-def Laws.pull_nums():
-  {==}
-
-def Laws.pull_text():
-  {==}
-
-def Laws.pull_ws():
-  {==}
-
-def Laws.pull_one():
-  {==}
-
-def Laws.pull_bad():
-  {==}
-
-def Laws.pull_struct():
-  {==}
-
-def Laws.pull_skip():
-  {==}
-
-def Laws.pull_span():
-  {==}
-
-def Laws.pull_rows():
-  {==}
-
-def Laws.pull_rows_skip():
-  {==}
-
-def Laws.pull_steps():
-  {==}
-
-def Laws.pull_copy():
-  {==}
-
-def Laws.pull_hold():
-  {==}
-
-def Laws.pull_nest():
-  {==}
-
-def Laws.public_cursor():
-  {==}
-
-def Laws.public_next():
-  {==}
-
-def Laws.public_skip():
-  {==}
-
-def Laws.public_text():
-  {==}
+# Unit for True, Empty for False: tells them apart
+def true_ty(bb: Bool) -> Type:
+  match bb:
+    case False{}:
+      Empty
+    case True{}:
+      Unit
+
+# True is never False
+law true_false:
+  for e: {True{} == False{} : Bool}
+  Empty
+
+def true_false(e):
+  %e : true_ty(_)
+  Unit{}
+
+def Laws.as_bool_bool(_flag):
+  {==}
+
+def Laws.as_str_str(_txt):
+  {==}
+
+def Laws.as_num_num(txt, h_ok):
+  ok = Equal.sym(Bool, V.num.ok(txt), True{}, h_ok)
+  %ok : {Ezjson.as_num(V.num.go(txt, _)) == Some{txt} : Maybe<&2, String>}
+  {==}
+
+def Laws.as_bool_kind(val):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{_}:
+      {==}
+    case V.JNum{_}:
+      {==}
+    case V.JStr{_}:
+      {==}
+    case V.JArr{_}:
+      {==}
+    case V.JObj{_}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{_, _}:
+      {==}
+    case V.JPair{_, _, _}:
+      {==}
+    case V.JSpan{_, _}:
+      {==}
+    case V.JBind{_, _, _, _}:
+      {==}
+
+def Laws.as_str_kind(val):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{_}:
+      {==}
+    case V.JNum{_}:
+      {==}
+    case V.JStr{_}:
+      {==}
+    case V.JArr{_}:
+      {==}
+    case V.JObj{_}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{_, _}:
+      {==}
+    case V.JPair{_, _, _}:
+      {==}
+    case V.JSpan{_, _}:
+      {==}
+    case V.JBind{_, _, _, _}:
+      {==}
+
+def Laws.as_num_kind(val):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{_}:
+      {==}
+    case V.JNum{_}:
+      {==}
+    case V.JStr{_}:
+      {==}
+    case V.JArr{_}:
+      {==}
+    case V.JObj{_}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{_, _}:
+      {==}
+    case V.JPair{_, _, _}:
+      {==}
+    case V.JSpan{_, _}:
+      {==}
+    case V.JBind{_, _, _, _}:
+      {==}
+
+def Laws.as_u32_kind(val, h_kind):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{_}:
+      {==}
+    case V.JNum{raw}:
+      Empty.absurd({Ezjson.as_u32(V.JNum{raw}) == None{} : Maybe<&2, U32>},
+        true_false(h_kind))
+    case V.JStr{_}:
+      {==}
+    case V.JArr{_}:
+      {==}
+    case V.JObj{_}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{_, _}:
+      {==}
+    case V.JPair{_, _, _}:
+      {==}
+    case V.JSpan{_, _}:
+      {==}
+    case V.JBind{_, _, _, _}:
+      {==}
+
+def Laws.as_f32_kind(val, h_kind):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{_}:
+      {==}
+    case V.JNum{raw}:
+      Empty.absurd({Ezjson.as_f32(V.JNum{raw}) == None{} : Maybe<&2, F32>},
+        true_false(h_kind))
+    case V.JStr{_}:
+      {==}
+    case V.JArr{_}:
+      {==}
+    case V.JObj{_}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{_, _}:
+      {==}
+    case V.JPair{_, _, _}:
+      {==}
+    case V.JSpan{_, _}:
+      {==}
+    case V.JBind{_, _, _, _}:
+      {==}
+
+def Laws.num_keeps(txt, h_ok):
+  ok = Equal.sym(Bool, V.num.ok(txt), True{}, h_ok)
+  %ok : {V.num.go(txt, _) == V.JNum{txt} : V.Json}
+  {==}
+
+def Laws.num_null(txt, h_bad):
+  bad = Equal.sym(Bool, V.num.ok(txt), False{}, h_bad)
+  %bad : {V.num.go(txt, _) == V.JNull{} : V.Json}
+  {==}
+
+def Laws.at_not_arr(val, idx, h_kind):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{_}:
+      {==}
+    case V.JNum{_}:
+      {==}
+    case V.JStr{_}:
+      {==}
+    case V.JArr{its}:
+      Empty.absurd({Ezjson.at(V.JArr{its}, idx) == Ezjson.null() : V.Json},
+        true_false(h_kind))
+    case V.JObj{_}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{_, _}:
+      {==}
+    case V.JPair{_, _, _}:
+      {==}
+    case V.JSpan{_, _}:
+      {==}
+    case V.JBind{_, _, _, _}:
+      {==}
+
+def Laws.get_not_obj(val, key, h_kind):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{_}:
+      {==}
+    case V.JNum{_}:
+      {==}
+    case V.JStr{_}:
+      {==}
+    case V.JArr{_}:
+      {==}
+    case V.JObj{ps}:
+      Empty.absurd({Ezjson.get(V.JObj{ps}, key) == Ezjson.null() : V.Json},
+        true_false(h_kind))
+    case V.JNil{}:
+      {==}
+    case V.JCons{_, _}:
+      {==}
+    case V.JPair{_, _, _}:
+      {==}
+    case V.JSpan{_, _}:
+      {==}
+    case V.JBind{_, _, _, _}:
+      {==}

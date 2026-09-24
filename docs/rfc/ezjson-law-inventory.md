@@ -9,6 +9,9 @@ over the whole tree, with `BEND_LIB` laid out by hand from bolt's
 available, so `nix flake check` was not run; its `proofs`, `lint` and
 `scale` checks were run by hand as below.
 
+The tables below are the audit as read at `089d520`; the laws they list
+were deleted in phase one. "Progress" at the end is current.
+
 This file is the evidence the RFC (`docs/rfc/ezjson-spec.md`) cites. It is a
 progress tracker. When the rollout ends, what still matters moves into the
 RFC and this file is deleted.
@@ -337,3 +340,25 @@ requirement depends on.
   bolt's ledger records v0.4.2 at this same commit as
   `0xd9c8d4d2899ddda845dfa7525a3568ea` (reading; the hub was not reachable
   to confirm which one the hub serves).
+- bolt's spec (v1.4.2, `docs/rfc/bolt-spec.md` and BOLT-TRUST-8) says "a
+  surrogate-pair `\u` escape comes back as invalid UTF-8 (that bug is in
+  ezjson)". It does not reproduce in ezjson v0.4.2: `parse` then `print` of
+  `"a\ud83d\ude00b"` gives the code points `34 97 128512 98 34`, a key
+  spelled with the pair is found by `get` with the character U+1F600, and
+  the cursor yields the same character (run). The invalid UTF-8 bolt sees
+  is outside ezjson; bolt should be told.
+
+## Progress
+
+| Phase | State | What landed |
+| :---- | :---- | :---- |
+| Decisions | done | every REVIEW item resolved as recommended |
+| Lint first | done | bolt pin `5b05a1b` to v1.4.2 (`9a8fd99`); 248 S004 and 2 S003 fixed; `laws` at warn. 922-text harness and interface probe byte-identical before and after |
+| One | done | SPEC.md (31 Proved rows, 4 Trusted); all 99 closed laws and their helpers deleted; `closed`, `unsafe` and `trace` at error, `coverage` at warn; README points at SPEC.md. Also 12 quantified laws: JSON-TREE-1, JSON-TREE-2 and JSON-NUM-3 proved; JSON-TREE-3 and 4 partial (the not-a-container halves) |
+| Behavior changes | next | `as_f32` overflow; `wf` and U+FFFD in `print`; `has` and `len`; README hash |
+| Two to five | open | see the RFC's Rollout |
+
+Laws now: 12, all quantified, 0 closed. `coverage` warnings: 93.
+Every new proof was broken on purpose (an absurd case replaced by `{==}`,
+a rewrite removed, a statement changed) and the gate failed each time.
+
