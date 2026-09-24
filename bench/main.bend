@@ -1,9 +1,9 @@
 # serde_json vs ezjson bench driver. JSON text fixtures on disk feed the CLI;
 # speed paths load once then time parse/print, or a pull walk, only (IO.now).
 # Native ELF via `bend bench/main.bend -o …` (CC=clang -O3 in the flake).
-import ../ezjson/main.bend as Ezjson
-import ../ezjson/value.bend as V
-import ../ezjson/pull.bend as Pull
+import ../main.bend as Ezjson
+import ../src/value.bend as V
+import ../src/pull.bend as Pull
 
 # unwrap a parsed U32, or zero when parse fails
 def u32.arg.go(mb: Maybe<&2, U32>) -> U32:
@@ -24,7 +24,7 @@ def wrote.close(file: File, ok: Unit) -> IO(Unit):
       File.close(file)
 
 # force a write Result, then close the file
-def wrote(pair: File & Result<&1, &1, U32 & String, Unit>) -> IO(Unit):
+def wrote(pair: File & Result<&1, &1, U32 & String, Unit>) -> IO(Unit):  # noqa: L001 IO driver
   (file, result) = pair
   do IO<Unit>:
     ok : Unit <- IO.pass(Unit, result)
@@ -270,11 +270,11 @@ def countdown.go(inside: Bool, +every: U32) -> U32:
       every
 
 # steps until the next copied row; unchanged outside `rows`
-def countdown(+depth: U32, +every: U32) -> U32:
+def countdown(+depth: U32, +every: U32) -> U32:  # noqa: L001 bench harness, outside the spec
   countdown.go(U32.is_eq(depth, 1), every)
 
 # full `next` walk. Fuel is the Nat; `AGo` already counted its event
-type All is Data:
+type All is Data:  # noqa: L001 bench harness, outside the spec
   ANeed{cur: Pull.Cur, acc: U32}
   AGo{cur: Pull.Cur, acc: U32}
   AStop{acc: U32}
@@ -327,7 +327,7 @@ def loop.pull.walk(+txt: String, nn: Nat, +sum: U32, +fuel: Nat) -> U32:
       loop.pull.walk(txt, p, step.pull(sum, walk.all(fuel, all.need(Ezjson.cursor(txt), 0))), fuel)
 
 # skip-walk. `KKey` is the bool "this key is rows"
-type Sk is Data:
+type Sk is Data:  # noqa: L001 bench harness, outside the spec
   KNeed{cur: Pull.Cur, acc: U32}
   KGo{cur: Pull.Cur, acc: U32}
   KStop{acc: U32}
@@ -396,7 +396,7 @@ def loop.pull.skip(+txt: String, nn: Nat, +sum: U32, +fuel: Nat) -> U32:
 
 # text-walk. `arm` means the next value is the `rows` array.
 # `depth` 1 is a direct element of that array. `every` counts down to a copy
-type Txt is Data:
+type Txt is Data:  # noqa: L001 bench harness, outside the spec
   TNeed{cur: Pull.Cur, acc: U32, depth: U32, every: U32, arm: Bool}
   TStop{acc: U32}
 
@@ -731,7 +731,7 @@ def main.go(quad: String & String & String & String) -> IO(Unit):
   run.named(a, b, c, d)
 
 # CLI entry: dispatch by the first argv word
-def main() -> IO(Unit):
+def main() -> IO(Unit):  # noqa: L001 IO entry point
   do IO<Unit>:
     args : List<String> <- IO.args()
     main.go(args.of4(args))

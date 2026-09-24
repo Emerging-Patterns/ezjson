@@ -61,7 +61,7 @@ at a time without building a tree. It does no IO. bolt's language server is
 its main user.
 
 Today the README's Compliance section lists the RFC 8259 sections that
-"closed equalities in `ezjson/LAWS.bend` … check". Each law in the list is
+"closed equalities in `LAWS.bend` … check". Each law in the list is
 one example, or a short concatenation of examples. Three of them enumerate
 every code point from U+0000 to U+001F and are exhaustive over that range;
 the rest cover the inputs written in them. The pinned bolt predates the
@@ -113,7 +113,7 @@ be argued with now:
 
 ### The proof gate
 
-Unchanged: `bend ezjson/PROOF.bend` must print exactly `All terms check.`
+Unchanged: `bend PROOF.bend` must print exactly `All terms check.`
 as its first line, which `ez.mkProofs` already enforces in `nix flake
 check`.
 

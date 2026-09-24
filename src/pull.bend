@@ -1,4 +1,4 @@
-# ezjson/pull: one JSON text, one event at a time.
+# src/pull: one JSON text, one event at a time.
 # `cursor` holds the unread suffix of the source. `next` returns one event and
 # the cursor after it. `skip` drops one value. A span event keeps the suffix
 # it points at, so it stays readable while that event is held and is gone

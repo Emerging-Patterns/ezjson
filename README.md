@@ -74,7 +74,7 @@ def owned(cur: Pull.Cur) -> (String & Pull.Cur):
 [SPEC.md](SPEC.md) lists every behavior ezjson guarantees, by ID: conformance
 to [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259) and the behavior of
 each def in `main.bend`. A row is either proved by a quantified law in
-`ezjson/LAWS.bend`, checked by `bend ezjson/PROOF.bend` (the first line must be
+`LAWS.bend`, checked by `bend PROOF.bend` (the first line must be
 `All terms check.`), or listed in its trust boundary. A row marked pending is
 not guaranteed yet. [docs/rfc/ezjson-spec.md](docs/rfc/ezjson-spec.md) has the
 reasoning and the rollout.

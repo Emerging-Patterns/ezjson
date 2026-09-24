@@ -1,4 +1,4 @@
-# ezjson/parse: tokens to one JSON value. Commas separate elements, a colon
+# src/parse: tokens to one JSON value. Commas separate elements, a colon
 # separates a key from its value, and a text has one root.
 import Base
 import ./value.bend as V

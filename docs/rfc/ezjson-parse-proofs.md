@@ -18,7 +18,7 @@ RFC is `docs/rfc/ezjson-spec.md`; its decisions stand.
 
 ## Update
 
-WP-L1 has landed as `lexers_agree` in `ezjson/PROOF.bend`: for every text
+WP-L1 has landed as `lexers_agree` in `PROOF.bend`: for every text
 `short` enough (at most 2^32 - 1 characters), `dens(Lex.tokens(s))` equals
 `dens` of the character machine's tokens. Where the code differs from the
 sketch:

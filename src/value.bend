@@ -1,4 +1,4 @@
-# ezjson/value: a JSON value. Null, bool, number, string, array, and object.
+# src/value: a JSON value. Null, bool, number, string, array, and object.
 # An array is a JArr of JCons cells ending in JNil; an object is a JObj of
 # JPair cells ending in JNil. A number keeps its source text.
 import Base

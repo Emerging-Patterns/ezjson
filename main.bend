@@ -1,13 +1,14 @@
-# ezjson: JSON for Bend 2. `parse` reads text into Maybe Json. `print` writes
-# compact text. `cursor` reads one event at a time. Build null, booleans,
-# numbers, strings, arrays, and objects; read them with get, at, and as_bool,
-# as_str, as_num, as_u32, as_f32; has and len tell a missing key or index
-# from a null.
+# ezjson: JSON for Bend 2, with a parser, a printer and a pull cursor
+#
+# `parse` reads text into Maybe Json. `print` writes compact text. `cursor`
+# reads one event at a time. Build null, booleans, numbers, strings, arrays,
+# and objects; read them with get, at, and as_bool, as_str, as_num, as_u32,
+# as_f32; has and len tell a missing key or index from a null.
 import Base
-import ./value.bend as Value
-import ./parse.bend as Parse
-import ./print.bend as Print
-import ./pull.bend as Pull
+import ./src/value.bend as Value
+import ./src/parse.bend as Parse
+import ./src/print.bend as Print
+import ./src/pull.bend as Pull
 
 # a text as a value, or None when it is not JSON
 def parse(txt: String) -> Maybe<&2, Value.Json>:
