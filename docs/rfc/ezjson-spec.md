@@ -313,6 +313,9 @@ master's results against the branch's in the description.
   and "Left to prove" saying what is missing.
 - A rewrite of `pull.bend`'s hot loop is mergeable on the gate alone.
 
+The rows that go through `parse` and the cursor are planned in their own
+design doc, `docs/rfc/ezjson-parse-proofs.md`, with its own REVIEW items.
+
 ## Abandoned Ideas
 
 **Keep the closed laws as documentation of the RFC sections.** They read
