@@ -153,11 +153,11 @@ a missing key), REVIEW-4 and REVIEW-5 ask whether to keep the departure.
 
 | ID | Requirement | Level | Status | Law |
 | :---- | :---- | :---- | :---- | :---- |
-| JSON-TEXT-1 | `parse(t)` is `Some` exactly when `t` matches RFC 8259's `JSON-text` rule (§2 to §7) and holds no `\u` escape of an unpaired surrogate (§8.2) | Proved | pending | |
-| JSON-TEXT-2 | Inserting any run of U+0020, U+0009, U+000A and U+000D before or after any token of a JSON text leaves `parse`'s result the same value; inserting any other character there makes it `None` (§2) | Proved | pending | |
-| JSON-TEXT-3 | For every two well-formed values `j` and `k`, `parse(print(j) ++ " " ++ print(k))` is `None`: a text holds exactly one value (§2) | Proved | pending | |
-| JSON-TEXT-4 | A bare word parses exactly when it is `null`, `true`, `false` or a number, and the literals are only the lowercase words (§3) | Proved | pending | |
-| JSON-TEXT-5 | For every text `t`, `parse` of U+FEFF followed by `t` is `None` (§8.1) | Proved | pending | |
+| JSON-TEXT-1 | For texts shorter than 2^32 - 1 characters: `parse(t)` is `Some` exactly when `t` matches RFC 8259's `JSON-text` rule (§2 to §7) and holds no `\u` escape of an unpaired surrogate (§8.2) | Proved | pending | |
+| JSON-TEXT-2 | For texts shorter than 2^32 - 1 characters: inserting any run of U+0020, U+0009, U+000A and U+000D before or after any token of a JSON text leaves `parse`'s result the same value; inserting any other character there makes it `None` (§2) | Proved | pending | |
+| JSON-TEXT-3 | For texts shorter than 2^32 - 1 characters: for every two well-formed values `j` and `k`, `parse(print(j) ++ " " ++ print(k))` is `None`: a text holds exactly one value (§2) | Proved | pending | |
+| JSON-TEXT-4 | For texts shorter than 2^32 - 1 characters: a bare word parses exactly when it is `null`, `true`, `false` or a number, and the literals are only the lowercase words (§3) | Proved | pending | |
+| JSON-TEXT-5 | For texts shorter than 2^32 - 1 characters: for every text `t`, `parse` of U+FEFF followed by `t` is `None` (§8.1) | Proved | pending | |
 
 JSON-TEXT-1 is the conformance claim, and its law needs a specification to
 compare against. We write the RFC's grammar in `LAWS.bend` as a relation
@@ -176,7 +176,7 @@ cheaper to prove directly on the lexer, so they land first.
 | ID | Requirement | Level | Status | Law |
 | :---- | :---- | :---- | :---- | :---- |
 | JSON-NUM-1 | `num.ok(s)` holds exactly when `s` matches RFC 8259's `number` rule: an optional `-`, `0` or a nonzero digit and digits, an optional `.` and one or more digits, an optional `e` or `E`, an optional sign and one or more digits (§6) | Proved | pending | |
-| JSON-NUM-2 | For every `s` with `num.ok(s)`, `parse(s)` is `Some{JNum{s}}` and `print` of it is `s`: a number keeps its spelling | Proved | pending | |
+| JSON-NUM-2 | For texts shorter than 2^32 - 1 characters: for every `s` with `num.ok(s)`, `parse(s)` is `Some{JNum{s}}` and `print` of it is `s`: a number keeps its spelling | Proved | pending | |
 | JSON-NUM-3 | `num(s)` is `JNum{s}` when `num.ok(s)`, and `null()` otherwise | Proved | pending | |
 
 JSON-NUM-1 is the cheapest real law in the project and the first to land:
@@ -187,10 +187,10 @@ an induction on the characters.
 
 | ID | Requirement | Level | Status | Law |
 | :---- | :---- | :---- | :---- | :---- |
-| JSON-STR-1 | For every string `s` of Unicode scalar values, `parse(quote(s))` is a string value whose characters are `s` (§7) | Proved | pending | |
-| JSON-STR-2 | Inside a string, `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t` decode to their characters; `\uXXXX` of a non-surrogate decodes to that code point; a high then low surrogate escape decodes to one code point; any other escape, and an unpaired surrogate escape, make `parse` `None` (§7, §8.2) | Proved | pending | |
-| JSON-STR-3 | Inside a string, a raw U+0000 to U+001F makes `parse` `None`, and every other raw code point except `"` and `\` is kept as itself (§7) | Proved | pending | |
-| JSON-STR-4 | Two object names compare equal in `get` exactly when their decoded characters are equal, whatever escapes spelled them (§8.3) | Proved | pending | |
+| JSON-STR-1 | For texts shorter than 2^32 - 1 characters: for every string `s` of Unicode scalar values, `parse(quote(s))` is a string value whose characters are `s` (§7) | Proved | pending | |
+| JSON-STR-2 | For texts shorter than 2^32 - 1 characters: inside a string, `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t` decode to their characters; `\uXXXX` of a non-surrogate decodes to that code point; a high then low surrogate escape decodes to one code point; any other escape, and an unpaired surrogate escape, make `parse` `None` (§7, §8.2) | Proved | pending | |
+| JSON-STR-3 | For texts shorter than 2^32 - 1 characters: inside a string, a raw U+0000 to U+001F makes `parse` `None`, and every other raw code point except `"` and `\` is kept as itself (§7) | Proved | pending | |
+| JSON-STR-4 | For texts shorter than 2^32 - 1 characters: two object names compare equal in `get` exactly when their decoded characters are equal, whatever escapes spelled them (§8.3) | Proved | pending | |
 | JSON-STR-5 | `quote(s)` escapes exactly `"`, `\` and U+0000 to U+001F, using the two-character form where one exists and `\u00xx` otherwise, and writes every other scalar value as itself, and writes U+FFFD for every code point that is not a Unicode scalar value (a surrogate, or past U+10FFFF) (§7, §8.1) | Proved | pending | |
 
 REVIEW-3 decides what `quote` does with a code point that is not a scalar
@@ -200,8 +200,8 @@ value. JSON-STR-1 and JSON-STR-5 are stated over scalar values either way.
 
 | ID | Requirement | Level | Status | Law |
 | :---- | :---- | :---- | :---- | :---- |
-| JSON-PRINT-1 | For every well-formed value `j`, `parse(print(j))` is `Some` of a value `same` as `j` | Proved | pending | |
-| JSON-PRINT-2 | For every text `t` with `parse(t) == Some{j}`, `print(j)` holds no whitespace outside strings, and `print(j) == print(j2)` where `parse(print(j)) == Some{j2}` | Proved | pending | |
+| JSON-PRINT-1 | For texts shorter than 2^32 - 1 characters: for every well-formed value `j`, `parse(print(j))` is `Some` of a value `same` as `j` | Proved | pending | |
+| JSON-PRINT-2 | For texts shorter than 2^32 - 1 characters: for every text `t` with `parse(t) == Some{j}`, `print(j)` holds no whitespace outside strings, and `print(j) == print(j2)` where `parse(print(j)) == Some{j2}` | Proved | pending | |
 | JSON-PRINT-3 | For every value built only from `null`, `bool`, `str`, `num`, `arr` and `obj`, or returned by `parse`, `wf` holds | Proved | pending | |
 
 JSON-PRINT-1 is the headline (REVIEW-2). Its law, in sketch:
@@ -226,7 +226,7 @@ build through `main.bend` fails it.
 | JSON-TREE-2 | Each of `as_bool`, `as_str`, `as_num`, `as_u32`, `as_f32` is `None` on every value of another kind | Proved | pending | |
 | JSON-TREE-3 | `at(arr(xs), i)` is the `i`-th element of `xs` when `i` is less than its length, and `null()` otherwise; `at(j, i)` is `null()` for every `j` that is not an array | Proved | pending | |
 | JSON-TREE-4 | `get(obj(ps), k)` is the value of the first pair in `ps` whose key is `k`, and `null()` when there is none; `get(j, k)` is `null()` for every `j` that is not an object | Proved | pending | |
-| JSON-TREE-5 | For every text `t` with `parse(t) == Some{j}`, every reader (`get`, `at`, `as_*`) gives on `j` the result it gives on the owned value `same` as `j`: a span reads as its characters | Proved | pending | |
+| JSON-TREE-5 | For texts shorter than 2^32 - 1 characters: for every text `t` with `parse(t) == Some{j}`, every reader (`get`, `at`, `as_*`) gives on `j` the result it gives on the owned value `same` as `j`: a span reads as its characters | Proved | pending | |
 | JSON-TREE-6 | `as_u32(num(s))` is `Some{n}` exactly when `s` is one or more ASCII digits, with no leading zero unless `s` is `0`, whose value `n` is at most 4294967295 | Proved | pending | |
 | JSON-TREE-7 | For every number value whose text is `s`: when `F32.read(s)` is `Some{x}` with `F32.abs(x)` at most 3.4028235e38 (the largest finite F32), `as_f32` is `Some{x}`; when that read is infinite or `None`, `as_f32` is `None` | Proved | pending | |
 | JSON-TREE-8 | `has(obj(ps), k)` is true exactly when some pair in `ps` has key `k`, and `has(j, k)` is false for every `j` that is not an object (REVIEW-5) | Proved | pending | |
