@@ -801,6 +801,16 @@ law str_back:
   for h_s: {short(Ezjson.print(Ezjson.str(txt))) == True{} : Bool}
   {str_of(Ezjson.parse(Ezjson.print(Ezjson.str(txt)))) == Some{txt} : Maybe<&2, String>}
 
+# LAW: a text of two values does not parse: a text holds exactly one value
+# JSON-TEXT-3
+law two_none:
+  for +jj: V.Json
+  for +kk: V.Json
+  for +h_j: {V.wf(jj) == True{} : Bool}
+  for +h_k: {V.wf(kk) == True{} : Bool}
+  for h_s: {short(Ezjson.print(jj) ++ " " ++ Ezjson.print(kk)) == True{} : Bool}
+  {Ezjson.parse(Ezjson.print(jj) ++ " " ++ Ezjson.print(kk)) == None{} : Maybe<&2, V.Json>}
+
 # LAW: a text that starts with U+FEFF, a byte order mark, does not parse
 # JSON-TEXT-5
 law bom_none:

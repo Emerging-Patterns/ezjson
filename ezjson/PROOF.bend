@@ -14860,3 +14860,327 @@ def Laws.bom_none(txt, h_s):
         txt}), Lex.Lex{Lex.Idle{}, [], []})))),
       bom_go(String.to_list(txt), [])))))))
 
+
+# JSON-TEXT-3: one value per text
+
+# a space after a value's text pushes its tokens
+law space_close:
+  for +val: V.Json
+  for +acc: List<&2, Lex.Tok>
+  {Lex.feed(' ', pend(val, acc)) == Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(val, V.WVal{}),
+    acc)} : Lex.Lex}
+
+def space_close(val, acc):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{bb}:
+      match bb:
+        case True{}:
+          {==}
+        case False{}:
+          {==}
+    case V.JNum{+raw}:
+      Equal.cong(String, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TWord{xx} <> acc},
+        Lex.text(List.reverse.go(&2, Char, String.to_list(raw), [])), raw, word_text(raw))
+    case V.JStr{+a1}:
+      {==}
+    case V.JArr{+a1}:
+      {==}
+    case V.JObj{+a1}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{+a1, +a2}:
+      {==}
+    case V.JPair{+a1, +a2, +a3}:
+      {==}
+    case V.JSpan{+a1, +a2}:
+      {==}
+    case V.JBind{+a1, +a2, +a3, +a4}:
+      {==}
+
+# the end of a value's text, on tokens already pushed
+law fin_pend2:
+  for +val: V.Json
+  for +acc: List<&2, Lex.Tok>
+  {Lex.finish(pend(val, acc)) == List.reverse.go(&2, Lex.Tok, acc, tj(val, V.WVal{})) : List<&2, Lex.Tok>}
+
+def fin_pend2(val, acc):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{bb}:
+      match bb:
+        case True{}:
+          {==}
+        case False{}:
+          {==}
+    case V.JNum{+raw}:
+      Equal.cong(String, List<&2, Lex.Tok>, xx => List.reverse.go(&2, Lex.Tok, acc, [Lex.TWord{xx}]),
+        Lex.text(List.reverse.go(&2, Char, String.to_list(raw), [])), raw, word_text(raw))
+    case V.JStr{+a1}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JStr{a1},
+        V.WVal{}), acc), []), List.reverse.go(&2, Lex.Tok, acc, List.append(&2, Lex.Tok, tj(V.JStr{a1}, V.WVal{}),
+        [])), List.reverse.go(&2, Lex.Tok, acc, tj(V.JStr{a1}, V.WVal{})),
+        rev_rev(tj(V.JStr{a1}, V.WVal{}), acc, []), Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+          xx => List.reverse.go(&2, Lex.Tok, acc, xx), List.append(&2, Lex.Tok, tj(V.JStr{a1}, V.WVal{}), []),
+          tj(V.JStr{a1}, V.WVal{}),
+          lapp_nil(tj(V.JStr{a1}, V.WVal{}))))
+    case V.JArr{+a1}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JArr{a1},
+        V.WVal{}), acc), []), List.reverse.go(&2, Lex.Tok, acc, List.append(&2, Lex.Tok, tj(V.JArr{a1}, V.WVal{}),
+        [])), List.reverse.go(&2, Lex.Tok, acc, tj(V.JArr{a1}, V.WVal{})),
+        rev_rev(tj(V.JArr{a1}, V.WVal{}), acc, []), Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+          xx => List.reverse.go(&2, Lex.Tok, acc, xx), List.append(&2, Lex.Tok, tj(V.JArr{a1}, V.WVal{}), []),
+          tj(V.JArr{a1}, V.WVal{}),
+          lapp_nil(tj(V.JArr{a1}, V.WVal{}))))
+    case V.JObj{+a1}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JObj{a1},
+        V.WVal{}), acc), []), List.reverse.go(&2, Lex.Tok, acc, List.append(&2, Lex.Tok, tj(V.JObj{a1}, V.WVal{}),
+        [])), List.reverse.go(&2, Lex.Tok, acc, tj(V.JObj{a1}, V.WVal{})),
+        rev_rev(tj(V.JObj{a1}, V.WVal{}), acc, []), Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+          xx => List.reverse.go(&2, Lex.Tok, acc, xx), List.append(&2, Lex.Tok, tj(V.JObj{a1}, V.WVal{}), []),
+          tj(V.JObj{a1}, V.WVal{}),
+          lapp_nil(tj(V.JObj{a1}, V.WVal{}))))
+    case V.JNil{}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JNil{}, V.WVal{}),
+        acc), []), List.reverse.go(&2, Lex.Tok, acc, List.append(&2, Lex.Tok, tj(V.JNil{}, V.WVal{}), [])),
+        List.reverse.go(&2, Lex.Tok, acc, tj(V.JNil{}, V.WVal{})),
+        rev_rev(tj(V.JNil{}, V.WVal{}), acc, []), Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+          xx => List.reverse.go(&2, Lex.Tok, acc, xx), List.append(&2, Lex.Tok, tj(V.JNil{}, V.WVal{}), []),
+          tj(V.JNil{}, V.WVal{}),
+          lapp_nil(tj(V.JNil{}, V.WVal{}))))
+    case V.JCons{+a1, +a2}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JCons{a1, a2},
+        V.WVal{}), acc), []), List.reverse.go(&2, Lex.Tok, acc, List.append(&2, Lex.Tok, tj(V.JCons{a1, a2}, V.WVal{}),
+        [])), List.reverse.go(&2, Lex.Tok, acc, tj(V.JCons{a1, a2}, V.WVal{})),
+        rev_rev(tj(V.JCons{a1, a2}, V.WVal{}), acc, []), Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+          xx => List.reverse.go(&2, Lex.Tok, acc, xx), List.append(&2, Lex.Tok, tj(V.JCons{a1, a2}, V.WVal{}), []),
+          tj(V.JCons{a1, a2}, V.WVal{}),
+          lapp_nil(tj(V.JCons{a1, a2}, V.WVal{}))))
+    case V.JPair{+a1, +a2, +a3}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JPair{a1, a2, a3},
+        V.WVal{}), acc), []), List.reverse.go(&2, Lex.Tok, acc, List.append(&2, Lex.Tok, tj(V.JPair{a1, a2, a3},
+        V.WVal{}), [])), List.reverse.go(&2, Lex.Tok, acc, tj(V.JPair{a1, a2, a3}, V.WVal{})),
+        rev_rev(tj(V.JPair{a1, a2, a3}, V.WVal{}), acc, []), Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+          xx => List.reverse.go(&2, Lex.Tok, acc, xx), List.append(&2, Lex.Tok, tj(V.JPair{a1, a2, a3}, V.WVal{}), []),
+          tj(V.JPair{a1, a2, a3}, V.WVal{}),
+          lapp_nil(tj(V.JPair{a1, a2, a3}, V.WVal{}))))
+    case V.JSpan{+a1, +a2}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JSpan{a1, a2},
+        V.WVal{}), acc), []), List.reverse.go(&2, Lex.Tok, acc, List.append(&2, Lex.Tok, tj(V.JSpan{a1, a2}, V.WVal{}),
+        [])), List.reverse.go(&2, Lex.Tok, acc, tj(V.JSpan{a1, a2}, V.WVal{})),
+        rev_rev(tj(V.JSpan{a1, a2}, V.WVal{}), acc, []), Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+          xx => List.reverse.go(&2, Lex.Tok, acc, xx), List.append(&2, Lex.Tok, tj(V.JSpan{a1, a2}, V.WVal{}), []),
+          tj(V.JSpan{a1, a2}, V.WVal{}),
+          lapp_nil(tj(V.JSpan{a1, a2}, V.WVal{}))))
+    case V.JBind{+a1, +a2, +a3, +a4}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JBind{a1, a2, a3,
+        a4}, V.WVal{}), acc), []), List.reverse.go(&2, Lex.Tok, acc, List.append(&2, Lex.Tok, tj(V.JBind{a1, a2, a3,
+        a4}, V.WVal{}), [])), List.reverse.go(&2, Lex.Tok, acc, tj(V.JBind{a1, a2, a3, a4}, V.WVal{})),
+        rev_rev(tj(V.JBind{a1, a2, a3, a4}, V.WVal{}), acc, []), Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+          xx => List.reverse.go(&2, Lex.Tok, acc, xx), List.append(&2, Lex.Tok, tj(V.JBind{a1, a2, a3, a4}, V.WVal{}),
+          []), tj(V.JBind{a1, a2, a3, a4}, V.WVal{}),
+          lapp_nil(tj(V.JBind{a1, a2, a3, a4}, V.WVal{}))))
+
+# a word, once a root is finished, raises the error flag
+law nb_word:
+  for ok: Bool
+  for +raw: String
+  for +cc: V.Json
+  {pbad(Parse.step.word.go(raw, Parse.P{False{}, Some{cc}, Nil{}}, ok)) == True{} : Bool}
+
+def nb_word(ok, _raw, _cc):
+  match ok:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# after a finished root, a value's first token raises the error flag
+law after_root:
+  for +val: V.Json
+  for +cc: V.Json
+  for h: {V.wf(val) == True{} : Bool}
+  {pbad(Parse.step(thead(tj(val, V.WVal{})), Parse.P{False{}, Some{cc}, Nil{}})) == True{} : Bool}
+
+def after_root(val, cc, h):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{bb}:
+      match bb:
+        case True{}:
+          {==}
+        case False{}:
+          {==}
+    case V.JNum{+raw}:
+      nb_word(Parse.word.ok(raw), raw, cc)
+    case V.JStr{+a1}:
+      {==}
+    case V.JArr{+a1}:
+      {==}
+    case V.JObj{+a1}:
+      {==}
+    case V.JNil{}:
+      {==}
+    case V.JCons{+a1, +a2}:
+      no({pbad(Parse.step(thead(tj(V.JCons{a1, a2}, V.WVal{})), Parse.P{False{}, Some{cc}, Nil{}})) == True{} : Bool},
+        h)
+    case V.JPair{+a1, +a2, +a3}:
+      no({pbad(Parse.step(thead(tj(V.JPair{a1, a2, a3}, V.WVal{})), Parse.P{False{}, Some{cc},
+        Nil{}})) == True{} : Bool}, h)
+    case V.JSpan{+a1, +a2}:
+      {==}
+    case V.JBind{+a1, +a2, +a3, +a4}:
+      no({pbad(Parse.step(thead(tj(V.JBind{a1, a2, a3, a4}, V.WVal{})), Parse.P{False{}, Some{cc},
+        Nil{}})) == True{} : Bool}, h)
+
+# a nonempty token list whose first token raises the error flag does not parse
+law rej_after:
+  for xs: List<&2, Lex.Tok>
+  for +st: Parse.P
+  for ne: {tnil(xs) == False{} : Bool}
+  for h: {pbad(Parse.step(thead(xs), st)) == True{} : Bool}
+  {Parse.finish(Parse.run(xs, st)) == None{} : Maybe<&2, V.Json>}
+
+def rej_after(xs, st, ne, h):
+  match xs:
+    case Nil{}:
+      no({Parse.finish(st) == None{} : Maybe<&2, V.Json>}, Equal.sym(Bool, True{}, False{}, ne))
+    case +tok <> +rest:
+      fin_bad(Parse.run(rest, Parse.step(tok, st)), run_bad(rest, Parse.step(tok, st), h))
+
+# a well-formed value has tokens
+law tj_ne:
+  for +val: V.Json
+  for h: {V.wf(val) == True{} : Bool}
+  {tnil(tj(val, V.WVal{})) == False{} : Bool}
+
+def tj_ne(val, h):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{bb}:
+      match bb:
+        case True{}:
+          {==}
+        case False{}:
+          {==}
+    case V.JNum{+raw}:
+      {==}
+    case V.JStr{+a1}:
+      {==}
+    case V.JArr{+a1}:
+      {==}
+    case V.JObj{+a1}:
+      {==}
+    case V.JNil{}:
+      no({tnil(tj(V.JNil{}, V.WVal{})) == False{} : Bool}, h)
+    case V.JCons{+a1, +a2}:
+      no({tnil(tj(V.JCons{a1, a2}, V.WVal{})) == False{} : Bool}, h)
+    case V.JPair{+a1, +a2, +a3}:
+      no({tnil(tj(V.JPair{a1, a2, a3}, V.WVal{})) == False{} : Bool}, h)
+    case V.JSpan{+a1, +a2}:
+      {==}
+    case V.JBind{+a1, +a2, +a3, +a4}:
+      no({tnil(tj(V.JBind{a1, a2, a3, a4}, V.WVal{})) == False{} : Bool}, h)
+
+# the character lexer on two values' text, a space between
+law two_lex:
+  for +jj: V.Json
+  for +kk: V.Json
+  for +h_j: {V.wf(jj) == True{} : Bool}
+  for +h_k: {V.wf(kk) == True{} : Bool}
+  {Lex.finish(Lex.run(String.to_list(Print.print(jj) ++ " " ++ Print.print(kk)), Lex.Lex{Lex.Idle{}, [],
+    []})) == List.append(&2, Lex.Tok, tj(jj, V.WVal{}), tj(kk, V.WVal{})) : List<&2, Lex.Tok>}
+
+def two_lex(jj, kk, h_j, h_k):
+  Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(Print.print(jj) ++ " " ++ Print.print(kk)),
+    Lex.Lex{Lex.Idle{}, [], []})), Lex.finish(Lex.run(String.to_list(" " ++ Print.print(kk)), pend(jj, []))),
+    List.append(&2, Lex.Tok, tj(jj, V.WVal{}), tj(kk, V.WVal{})), Equal.cong(Lex.Lex, List<&2, Lex.Tok>,
+    zz => Lex.finish(zz), Lex.run(String.to_list(Print.print(jj) ++ " " ++ Print.print(kk)), Lex.Lex{Lex.Idle{}, [],
+    []}),
+    Lex.run(String.to_list(" " ++ Print.print(kk)), pend(jj, [])), seq(Print.print(jj), " " ++ Print.print(kk),
+      Lex.Lex{Lex.Idle{}, [], []}, pend(jj, []), lexp(jj, V.WVal{}, h_j, []))),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(" " ++ Print.print(kk)), pend(jj, []))),
+      Lex.finish(Lex.run(String.to_list(Print.print(kk)), Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(jj,
+      V.WVal{}), [])})), List.append(&2, Lex.Tok, tj(jj, V.WVal{}), tj(kk, V.WVal{})), Equal.cong(Lex.Lex, List<&2,
+      Lex.Tok>, zz => Lex.finish(zz), Lex.run(String.to_list(" " ++ Print.print(kk)), pend(jj, [])),
+    Lex.run(String.to_list(Print.print(kk)), Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(jj, V.WVal{}),
+      [])}), seq(" ", Print.print(kk), pend(jj, []), Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(jj,
+      V.WVal{}), [])},
+      space_close(jj, []))),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(Print.print(kk)), Lex.Lex{Lex.Idle{}, [],
+      List.reverse.go(&2, Lex.Tok, tj(jj, V.WVal{}), [])})), Lex.finish(pend(kk, List.reverse.go(&2, Lex.Tok, tj(jj,
+      V.WVal{}), []))), List.append(&2, Lex.Tok, tj(jj, V.WVal{}), tj(kk, V.WVal{})), Equal.cong(Lex.Lex, List<&2,
+      Lex.Tok>, zz => Lex.finish(zz), Lex.run(String.to_list(Print.print(kk)), Lex.Lex{Lex.Idle{}, [],
+      List.reverse.go(&2, Lex.Tok, tj(jj, V.WVal{}), [])}),
+    pend(kk, List.reverse.go(&2, Lex.Tok, tj(jj, V.WVal{}), [])), lexp(kk, V.WVal{}, h_k, List.reverse.go(&2, Lex.Tok,
+      tj(jj, V.WVal{}), []))),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(pend(kk, List.reverse.go(&2, Lex.Tok, tj(jj, V.WVal{}), []))),
+      List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(jj, V.WVal{}), []), tj(kk, V.WVal{})),
+      List.append(&2, Lex.Tok, tj(jj, V.WVal{}), tj(kk, V.WVal{})), fin_pend2(kk, List.reverse.go(&2, Lex.Tok, tj(jj,
+      V.WVal{}), [])),
+    rev_rev(tj(jj, V.WVal{}), [], tj(kk, V.WVal{}))))))
+
+
+def Laws.two_none(jj, kk, h_j, h_k, h_s):
+  own_m_none(Ezjson.parse(Print.print(jj) ++ " " ++ Print.print(kk)),
+    Equal.trans(Maybe<&2, V.Json>,
+      Laws.own_m(Parse.finish(Parse.run(Lex.tokens(Print.print(jj) ++ " " ++ Print.print(kk)), Parse.P{False{}, None{},
+      Nil{}}))), Parse.finish(ownp(Parse.run(Lex.tokens(Print.print(jj) ++ " " ++ Print.print(kk)), Parse.P{False{},
+      None{}, Nil{}}))), None{}, fin_own(Parse.run(Lex.tokens(Print.print(jj) ++ " " ++ Print.print(kk)),
+      Parse.P{False{}, None{}, Nil{}})),
+      Equal.trans(Maybe<&2, V.Json>, Parse.finish(ownp(Parse.run(Lex.tokens(Print.print(jj) ++ " " ++ Print.print(kk)),
+        Parse.P{False{}, None{}, Nil{}}))),
+        Parse.finish(Parse.run(dens(Lex.tokens(Print.print(jj) ++ " " ++ Print.print(kk))), Parse.P{False{}, None{},
+        Nil{}})), None{}, Equal.cong(Parse.P, Maybe<&2, V.Json>, zz => Parse.finish(zz),
+        ownp(Parse.run(Lex.tokens(Print.print(jj) ++ " " ++ Print.print(kk)), Parse.P{False{}, None{}, Nil{}})),
+        Parse.run(dens(Lex.tokens(Print.print(jj) ++ " " ++ Print.print(kk))), Parse.P{False{}, None{}, Nil{}}),
+      run_own(Lex.tokens(Print.print(jj) ++ " " ++ Print.print(kk)), Parse.P{False{}, None{}, Nil{}})),
+      Equal.trans(Maybe<&2, V.Json>,
+        Parse.finish(Parse.run(dens(Lex.tokens(Print.print(jj) ++ " " ++ Print.print(kk))), Parse.P{False{}, None{},
+        Nil{}})),
+        Parse.finish(Parse.run(dens(Lex.finish(Lex.run(String.to_list(Print.print(jj) ++ " " ++ Print.print(kk)),
+        Lex.Lex{Lex.Idle{}, [], []}))), Parse.P{False{}, None{}, Nil{}})), None{}, Equal.cong(List<&2, Lex.Tok>,
+        Maybe<&2, V.Json>, zz => Parse.finish(Parse.run(zz, Parse.P{False{}, None{}, Nil{}})),
+        dens(Lex.tokens(Print.print(jj) ++ " " ++ Print.print(kk))),
+        dens(Lex.finish(Lex.run(String.to_list(Print.print(jj) ++ " " ++ Print.print(kk)), Lex.Lex{Lex.Idle{}, [],
+        []}))), lexers_agree(Print.print(jj) ++ " " ++ Print.print(kk), h_s)),
+      Equal.trans(Maybe<&2, V.Json>,
+        Parse.finish(Parse.run(dens(Lex.finish(Lex.run(String.to_list(Print.print(jj) ++ " " ++ Print.print(kk)),
+        Lex.Lex{Lex.Idle{}, [], []}))), Parse.P{False{}, None{}, Nil{}})), Parse.finish(Parse.run(dens(List.append(&2,
+        Lex.Tok, tj(jj, V.WVal{}), tj(kk, V.WVal{}))), Parse.P{False{}, None{}, Nil{}})), None{}, Equal.cong(List<&2,
+        Lex.Tok>, Maybe<&2, V.Json>, zz => Parse.finish(Parse.run(dens(zz), Parse.P{False{}, None{}, Nil{}})),
+        Lex.finish(Lex.run(String.to_list(Print.print(jj) ++ " " ++ Print.print(kk)), Lex.Lex{Lex.Idle{}, [], []})),
+        List.append(&2, Lex.Tok, tj(jj, V.WVal{}), tj(kk, V.WVal{})), two_lex(jj, kk, h_j, h_k)),
+      Equal.trans(Maybe<&2, V.Json>, Parse.finish(Parse.run(dens(List.append(&2, Lex.Tok, tj(jj, V.WVal{}), tj(kk,
+        V.WVal{}))), Parse.P{False{}, None{}, Nil{}})), Parse.finish(Parse.run(List.append(&2, Lex.Tok, tj(jj,
+        V.WVal{}), tj(kk, V.WVal{})), Parse.P{False{}, None{}, Nil{}})), None{}, Equal.cong(List<&2, Lex.Tok>,
+        Maybe<&2, V.Json>, zz => Parse.finish(Parse.run(zz, Parse.P{False{}, None{}, Nil{}})), dens(List.append(&2,
+        Lex.Tok, tj(jj, V.WVal{}), tj(kk, V.WVal{}))), List.append(&2, Lex.Tok, tj(jj, V.WVal{}), tj(kk, V.WVal{})),
+      Equal.trans(List<&2, Lex.Tok>, dens(List.append(&2, Lex.Tok, tj(jj, V.WVal{}), tj(kk, V.WVal{}))),
+        List.append(&2, Lex.Tok, dens(tj(jj, V.WVal{})), dens(tj(kk, V.WVal{}))), List.append(&2, Lex.Tok, tj(jj,
+        V.WVal{}), tj(kk, V.WVal{})),
+        dens_app(tj(jj, V.WVal{}), tj(kk, V.WVal{})),
+        app_cong(dens(tj(jj, V.WVal{})), tj(jj, V.WVal{}), dens(tj(kk, V.WVal{})), tj(kk, V.WVal{}), dens_tj(jj,
+          V.WVal{}),
+          dens_tj(kk, V.WVal{})))),
+      Equal.trans(Maybe<&2, V.Json>, Parse.finish(Parse.run(List.append(&2, Lex.Tok, tj(jj, V.WVal{}), tj(kk,
+        V.WVal{})), Parse.P{False{}, None{}, Nil{}})), Parse.finish(Parse.run(tj(kk, V.WVal{}), Parse.run(tj(jj,
+        V.WVal{}), Parse.P{False{}, None{}, Nil{}}))), None{}, Equal.cong(Parse.P, Maybe<&2, V.Json>,
+        zz => Parse.finish(zz), Parse.run(List.append(&2, Lex.Tok, tj(jj, V.WVal{}), tj(kk, V.WVal{})),
+        Parse.P{False{}, None{}, Nil{}}),
+      Parse.run(tj(kk, V.WVal{}), Parse.run(tj(jj, V.WVal{}), Parse.P{False{}, None{}, Nil{}})), prun_app(tj(jj,
+        V.WVal{}), tj(kk, V.WVal{}), Parse.P{False{}, None{}, Nil{}})),
+      Equal.trans(Maybe<&2, V.Json>, Parse.finish(Parse.run(tj(kk, V.WVal{}), Parse.run(tj(jj, V.WVal{}),
+        Parse.P{False{}, None{}, Nil{}}))), Parse.finish(Parse.run(tj(kk, V.WVal{}), Parse.P{False{}, Some{canon(jj,
+        V.WVal{})}, Nil{}})), None{}, Equal.cong(Parse.P, Maybe<&2, V.Json>, zz => Parse.finish(Parse.run(tj(kk,
+        V.WVal{}), zz)), Parse.run(tj(jj, V.WVal{}), Parse.P{False{}, None{}, Nil{}}),
+      Parse.P{False{}, Some{canon(jj, V.WVal{})}, Nil{}}, pv(jj, V.WVal{}, h_j, False{}, None{}, Nil{},
+        V.JNil{})({==})),
+      rej_after(tj(kk, V.WVal{}), Parse.P{False{}, Some{canon(jj, V.WVal{})}, Nil{}}, tj_ne(kk, h_k), after_root(kk,
+        canon(jj, V.WVal{}), h_k))))))))))
+

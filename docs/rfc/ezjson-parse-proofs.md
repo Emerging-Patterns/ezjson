@@ -94,6 +94,11 @@ or the error token). Once the parser's error flag is raised no token lowers it
 (`step_bad`). "Bare word" is written in LAWS.bend (`bare`: one or more
 characters that are not whitespace, not structural, not `"` or `\`), and so
 are the literals and numbers it may be (`lit_or_num`).
+JSON-TEXT-3 (`two_none`): the character lexer reads two values' text, a
+space between, as the first value's tokens then the second's (`two_lex`,
+through WP-L2's `lexp`); the parser takes the first as the root (WP-P1's
+`pv`), and the second value's first token then raises the error flag
+(`after_root`).
 
 ## What parse does
 
