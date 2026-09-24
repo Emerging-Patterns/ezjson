@@ -118,6 +118,18 @@ hex digits (`esc_u_bad`), a low surrogate escape with no high one before it
 (`esc_hi_bad`) reject the text. Each leaves the lexer rejecting or inside an
 escape when the text ends, so its tokens hold the error token (`uni_rej`,
 `lo_rej`, `hi_rej`, `lex_none`).
+JSON-STR-4: a member name is spelled as any list of pieces, each a raw
+character, a two-character escape, a `\u` escape, or a surrogate pair
+(`Piece`, `spell`, `spelled` in LAWS.bend). `get` on the parsed one-member
+object finds the member exactly when the key equals the characters the
+pieces stand for (`get_decoded`). The name's characters are taken to be
+Unicode scalar values, as the characters of any Unicode text are. The
+proof reads the pieces with the character lexer (`piece_lex`,
+`spell_lex`), lands in the state the printed object leaves (`obj_lex`),
+and takes the parse from `print_parse`'s lemmas (`parse_obj`). `get`
+then compares with `find.eq`, which is `String.eq` (`find_str_eq`).
+Walking past the other members of a longer object is `get_hit` and
+`get_miss`; spans are TREE-5's `get_same`.
 
 ## What parse does
 
