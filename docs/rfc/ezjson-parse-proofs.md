@@ -146,8 +146,10 @@ keeps strings as they are rather than fixed as print writes them (`tj_r`,
 `pv_r`, `parse_tjr`): the derivation's strings may hold code points that
 are not scalar values. `tj` and its parser lemma now follow from that copy
 through `fxv`, which fixes a value's strings (`tj_fx`, `canon_fx`, `wf_fx`),
-so the parser induction is written once. The other half, that a text that
-parses has a derivation, is in progress. Its parser step: a token list the
+so the parser induction is written once. The other half: a text that
+parses is whitespace, a derivation's text and whitespace (`text_derives`,
+with `derived` saying the whitespace is whitespace and the derivation follows
+the rules). Its parser step: a token list the
 parser accepts, spans replaced, is exactly its value's tokens
 (`parse_toks`). The invariant pairs each state that has not failed with
 the tokens it has read, reversed (`rs`, `ti`): a frame's cells, the
@@ -165,6 +167,16 @@ surrogate's). Each character keeps it (`jstep`, with a lemma per mode:
 the whole text does (`jrun`). The lexemes' tokens are the lexer's, and each
 string's pieces are well spelled; the facts about a character come back out of
 the lexer's own tests (`cls_space`, `rawc`, `sur_inv`).
+The derivation is then read off the lexemes, walking the value the tokens
+parse to (`bld`, by shape: a value, or an array's or object's cells and
+their closing bracket). Each lexeme's whitespace goes where §2 puts it, a
+punctuation lexeme's token names its character (`lp_inv`), and the lexemes
+spell the derivation's text (`fr`, `rc_inj`). A text that parses leaves the
+lexer between tokens or in a word (`lnb`, `lx_fin`), since any other mode
+ends in the error token. `derived` checks a raw string character against
+`raw_char`, which also admits a code point past U+10FFFF; for the texts
+JSON-TEXT-1 is about, whose characters are all code points (REVIEW-P8), that
+is RFC 8259's `unescaped`, so the two laws together are the row.
 
 ## What parse does
 

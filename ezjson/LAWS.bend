@@ -778,6 +778,11 @@ def g.val(gg: Gv) -> V.Json:
     case GNextM{_, ps, _, _, vv, _, rr}:
       V.JPair{spelled(ps), g.val(vv), g.val(rr)}
 
+# whether whitespace, a derivation and whitespace are RFC 8259's JSON-text
+# rule (§2): ws value ws
+def derived(+wa: String, gg: Gv, +wb: String) -> Bool:
+  Bool.and(all_ws(wa), Bool.and(g.ok(gg, GKVal{}), all_ws(wb)))
+
 # where a scan for raw controls in strings is: outside strings, inside one,
 # just after a backslash inside one, or past a raw control inside one (§7)
 type Cs is Data:
@@ -1342,6 +1347,18 @@ law text_some:
   for +h_b: {all_ws(wb) == True{} : Bool}
   for h_s: {short(wa ++ g.text(gg) ++ wb) == True{} : Bool}
   {own_m(Ezjson.parse(wa ++ g.text(gg) ++ wb)) == Some{g.val(gg)} : Maybe<&2, V.Json>}
+
+# LAW: a text that parses is RFC 8259's JSON-text rule: whitespace, a
+# derivation's text and whitespace
+# JSON-TEXT-1
+law text_derives:
+  for +txt: String
+  for +h_s: {short(txt) == True{} : Bool}
+  for +h_p: {is_some(Ezjson.parse(txt)) == True{} : Bool}
+  exs wa: String
+  exs gg: Gv
+  exs wb: String
+  ({txt == wa ++ g.text(gg) ++ wb : String} & {derived(wa, gg, wb) == True{} : Bool})
 
 # LAW: a raw control U+0000 to U+001F inside a string makes parse None
 # JSON-STR-3

@@ -23542,3 +23542,3166 @@ def jrun(cs, st, rc, h):
       h
     case +ch <> +tl:
       jrun(tl, Lex.feed(ch, st), ch <> rc, jstep(st, ch, rc, h))
+
+
+# JSON-TEXT-1: a derivation from lexemes and the value they parse to
+
+# what a punctuation lexeme's token says of its character
+def lpg(ch: Char, tt: Lex.Tok) -> Type:
+  match tt:
+    case Lex.TOpenArr{}:
+      {ch == '[' : Char}
+    case Lex.TCloseArr{}:
+      {ch == ']' : Char}
+    case Lex.TOpenObj{}:
+      {ch == '{' : Char}
+    case Lex.TCloseObj{}:
+      {ch == '}' : Char}
+    case Lex.TColon{}:
+      {ch == ':' : Char}
+    case Lex.TComma{}:
+      {ch == ',' : Char}
+    case Lex.TBad{}:
+      Unit
+    case _:
+      Empty
+
+# past classify's last test
+law lp_end:
+  for +cp: U32
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Lex.COther{})) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_end(cp, _tt, h):
+  %h : lpg(Chr{cp}, _)
+  Unit{}
+
+# classify's test for 9, once its answer is named
+law lp_11:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 9) == bb : Bool}
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Bool.pick(Lex.Class, bb, Lex.CSpace{}, Lex.COther{}))) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_11(cp, bb, _eb, tt, h):
+  match bb:
+    case True{}:
+      %h : lpg(Chr{cp}, _)
+      Unit{}
+    case False{}:
+      lp_end(cp, tt, h)
+
+# classify's test for 13, once its answer is named
+law lp_10:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 13) == bb : Bool}
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+    Lex.COther{})))) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_10(cp, bb, _eb, tt, h):
+  match bb:
+    case True{}:
+      %h : lpg(Chr{cp}, _)
+      Unit{}
+    case False{}:
+      lp_11(cp, U32.is_eq(cp, 9), {==}, tt, h)
+
+# classify's test for 10, once its answer is named
+law lp_9:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 10) == bb : Bool}
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_9(cp, bb, _eb, tt, h):
+  match bb:
+    case True{}:
+      %h : lpg(Chr{cp}, _)
+      Unit{}
+    case False{}:
+      lp_10(cp, U32.is_eq(cp, 13), {==}, tt, h)
+
+# classify's test for 32, once its answer is named
+law lp_8:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 32) == bb : Bool}
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+    Lex.COther{})))))) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_8(cp, bb, _eb, tt, h):
+  match bb:
+    case True{}:
+      %h : lpg(Chr{cp}, _)
+      Unit{}
+    case False{}:
+      lp_9(cp, U32.is_eq(cp, 10), {==}, tt, h)
+
+# classify's test for 92, once its answer is named
+law lp_7:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 92) == bb : Bool}
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Bool.pick(Lex.Class, bb, Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_7(cp, bb, _eb, tt, h):
+  match bb:
+    case True{}:
+      %h : lpg(Chr{cp}, _)
+      Unit{}
+    case False{}:
+      lp_8(cp, U32.is_eq(cp, 32), {==}, tt, h)
+
+# classify's test for 34, once its answer is named
+law lp_6:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 34) == bb : Bool}
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Bool.pick(Lex.Class, bb, Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+    Lex.COther{})))))))) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_6(cp, bb, _eb, tt, h):
+  match bb:
+    case True{}:
+      %h : lpg(Chr{cp}, _)
+      Unit{}
+    case False{}:
+      lp_7(cp, U32.is_eq(cp, 92), {==}, tt, h)
+
+# classify's test for 44, once its answer is named
+law lp_5:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 44) == bb : Bool}
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34),
+    Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32),
+    Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13),
+    Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))))) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_5(cp, bb, eb, tt, h):
+  match bb:
+    case True{}:
+      %h : lpg(Chr{cp}, _)
+      Equal.cong(U32, Char, zz => Chr{zz}, cp, 44, ueq(cp, 44, eb))
+    case False{}:
+      lp_6(cp, U32.is_eq(cp, 34), {==}, tt, h)
+
+# classify's test for 58, once its answer is named
+law lp_4:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 58) == bb : Bool}
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44),
+    Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp,
+    92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10),
+    Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9),
+    Lex.CSpace{}, Lex.COther{})))))))))) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_4(cp, bb, eb, tt, h):
+  match bb:
+    case True{}:
+      %h : lpg(Chr{cp}, _)
+      Equal.cong(U32, Char, zz => Chr{zz}, cp, 58, ueq(cp, 58, eb))
+    case False{}:
+      lp_5(cp, U32.is_eq(cp, 44), {==}, tt, h)
+
+# classify's test for 125, once its answer is named
+law lp_3:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 125) == bb : Bool}
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58),
+    Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+    Lex.COther{}))))))))))) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_3(cp, bb, eb, tt, h):
+  match bb:
+    case True{}:
+      %h : lpg(Chr{cp}, _)
+      Equal.cong(U32, Char, zz => Chr{zz}, cp, 125, ueq(cp, 125, eb))
+    case False{}:
+      lp_4(cp, U32.is_eq(cp, 58), {==}, tt, h)
+
+# classify's test for 123, once its answer is named
+law lp_2:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 123) == bb : Bool}
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125),
+    Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))))))))))) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_2(cp, bb, eb, tt, h):
+  match bb:
+    case True{}:
+      %h : lpg(Chr{cp}, _)
+      Equal.cong(U32, Char, zz => Chr{zz}, cp, 123, ueq(cp, 123, eb))
+    case False{}:
+      lp_3(cp, U32.is_eq(cp, 125), {==}, tt, h)
+
+# classify's test for 93, once its answer is named
+law lp_1:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 93) == bb : Bool}
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TCloseArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 123),
+    Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44),
+    Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp,
+    92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10),
+    Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9),
+    Lex.CSpace{}, Lex.COther{}))))))))))))) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_1(cp, bb, eb, tt, h):
+  match bb:
+    case True{}:
+      %h : lpg(Chr{cp}, _)
+      Equal.cong(U32, Char, zz => Chr{zz}, cp, 93, ueq(cp, 93, eb))
+    case False{}:
+      lp_2(cp, U32.is_eq(cp, 123), {==}, tt, h)
+
+# classify's test for 91, once its answer is named
+law lp_0:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 91) == bb : Bool}
+  for tt: Lex.Tok
+  for h: {den(ptok.go(Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TOpenArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 93),
+    Lex.CPunct{Lex.TCloseArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 123), Lex.CPunct{Lex.TOpenObj{}},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58),
+    Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class,
+    U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+    Lex.COther{})))))))))))))) == tt : Lex.Tok}
+  lpg(Chr{cp}, tt)
+
+def lp_0(cp, bb, eb, tt, h):
+  match bb:
+    case True{}:
+      %h : lpg(Chr{cp}, _)
+      Equal.cong(U32, Char, zz => Chr{zz}, cp, 91, ueq(cp, 91, eb))
+    case False{}:
+      lp_1(cp, U32.is_eq(cp, 93), {==}, tt, h)
+
+# a punctuation lexeme's token names its character
+law lp_inv:
+  for ch: Char
+  for tt: Lex.Tok
+  for h: {den(ptok(ch)) == tt : Lex.Tok}
+  lpg(ch, tt)
+
+def lp_inv(ch, tt, h):
+  match ch:
+    case Chr{+uu}:
+      lp_0(uu, U32.is_eq(uu, 91), {==}, tt, h)
+
+# a token's kind, as a number
+def ttag(tt: Lex.Tok) -> U32:
+  match tt:
+    case Lex.TOpenArr{}:
+      1
+    case Lex.TCloseArr{}:
+      2
+    case Lex.TOpenObj{}:
+      3
+    case Lex.TCloseObj{}:
+      4
+    case Lex.TColon{}:
+      5
+    case Lex.TComma{}:
+      6
+    case Lex.TStr{_}:
+      7
+    case Lex.TWord{_}:
+      8
+    case Lex.TStrS{_, _}:
+      9
+    case Lex.TWordS{_, _}:
+      10
+    case Lex.TBad{}:
+      11
+
+# a word token's text
+def twd(tt: Lex.Tok) -> String:
+  match tt:
+    case Lex.TWord{txt}:
+      txt
+    case _:
+      ""
+
+# a string token's text
+def tsd(tt: Lex.Tok) -> String:
+  match tt:
+    case Lex.TStr{txt}:
+      txt
+    case _:
+      ""
+
+# lexemes listed first first, their whitespace and characters reversed onto acc
+def fr(its: List<&2, It>, acc: List<&2, Char>) -> List<&2, Char>:
+  match its:
+    case Nil{}:
+      acc
+    case It{rws, lx} <> rest:
+      fr(rest, rlx(lx, List.append(&2, Char, rws, acc)))
+
+# lexemes listed last first, reversed onto acc
+def ra(its: List<&2, It>, acc: List<&2, Char>) -> List<&2, Char>:
+  match its:
+    case Nil{}:
+      acc
+    case It{rws, lx} <> rest:
+      rlx(lx, List.append(&2, Char, rws, ra(rest, acc)))
+
+# ritems is ra onto nothing
+law ritems_ra:
+  for +its: List<&2, It>
+  {ritems(its) == ra(its, []) : List<&2, Char>}
+
+def ritems_ra(its):
+  match its:
+    case Nil{}:
+      {==}
+    case It{+rws, +lx} <> +rest:
+      Equal.cong(List<&2, Char>, List<&2, Char>, zz => rlx(lx, List.append(&2, Char, rws, zz)), ritems(rest), ra(rest,
+        []), ritems_ra(rest))
+
+# lexemes put back in order spell what they spelled
+law fr_rev:
+  for +its: List<&2, It>
+  for +fs: List<&2, It>
+  for +acc: List<&2, Char>
+  {fr(List.reverse.go(&2, It, its, fs), acc) == fr(fs, ra(its, acc)) : List<&2, Char>}
+
+def fr_rev(its, fs, acc):
+  match its:
+    case Nil{}:
+      {==}
+    case It{+rws, +lx} <> +rest:
+      fr_rev(rest, It{rws, lx} <> fs, acc)
+
+# lexemes put back in order have their tokens put back in order
+law rtoks_rev:
+  for +its: List<&2, It>
+  for +fs: List<&2, It>
+  {rtoks(List.reverse.go(&2, It, its, fs)) == List.reverse.go(&2, Lex.Tok, rtoks(its), rtoks(fs)) : List<&2, Lex.Tok>}
+
+def rtoks_rev(its, fs):
+  match its:
+    case Nil{}:
+      {==}
+    case It{+rws, +lx} <> +rest:
+      rtoks_rev(rest, It{rws, lx} <> fs)
+
+# lexemes put back in order stay well spelled
+law itsok_rev:
+  for +its: List<&2, It>
+  for +fs: List<&2, It>
+  for +hi: {itsok(its) == True{} : Bool}
+  for hf: {itsok(fs) == True{} : Bool}
+  {itsok(List.reverse.go(&2, It, its, fs)) == True{} : Bool}
+
+def itsok_rev(its, fs, hi, hf):
+  match its:
+    case Nil{}:
+      hf
+    case It{+rws, +lx} <> +rest:
+      itsok_rev(rest, It{rws, lx} <> fs, and_right(lxok(lx), itsok(rest), and_right(allws(rws), Bool.and(lxok(lx),
+        itsok(rest)), hi)),
+        and2(allws(rws), Bool.and(lxok(lx), itsok(fs)), and_left(allws(rws), Bool.and(lxok(lx), itsok(rest)), hi),
+        and2(lxok(lx), itsok(fs), and_left(lxok(lx), itsok(rest), and_right(allws(rws), Bool.and(lxok(lx),
+          itsok(rest)), hi)), hf)))
+
+# lexemes with no tokens are none
+law its_nil:
+  for its: List<&2, It>
+  for h: {dens(rtoks(its)) == [] : List<&2, Lex.Tok>}
+  {its == [] : List<&2, It>}
+
+def its_nil(its, h):
+  match its:
+    case Nil{}:
+      {==}
+    case It{+rws, +lx} <> +rest:
+      Empty.absurd({It{rws, lx} <> rest == [] : List<&2, It>}, true_false(Equal.cong(List<&2, Lex.Tok>, Bool,
+        zz => tnil(zz), [],
+        dens(rtoks(It{rws, lx} <> rest)), Equal.sym(List<&2, Lex.Tok>, dens(rtoks(It{rws, lx} <> rest)), [], h))))
+
+# whitespace read back as text is whitespace
+law aw_text:
+  for +ws: List<&2, Char>
+  for +txt: String
+  for +hw: {allws(ws) == True{} : Bool}
+  for ht: {Laws.all_ws(txt) == True{} : Bool}
+  {Laws.all_ws(Lex.text.go(ws, txt)) == True{} : Bool}
+
+def aw_text(ws, txt, hw, ht):
+  match ws:
+    case Nil{}:
+      ht
+    case +ch <> +tl:
+      aw_text(tl, SCon{ch, txt}, and_right(Laws.is_ws(ch), allws(tl), hw), and2(Laws.is_ws(ch), Laws.all_ws(txt),
+        and_left(Laws.is_ws(ch), allws(tl), hw), ht))
+
+# the last of four ors
+law or4:
+  for aa: Bool
+  for bb: Bool
+  for cc: Bool
+  for dd: Bool
+  for h: {dd == True{} : Bool}
+  {Bool.or(aa, Bool.or(bb, Bool.or(cc, dd))) == True{} : Bool}
+
+def or4(aa, bb, cc, _dd, h):
+  match aa:
+    case True{}:
+      {==}
+    case False{}:
+      match bb:
+        case True{}:
+          {==}
+        case False{}:
+          match cc:
+            case True{}:
+              {==}
+            case False{}:
+              h
+
+# a character list with nothing after it
+law capp_nil:
+  for +xs: List<&2, Char>
+  {List.append(&2, Char, xs, []) == xs : List<&2, Char>}
+
+def capp_nil(xs):
+  match xs:
+    case Nil{}:
+      {==}
+    case +hd <> +tl:
+      Equal.cong(List<&2, Char>, List<&2, Char>, zz => hd <> zz, List.append(&2, Char, tl, []), tl, capp_nil(tl))
+
+# a character list reversed twice
+law crr:
+  for +xs: List<&2, Char>
+  for +acc: List<&2, Char>
+  for +ys: List<&2, Char>
+  {List.reverse.go(&2, Char, List.reverse.go(&2, Char, xs, acc), ys) == List.reverse.go(&2, Char, acc,
+    List.append(&2, Char, xs, ys)) : List<&2, Char>}
+
+def crr(xs, acc, ys):
+  match xs:
+    case Nil{}:
+      {==}
+    case +hd <> +tl:
+      crr(tl, hd <> acc, ys)
+
+# a string's characters make it again
+law sfl:
+  for +txt: String
+  {String.from_list(String.to_list(txt)) == txt : String}
+
+def sfl(txt):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{+ch, +tl}:
+      Equal.cong(String, String, zz => SCon{ch, zz}, String.from_list(String.to_list(tl)), tl, sfl(tl))
+
+# a string's characters, reversed twice
+law str_rr:
+  for +txt: String
+  {String.from_list(List.reverse.go(&2, Char, List.reverse.go(&2, Char, String.to_list(txt), []), [])) == txt : String}
+
+def str_rr(txt):
+  Equal.trans(String, String.from_list(List.reverse.go(&2, Char, List.reverse.go(&2, Char, String.to_list(txt), []),
+    [])),
+    String.from_list(String.to_list(txt)), txt, Equal.cong(List<&2, Char>, String, zz => String.from_list(zz),
+    List.reverse.go(&2, Char, List.reverse.go(&2, Char, String.to_list(txt), []), []), String.to_list(txt),
+      Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, List.reverse.go(&2, Char, String.to_list(txt), []), []),
+      List.append(&2, Char, String.to_list(txt), []),
+    String.to_list(txt), crr(String.to_list(txt), [], []), capp_nil(String.to_list(txt)))), sfl(txt))
+
+# two strings whose characters reverse alike are the same
+law rc_inj:
+  for +aa: String
+  for +bb: String
+  for h: {List.reverse.go(&2, Char, String.to_list(aa), []) == List.reverse.go(&2, Char, String.to_list(bb),
+    []) : List<&2, Char>}
+  {aa == bb : String}
+
+def rc_inj(aa, bb, h):
+  Equal.trans(String, aa, String.from_list(List.reverse.go(&2, Char, List.reverse.go(&2, Char, String.to_list(aa), []),
+    [])), bb, Equal.sym(String, String.from_list(List.reverse.go(&2, Char, List.reverse.go(&2, Char,
+    String.to_list(aa), []), [])), aa, str_rr(aa)), Equal.trans(String, String.from_list(List.reverse.go(&2, Char,
+    List.reverse.go(&2, Char, String.to_list(aa), []), [])), String.from_list(List.reverse.go(&2, Char,
+    List.reverse.go(&2, Char, String.to_list(bb), []), [])), bb, Equal.cong(List<&2, Char>, String,
+    zz => String.from_list(List.reverse.go(&2, Char, zz, [])), List.reverse.go(&2, Char, String.to_list(aa), []),
+    List.reverse.go(&2, Char, String.to_list(bb), []), h), str_rr(bb)))
+
+# the next lexeme is Lex.TOpenArr{}'s
+law take_oa:
+  for fits: List<&2, It>
+  for +rr: List<&2, Lex.Tok>
+  for +acc: List<&2, Char>
+  for +ht: {dens(rtoks(fits)) == Lex.TOpenArr{} <> rr : List<&2, Lex.Tok>}
+  for +ho: {itsok(fits) == True{} : Bool}
+  (&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(fits, acc) == fr(tr,
+    '[' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))))
+
+def take_oa(fits, rr, acc, ht, ho):
+  match fits:
+    case Nil{}:
+      Empty.absurd(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr([], acc) == fr(tr,
+        '[' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), true_false(Equal.cong(List<&2, Lex.Tok>, Bool,
+        zz => tnil(zz), [], Lex.TOpenArr{} <> rr, ht)))
+    case It{+w, LP{+ch}} <> +rest:
+      (w, (rest, (Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => ttail(zz), den(ptok(ch)) <> dens(rtoks(rest)),
+        Lex.TOpenArr{} <> rr, ht), (and_right(allws(w), Bool.and(lxok(LP{ch}), itsok(rest)), ho), (and_left(allws(w),
+        Bool.and(lxok(LP{ch}), itsok(rest)), ho), Equal.cong(Char, List<&2, Char>, zz => fr(rest, zz <> List.append(&2,
+        Char, w, acc)), ch, '[', lp_inv(ch, Lex.TOpenArr{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz),
+        den(ptok(ch)) <> dens(rtoks(rest)), Lex.TOpenArr{} <> rr, ht))))))))
+    case It{+w, LW{+ww}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LW{ww}} <> rest,
+        acc) == fr(tr, '[' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), Equal.cong(Lex.Tok, Bool,
+        zz => U32.is_eq(ttag(zz), 1), Lex.TWord{ww}, Lex.TOpenArr{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok,
+        zz => thead(zz), Lex.TWord{ww} <> dens(rtoks(rest)), Lex.TOpenArr{} <> rr, ht)))
+    case It{+w, LS{+ps}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LS{ps}} <> rest,
+        acc) == fr(tr, '[' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), Equal.cong(Lex.Tok, Bool,
+        zz => U32.is_eq(ttag(zz), 1), Lex.TStr{Laws.spelled(ps)}, Lex.TOpenArr{}, Equal.cong(List<&2, Lex.Tok>,
+        Lex.Tok, zz => thead(zz), Lex.TStr{Laws.spelled(ps)} <> dens(rtoks(rest)), Lex.TOpenArr{} <> rr, ht)))
+
+# the next lexeme is Lex.TCloseArr{}'s
+law take_ca:
+  for fits: List<&2, It>
+  for +rr: List<&2, Lex.Tok>
+  for +acc: List<&2, Char>
+  for +ht: {dens(rtoks(fits)) == Lex.TCloseArr{} <> rr : List<&2, Lex.Tok>}
+  for +ho: {itsok(fits) == True{} : Bool}
+  (&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(fits, acc) == fr(tr,
+    ']' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))))
+
+def take_ca(fits, rr, acc, ht, ho):
+  match fits:
+    case Nil{}:
+      Empty.absurd(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr([], acc) == fr(tr,
+        ']' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), true_false(Equal.cong(List<&2, Lex.Tok>, Bool,
+        zz => tnil(zz), [], Lex.TCloseArr{} <> rr, ht)))
+    case It{+w, LP{+ch}} <> +rest:
+      (w, (rest, (Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => ttail(zz), den(ptok(ch)) <> dens(rtoks(rest)),
+        Lex.TCloseArr{} <> rr, ht), (and_right(allws(w), Bool.and(lxok(LP{ch}), itsok(rest)), ho), (and_left(allws(w),
+        Bool.and(lxok(LP{ch}), itsok(rest)), ho), Equal.cong(Char, List<&2, Char>, zz => fr(rest, zz <> List.append(&2,
+        Char, w, acc)), ch, ']', lp_inv(ch, Lex.TCloseArr{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz),
+        den(ptok(ch)) <> dens(rtoks(rest)), Lex.TCloseArr{} <> rr, ht))))))))
+    case It{+w, LW{+ww}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LW{ww}} <> rest,
+        acc) == fr(tr, ']' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), Equal.cong(Lex.Tok, Bool,
+        zz => U32.is_eq(ttag(zz), 2), Lex.TWord{ww}, Lex.TCloseArr{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok,
+        zz => thead(zz), Lex.TWord{ww} <> dens(rtoks(rest)), Lex.TCloseArr{} <> rr, ht)))
+    case It{+w, LS{+ps}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LS{ps}} <> rest,
+        acc) == fr(tr, ']' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), Equal.cong(Lex.Tok, Bool,
+        zz => U32.is_eq(ttag(zz), 2), Lex.TStr{Laws.spelled(ps)}, Lex.TCloseArr{}, Equal.cong(List<&2, Lex.Tok>,
+        Lex.Tok, zz => thead(zz), Lex.TStr{Laws.spelled(ps)} <> dens(rtoks(rest)), Lex.TCloseArr{} <> rr, ht)))
+
+# the next lexeme is Lex.TOpenObj{}'s
+law take_oo:
+  for fits: List<&2, It>
+  for +rr: List<&2, Lex.Tok>
+  for +acc: List<&2, Char>
+  for +ht: {dens(rtoks(fits)) == Lex.TOpenObj{} <> rr : List<&2, Lex.Tok>}
+  for +ho: {itsok(fits) == True{} : Bool}
+  (&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(fits, acc) == fr(tr,
+    '{' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))))
+
+def take_oo(fits, rr, acc, ht, ho):
+  match fits:
+    case Nil{}:
+      Empty.absurd(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr([], acc) == fr(tr,
+        '{' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), true_false(Equal.cong(List<&2, Lex.Tok>, Bool,
+        zz => tnil(zz), [], Lex.TOpenObj{} <> rr, ht)))
+    case It{+w, LP{+ch}} <> +rest:
+      (w, (rest, (Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => ttail(zz), den(ptok(ch)) <> dens(rtoks(rest)),
+        Lex.TOpenObj{} <> rr, ht), (and_right(allws(w), Bool.and(lxok(LP{ch}), itsok(rest)), ho), (and_left(allws(w),
+        Bool.and(lxok(LP{ch}), itsok(rest)), ho), Equal.cong(Char, List<&2, Char>, zz => fr(rest, zz <> List.append(&2,
+        Char, w, acc)), ch, '{', lp_inv(ch, Lex.TOpenObj{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz),
+        den(ptok(ch)) <> dens(rtoks(rest)), Lex.TOpenObj{} <> rr, ht))))))))
+    case It{+w, LW{+ww}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LW{ww}} <> rest,
+        acc) == fr(tr, '{' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), Equal.cong(Lex.Tok, Bool,
+        zz => U32.is_eq(ttag(zz), 3), Lex.TWord{ww}, Lex.TOpenObj{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok,
+        zz => thead(zz), Lex.TWord{ww} <> dens(rtoks(rest)), Lex.TOpenObj{} <> rr, ht)))
+    case It{+w, LS{+ps}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LS{ps}} <> rest,
+        acc) == fr(tr, '{' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), Equal.cong(Lex.Tok, Bool,
+        zz => U32.is_eq(ttag(zz), 3), Lex.TStr{Laws.spelled(ps)}, Lex.TOpenObj{}, Equal.cong(List<&2, Lex.Tok>,
+        Lex.Tok, zz => thead(zz), Lex.TStr{Laws.spelled(ps)} <> dens(rtoks(rest)), Lex.TOpenObj{} <> rr, ht)))
+
+# the next lexeme is Lex.TCloseObj{}'s
+law take_co:
+  for fits: List<&2, It>
+  for +rr: List<&2, Lex.Tok>
+  for +acc: List<&2, Char>
+  for +ht: {dens(rtoks(fits)) == Lex.TCloseObj{} <> rr : List<&2, Lex.Tok>}
+  for +ho: {itsok(fits) == True{} : Bool}
+  (&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(fits, acc) == fr(tr,
+    '}' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))))
+
+def take_co(fits, rr, acc, ht, ho):
+  match fits:
+    case Nil{}:
+      Empty.absurd(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr([], acc) == fr(tr,
+        '}' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), true_false(Equal.cong(List<&2, Lex.Tok>, Bool,
+        zz => tnil(zz), [], Lex.TCloseObj{} <> rr, ht)))
+    case It{+w, LP{+ch}} <> +rest:
+      (w, (rest, (Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => ttail(zz), den(ptok(ch)) <> dens(rtoks(rest)),
+        Lex.TCloseObj{} <> rr, ht), (and_right(allws(w), Bool.and(lxok(LP{ch}), itsok(rest)), ho), (and_left(allws(w),
+        Bool.and(lxok(LP{ch}), itsok(rest)), ho), Equal.cong(Char, List<&2, Char>, zz => fr(rest, zz <> List.append(&2,
+        Char, w, acc)), ch, '}', lp_inv(ch, Lex.TCloseObj{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz),
+        den(ptok(ch)) <> dens(rtoks(rest)), Lex.TCloseObj{} <> rr, ht))))))))
+    case It{+w, LW{+ww}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LW{ww}} <> rest,
+        acc) == fr(tr, '}' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), Equal.cong(Lex.Tok, Bool,
+        zz => U32.is_eq(ttag(zz), 4), Lex.TWord{ww}, Lex.TCloseObj{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok,
+        zz => thead(zz), Lex.TWord{ww} <> dens(rtoks(rest)), Lex.TCloseObj{} <> rr, ht)))
+    case It{+w, LS{+ps}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LS{ps}} <> rest,
+        acc) == fr(tr, '}' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), Equal.cong(Lex.Tok, Bool,
+        zz => U32.is_eq(ttag(zz), 4), Lex.TStr{Laws.spelled(ps)}, Lex.TCloseObj{}, Equal.cong(List<&2, Lex.Tok>,
+        Lex.Tok, zz => thead(zz), Lex.TStr{Laws.spelled(ps)} <> dens(rtoks(rest)), Lex.TCloseObj{} <> rr, ht)))
+
+# the next lexeme is Lex.TColon{}'s
+law take_col:
+  for fits: List<&2, It>
+  for +rr: List<&2, Lex.Tok>
+  for +acc: List<&2, Char>
+  for +ht: {dens(rtoks(fits)) == Lex.TColon{} <> rr : List<&2, Lex.Tok>}
+  for +ho: {itsok(fits) == True{} : Bool}
+  (&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(fits, acc) == fr(tr,
+    ':' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))))
+
+def take_col(fits, rr, acc, ht, ho):
+  match fits:
+    case Nil{}:
+      Empty.absurd(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr([], acc) == fr(tr,
+        ':' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), true_false(Equal.cong(List<&2, Lex.Tok>, Bool,
+        zz => tnil(zz), [], Lex.TColon{} <> rr, ht)))
+    case It{+w, LP{+ch}} <> +rest:
+      (w, (rest, (Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => ttail(zz), den(ptok(ch)) <> dens(rtoks(rest)),
+        Lex.TColon{} <> rr, ht), (and_right(allws(w), Bool.and(lxok(LP{ch}), itsok(rest)), ho), (and_left(allws(w),
+        Bool.and(lxok(LP{ch}), itsok(rest)), ho), Equal.cong(Char, List<&2, Char>, zz => fr(rest, zz <> List.append(&2,
+        Char, w, acc)), ch, ':', lp_inv(ch, Lex.TColon{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz),
+        den(ptok(ch)) <> dens(rtoks(rest)), Lex.TColon{} <> rr, ht))))))))
+    case It{+w, LW{+ww}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LW{ww}} <> rest,
+        acc) == fr(tr, ':' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), Equal.cong(Lex.Tok, Bool,
+        zz => U32.is_eq(ttag(zz), 5), Lex.TWord{ww}, Lex.TColon{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok,
+        zz => thead(zz), Lex.TWord{ww} <> dens(rtoks(rest)), Lex.TColon{} <> rr, ht)))
+    case It{+w, LS{+ps}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LS{ps}} <> rest,
+        acc) == fr(tr, ':' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), Equal.cong(Lex.Tok, Bool,
+        zz => U32.is_eq(ttag(zz), 5), Lex.TStr{Laws.spelled(ps)}, Lex.TColon{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok,
+        zz => thead(zz), Lex.TStr{Laws.spelled(ps)} <> dens(rtoks(rest)), Lex.TColon{} <> rr, ht)))
+
+# the next lexeme is Lex.TComma{}'s
+law take_com:
+  for fits: List<&2, It>
+  for +rr: List<&2, Lex.Tok>
+  for +acc: List<&2, Char>
+  for +ht: {dens(rtoks(fits)) == Lex.TComma{} <> rr : List<&2, Lex.Tok>}
+  for +ho: {itsok(fits) == True{} : Bool}
+  (&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(fits, acc) == fr(tr,
+    ',' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))))
+
+def take_com(fits, rr, acc, ht, ho):
+  match fits:
+    case Nil{}:
+      Empty.absurd(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr([], acc) == fr(tr,
+        ',' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), true_false(Equal.cong(List<&2, Lex.Tok>, Bool,
+        zz => tnil(zz), [], Lex.TComma{} <> rr, ht)))
+    case It{+w, LP{+ch}} <> +rest:
+      (w, (rest, (Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => ttail(zz), den(ptok(ch)) <> dens(rtoks(rest)),
+        Lex.TComma{} <> rr, ht), (and_right(allws(w), Bool.and(lxok(LP{ch}), itsok(rest)), ho), (and_left(allws(w),
+        Bool.and(lxok(LP{ch}), itsok(rest)), ho), Equal.cong(Char, List<&2, Char>, zz => fr(rest, zz <> List.append(&2,
+        Char, w, acc)), ch, ',', lp_inv(ch, Lex.TComma{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz),
+        den(ptok(ch)) <> dens(rtoks(rest)), Lex.TComma{} <> rr, ht))))))))
+    case It{+w, LW{+ww}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LW{ww}} <> rest,
+        acc) == fr(tr, ',' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), Equal.cong(Lex.Tok, Bool,
+        zz => U32.is_eq(ttag(zz), 6), Lex.TWord{ww}, Lex.TComma{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok,
+        zz => thead(zz), Lex.TWord{ww} <> dens(rtoks(rest)), Lex.TComma{} <> rr, ht)))
+    case It{+w, LS{+ps}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LS{ps}} <> rest,
+        acc) == fr(tr, ',' <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))), Equal.cong(Lex.Tok, Bool,
+        zz => U32.is_eq(ttag(zz), 6), Lex.TStr{Laws.spelled(ps)}, Lex.TComma{}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok,
+        zz => thead(zz), Lex.TStr{Laws.spelled(ps)} <> dens(rtoks(rest)), Lex.TComma{} <> rr, ht)))
+
+# the next lexeme is Lex.TWord{xx}'s
+law take_w:
+  for fits: List<&2, It>
+  for +xx: String
+  for +rr: List<&2, Lex.Tok>
+  for +acc: List<&2, Char>
+  for +ht: {dens(rtoks(fits)) == Lex.TWord{xx} <> rr : List<&2, Lex.Tok>}
+  for +ho: {itsok(fits) == True{} : Bool}
+  (&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(fits, acc) == fr(tr,
+    List.reverse.go(&2, Char, String.to_list(xx), List.append(&2, Char, tw, acc))) : List<&2, Char>}))))
+
+def take_w(fits, xx, rr, acc, ht, ho):
+  match fits:
+    case Nil{}:
+      Empty.absurd(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr([], acc) == fr(tr,
+        List.reverse.go(&2, Char, String.to_list(xx), List.append(&2, Char, tw, acc))) : List<&2, Char>}))),
+        true_false(Equal.cong(List<&2, Lex.Tok>, Bool, zz => tnil(zz), [], Lex.TWord{xx} <> rr, ht)))
+    case It{+w, LP{+ch}} <> +rest:
+      Empty.absurd(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LP{ch}} <> rest,
+        acc) == fr(tr, List.reverse.go(&2, Char, String.to_list(xx), List.append(&2, Char, tw, acc))) : List<&2,
+        Char>}))), lp_inv(ch, Lex.TWord{xx}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz),
+        den(ptok(ch)) <> dens(rtoks(rest)), Lex.TWord{xx} <> rr, ht)))
+    case It{+w, LW{+ww}} <> +rest:
+      (w, (rest, (Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => ttail(zz), Lex.TWord{ww} <> dens(rtoks(rest)),
+        Lex.TWord{xx} <> rr, ht), (and_right(allws(w), Bool.and(lxok(LW{ww}), itsok(rest)), ho), (and_left(allws(w),
+        Bool.and(lxok(LW{ww}), itsok(rest)), ho), Equal.cong(String, List<&2, Char>, zz => fr(rest, List.reverse.go(&2,
+        Char, String.to_list(zz), List.append(&2, Char, w, acc))), ww, xx, Equal.cong(Lex.Tok, String, zz => twd(zz),
+        Lex.TWord{ww}, Lex.TWord{xx}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz),
+        Lex.TWord{ww} <> dens(rtoks(rest)), Lex.TWord{xx} <> rr, ht))))))))
+    case It{+w, LS{+ps}} <> +rest:
+      no(&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(It{w, LS{ps}} <> rest,
+        acc) == fr(tr, List.reverse.go(&2, Char, String.to_list(xx), List.append(&2, Char, tw, acc))) : List<&2,
+        Char>}))), Equal.cong(Lex.Tok, Bool, zz => U32.is_eq(ttag(zz), 8), Lex.TStr{Laws.spelled(ps)}, Lex.TWord{xx},
+        Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz), Lex.TStr{Laws.spelled(ps)} <> dens(rtoks(rest)),
+        Lex.TWord{xx} <> rr, ht)))
+
+# the next lexeme is Lex.TStr{xx}'s
+law take_s:
+  for fits: List<&2, It>
+  for +xx: String
+  for +rr: List<&2, Lex.Tok>
+  for +acc: List<&2, Char>
+  for +ht: {dens(rtoks(fits)) == Lex.TStr{xx} <> rr : List<&2, Lex.Tok>}
+  for +ho: {itsok(fits) == True{} : Bool}
+  (&tw: List<&2, Char> -> &tp: List<&2, Laws.Piece> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & ({Laws.spell_ok(tp) ==
+    True{} : Bool} & ({Laws.spelled(tp) == xx : String} & {fr(fits, acc) == fr(tr, '"' <> List.reverse.go(&2, Char,
+    String.to_list(Laws.spell(tp)), '"' <> List.append(&2, Char, tw, acc))) : List<&2, Char>}))))))
+
+def take_s(fits, xx, rr, acc, ht, ho):
+  match fits:
+    case Nil{}:
+      Empty.absurd(&tw: List<&2, Char> -> &tp: List<&2, Laws.Piece> -> &tr: List<&2,
+        It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & ({Laws.spell_ok(tp) ==
+        True{} : Bool} & ({Laws.spelled(tp) == xx : String} & {fr([], acc) == fr(tr, '"' <> List.reverse.go(&2, Char,
+        String.to_list(Laws.spell(tp)), '"' <> List.append(&2, Char, tw, acc))) : List<&2, Char>}))))),
+        true_false(Equal.cong(List<&2, Lex.Tok>, Bool, zz => tnil(zz), [], Lex.TStr{xx} <> rr, ht)))
+    case It{+w, LP{+ch}} <> +rest:
+      Empty.absurd(&tw: List<&2, Char> -> &tp: List<&2, Laws.Piece> -> &tr: List<&2,
+        It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & ({Laws.spell_ok(tp) ==
+        True{} : Bool} & ({Laws.spelled(tp) == xx : String} & {fr(It{w, LP{ch}} <> rest, acc) == fr(tr,
+        '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(tp)), '"' <> List.append(&2, Char, tw,
+        acc))) : List<&2, Char>}))))), lp_inv(ch, Lex.TStr{xx}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz),
+        den(ptok(ch)) <> dens(rtoks(rest)), Lex.TStr{xx} <> rr, ht)))
+    case It{+w, LW{+ww}} <> +rest:
+      no(&tw: List<&2, Char> -> &tp: List<&2, Laws.Piece> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & ({Laws.spell_ok(tp) ==
+        True{} : Bool} & ({Laws.spelled(tp) == xx : String} & {fr(It{w, LW{ww}} <> rest, acc) == fr(tr,
+        '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(tp)), '"' <> List.append(&2, Char, tw,
+        acc))) : List<&2, Char>}))))), Equal.cong(Lex.Tok, Bool, zz => U32.is_eq(ttag(zz), 7), Lex.TWord{ww},
+        Lex.TStr{xx}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz), Lex.TWord{ww} <> dens(rtoks(rest)),
+        Lex.TStr{xx} <> rr, ht)))
+    case It{+w, LS{+ps}} <> +rest:
+      (w, (ps, (rest, (Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => ttail(zz),
+        Lex.TStr{Laws.spelled(ps)} <> dens(rtoks(rest)), Lex.TStr{xx} <> rr, ht), (and_right(Laws.spell_ok(ps),
+        itsok(rest), and_right(allws(w), Bool.and(Laws.spell_ok(ps), itsok(rest)), ho)), (and_left(allws(w),
+        Bool.and(lxok(LS{ps}), itsok(rest)), ho), (and_left(Laws.spell_ok(ps), itsok(rest), and_right(allws(w),
+        Bool.and(Laws.spell_ok(ps), itsok(rest)), ho)), (Equal.cong(Lex.Tok, String, zz => tsd(zz),
+        Lex.TStr{Laws.spelled(ps)}, Lex.TStr{xx}, Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz),
+        Lex.TStr{Laws.spelled(ps)} <> dens(rtoks(rest)), Lex.TStr{xx} <> rr, ht)), {==}))))))))
+
+# the tokens of an array's cells after an element
+def ctk(cells: V.Json) -> List<&2, Lex.Tok>:
+  match cells:
+    case V.JNil{}:
+      []
+    case other:
+      Lex.TComma{} <> tj_r(other, V.WArr{})
+
+# the tokens of an object's cells after a member
+def otk(cells: V.Json) -> List<&2, Lex.Tok>:
+  match cells:
+    case V.JNil{}:
+      []
+    case other:
+      Lex.TComma{} <> tj_r(other, V.WObj{})
+
+# the tokens bld reads: a value's, or cells' and their closing bracket, then rr
+def btk(val: V.Json, sh: V.Shape, rr: List<&2, Lex.Tok>) -> List<&2, Lex.Tok>:
+  match sh:
+    case V.WVal{}:
+      List.append(&2, Lex.Tok, tj_r(val, V.WVal{}), rr)
+    case V.WArr{}:
+      List.append(&2, Lex.Tok, ctk(val), Lex.TCloseArr{} <> rr)
+    case V.WObj{}:
+      List.append(&2, Lex.Tok, otk(val), Lex.TCloseObj{} <> rr)
+
+# what bld gives: whitespace, a derivation and the lexemes left, the lexemes
+# read spelling the whitespace and the derivation (and a closing bracket)
+def bldg(sh: V.Shape, +fits: List<&2, It>, +rr: List<&2, Lex.Tok>, +acc: List<&2, Char>) -> Type:
+  match sh:
+    case V.WVal{}:
+      &bw: List<&2, Char> -> &bg: Laws.Gv -> &br: List<&2, It> -> ({dens(rtoks(br)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(br) == True{} : Bool} &
+        ({allws(bw) == True{} : Bool} & ({Laws.g.ok(bg, Laws.GKVal{}) == True{} : Bool} & {fr(fits, acc) == fr(br,
+        List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)), List.append(&2, Char, bw, acc))) : List<&2,
+          Char>}))))
+    case V.WArr{}:
+      &bw: List<&2, Char> -> &bg: Laws.Gv -> &br: List<&2, It> -> ({dens(rtoks(br)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(br) == True{} : Bool} &
+        ({allws(bw) == True{} : Bool} & ({Laws.g.ok(bg, Laws.GKArr{}) == True{} : Bool} & {fr(fits, acc) == fr(br,
+        ']' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)), List.append(&2, Char, bw, acc))) : List<&2,
+          Char>}))))
+    case V.WObj{}:
+      &bw: List<&2, Char> -> &bg: Laws.Gv -> &br: List<&2, It> -> ({dens(rtoks(br)) == rr : List<&2,
+        Lex.Tok>} & ({itsok(br) == True{} : Bool} &
+        ({allws(bw) == True{} : Bool} & ({Laws.g.ok(bg, Laws.GKObj{}) == True{} : Bool} & {fr(fits, acc) == fr(br,
+        '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)), List.append(&2, Char, bw, acc))) : List<&2,
+          Char>}))))
+
+# a cell's tokens, then kt
+law ctoks:
+  for +vv: V.Json
+  for cc: V.Json
+  for +kt: List<&2, Lex.Tok>
+  {List.append(&2, Lex.Tok, tj_r(V.JCons{vv, cc}, V.WArr{}), kt) == List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+    List.append(&2, Lex.Tok, ctk(cc), kt)) : List<&2, Lex.Tok>}
+
+def ctoks(vv, cc, kt):
+  match cc:
+    case V.JNull{}:
+      lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JNull{}, V.WArr{}), kt)
+    case V.JBool{+x1}:
+      lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JBool{x1}, V.WArr{}), kt)
+    case V.JNum{+x1}:
+      lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JNum{x1}, V.WArr{}), kt)
+    case V.JStr{+x1}:
+      lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JStr{x1}, V.WArr{}), kt)
+    case V.JArr{+x1}:
+      lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JArr{x1}, V.WArr{}), kt)
+    case V.JObj{+x1}:
+      lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JObj{x1}, V.WArr{}), kt)
+    case V.JNil{}:
+      {==}
+    case V.JCons{+x1, +x2}:
+      lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JCons{x1, x2}, V.WArr{}), kt)
+    case V.JPair{+x1, +x2, +x3}:
+      lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JPair{x1, x2, x3}, V.WArr{}), kt)
+    case V.JSpan{+x1, +x2}:
+      lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JSpan{x1, x2}, V.WArr{}), kt)
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JBind{x1, x2, x3, x4}, V.WArr{}), kt)
+
+# a cell's tokens, then kt
+law ptoks:
+  for +kk: String
+  for +vv: V.Json
+  for cc: V.Json
+  for +kt: List<&2, Lex.Tok>
+  {List.append(&2, Lex.Tok, tj_r(V.JPair{kk, vv, cc}, V.WObj{}), kt) == Lex.TStr{kk} <> Lex.TColon{} <> List.append(&2,
+    Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2, Lex.Tok, otk(cc), kt)) : List<&2, Lex.Tok>}
+
+def ptoks(kk, vv, cc, kt):
+  match cc:
+    case V.JNull{}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{kk} <> Lex.TColon{} <> zz, List.append(&2,
+        Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JNull{}, V.WObj{})), kt),
+        List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JNull{},
+        V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JNull{}, V.WObj{}), kt))
+    case V.JBool{+x1}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{kk} <> Lex.TColon{} <> zz, List.append(&2,
+        Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JBool{x1}, V.WObj{})), kt),
+        List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JBool{x1},
+        V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JBool{x1}, V.WObj{}), kt))
+    case V.JNum{+x1}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{kk} <> Lex.TColon{} <> zz, List.append(&2,
+        Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JNum{x1}, V.WObj{})), kt),
+        List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JNum{x1},
+        V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JNum{x1}, V.WObj{}), kt))
+    case V.JStr{+x1}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{kk} <> Lex.TColon{} <> zz, List.append(&2,
+        Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JStr{x1}, V.WObj{})), kt),
+        List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JStr{x1},
+        V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JStr{x1}, V.WObj{}), kt))
+    case V.JArr{+x1}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{kk} <> Lex.TColon{} <> zz, List.append(&2,
+        Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JArr{x1}, V.WObj{})), kt),
+        List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JArr{x1},
+        V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JArr{x1}, V.WObj{}), kt))
+    case V.JObj{+x1}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{kk} <> Lex.TColon{} <> zz, List.append(&2,
+        Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JObj{x1}, V.WObj{})), kt),
+        List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JObj{x1},
+        V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JObj{x1}, V.WObj{}), kt))
+    case V.JNil{}:
+      {==}
+    case V.JCons{+x1, +x2}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{kk} <> Lex.TColon{} <> zz, List.append(&2,
+        Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JCons{x1, x2}, V.WObj{})), kt),
+        List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JCons{x1, x2},
+        V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JCons{x1, x2}, V.WObj{}), kt))
+    case V.JPair{+x1, +x2, +x3}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{kk} <> Lex.TColon{} <> zz, List.append(&2,
+        Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JPair{x1, x2, x3}, V.WObj{})),
+        kt), List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JPair{x1, x2,
+        x3}, V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JPair{x1, x2, x3}, V.WObj{}), kt))
+    case V.JSpan{+x1, +x2}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{kk} <> Lex.TColon{} <> zz, List.append(&2,
+        Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JSpan{x1, x2}, V.WObj{})), kt),
+        List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JSpan{x1, x2},
+        V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JSpan{x1, x2}, V.WObj{}), kt))
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{kk} <> Lex.TColon{} <> zz, List.append(&2,
+        Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JBind{x1, x2, x3, x4}, V.WObj{})),
+        kt), List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JBind{x1, x2,
+        x3, x4}, V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}), Lex.TComma{} <> tj_r(V.JBind{x1, x2, x3, x4},
+        V.WObj{}), kt))
+
+# a cell's tokens, then kt
+law btoks:
+  for +src: String
+  for +nn: U32
+  for +vv: V.Json
+  for cc: V.Json
+  for +kt: List<&2, Lex.Tok>
+  {List.append(&2, Lex.Tok, tj_r(V.JBind{src, nn, vv, cc}, V.WObj{}), kt) == Lex.TStr{V.span.str(src, nn,
+    U32.is_zero(nn))} <> Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2, Lex.Tok, otk(cc),
+    kt)) : List<&2, Lex.Tok>}
+
+def btoks(src, nn, vv, cc, kt):
+  match cc:
+    case V.JNull{}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{V.span.str(src, nn,
+        U32.is_zero(nn))} <> Lex.TColon{} <> zz, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JNull{}, V.WObj{})), kt), List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2,
+        Lex.Tok, Lex.TComma{} <> tj_r(V.JNull{}, V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JNull{}, V.WObj{}), kt))
+    case V.JBool{+x1}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{V.span.str(src, nn,
+        U32.is_zero(nn))} <> Lex.TColon{} <> zz, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JBool{x1}, V.WObj{})), kt), List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2,
+        Lex.Tok, Lex.TComma{} <> tj_r(V.JBool{x1}, V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JBool{x1}, V.WObj{}), kt))
+    case V.JNum{+x1}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{V.span.str(src, nn,
+        U32.is_zero(nn))} <> Lex.TColon{} <> zz, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JNum{x1}, V.WObj{})), kt), List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2,
+        Lex.Tok, Lex.TComma{} <> tj_r(V.JNum{x1}, V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JNum{x1}, V.WObj{}), kt))
+    case V.JStr{+x1}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{V.span.str(src, nn,
+        U32.is_zero(nn))} <> Lex.TColon{} <> zz, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JStr{x1}, V.WObj{})), kt), List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2,
+        Lex.Tok, Lex.TComma{} <> tj_r(V.JStr{x1}, V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JStr{x1}, V.WObj{}), kt))
+    case V.JArr{+x1}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{V.span.str(src, nn,
+        U32.is_zero(nn))} <> Lex.TColon{} <> zz, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JArr{x1}, V.WObj{})), kt), List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2,
+        Lex.Tok, Lex.TComma{} <> tj_r(V.JArr{x1}, V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JArr{x1}, V.WObj{}), kt))
+    case V.JObj{+x1}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{V.span.str(src, nn,
+        U32.is_zero(nn))} <> Lex.TColon{} <> zz, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JObj{x1}, V.WObj{})), kt), List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}), List.append(&2,
+        Lex.Tok, Lex.TComma{} <> tj_r(V.JObj{x1}, V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JObj{x1}, V.WObj{}), kt))
+    case V.JNil{}:
+      {==}
+    case V.JCons{+x1, +x2}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{V.span.str(src, nn,
+        U32.is_zero(nn))} <> Lex.TColon{} <> zz, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JCons{x1, x2}, V.WObj{})), kt), List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JCons{x1, x2}, V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JCons{x1, x2}, V.WObj{}), kt))
+    case V.JPair{+x1, +x2, +x3}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{V.span.str(src, nn,
+        U32.is_zero(nn))} <> Lex.TColon{} <> zz, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JPair{x1, x2, x3}, V.WObj{})), kt), List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JPair{x1, x2, x3}, V.WObj{}), kt)), lapp_assoc(tj_r(vv,
+        V.WVal{}), Lex.TComma{} <> tj_r(V.JPair{x1, x2, x3}, V.WObj{}), kt))
+    case V.JSpan{+x1, +x2}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{V.span.str(src, nn,
+        U32.is_zero(nn))} <> Lex.TColon{} <> zz, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JSpan{x1, x2}, V.WObj{})), kt), List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JSpan{x1, x2}, V.WObj{}), kt)), lapp_assoc(tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JSpan{x1, x2}, V.WObj{}), kt))
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => Lex.TStr{V.span.str(src, nn,
+        U32.is_zero(nn))} <> Lex.TColon{} <> zz, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        Lex.TComma{} <> tj_r(V.JBind{x1, x2, x3, x4}, V.WObj{})), kt), List.append(&2, Lex.Tok, tj_r(vv, V.WVal{}),
+        List.append(&2, Lex.Tok, Lex.TComma{} <> tj_r(V.JBind{x1, x2, x3, x4}, V.WObj{}), kt)), lapp_assoc(tj_r(vv,
+        V.WVal{}), Lex.TComma{} <> tj_r(V.JBind{x1, x2, x3, x4}, V.WObj{}), kt))
+
+
+# a punctuation lexeme taken, passed on
+law use_p:
+  for -gl: Type
+  for fits: List<&2, It>
+  for rr: List<&2, Lex.Tok>
+  for acc: List<&2, Char>
+  for pc: Char
+  for r: (&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(fits, acc) == fr(tr,
+    pc <> List.append(&2, Char, tw, acc)) : List<&2, Char>}))))
+  for kk: @tw: List<&2, Char> -> @tr: List<&2, It> -> {dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} -> {itsok(tr) == True{} : Bool} -> {allws(tw) == True{} : Bool} -> {fr(fits, acc) == fr(tr,
+    pc <> List.append(&2, Char, tw, acc)) : List<&2, Char>} -> gl
+  gl
+
+def use_p(_gl, _fits, _rr, _acc, _pc, r, kk):
+  (tw, (tr, (aa, (bb, (cc, dd))))) = r
+  kk(tw, tr, aa, bb, cc, dd)
+
+# a word lexeme taken, passed on
+law use_w:
+  for -gl: Type
+  for fits: List<&2, It>
+  for xx: String
+  for rr: List<&2, Lex.Tok>
+  for acc: List<&2, Char>
+  for r: (&tw: List<&2, Char> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} & ({itsok(tr) == True{} : Bool} & ({allws(tw) == True{} : Bool} & {fr(fits, acc) == fr(tr,
+    List.reverse.go(&2, Char, String.to_list(xx), List.append(&2, Char, tw, acc))) : List<&2, Char>}))))
+  for kk: @tw: List<&2, Char> -> @tr: List<&2, It> -> {dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} -> {itsok(tr) == True{} : Bool} -> {allws(tw) == True{} : Bool} -> {fr(fits, acc) == fr(tr,
+    List.reverse.go(&2, Char, String.to_list(xx), List.append(&2, Char, tw, acc))) : List<&2, Char>} -> gl
+  gl
+
+def use_w(_gl, _fits, _xx, _rr, _acc, r, kk):
+  (tw, (tr, (aa, (bb, (cc, dd))))) = r
+  kk(tw, tr, aa, bb, cc, dd)
+
+# a string lexeme taken, passed on
+law use_s:
+  for -gl: Type
+  for fits: List<&2, It>
+  for xx: String
+  for rr: List<&2, Lex.Tok>
+  for acc: List<&2, Char>
+  for r: (&tw: List<&2, Char> -> &tp: List<&2, Laws.Piece> -> &tr: List<&2, It> -> ({dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} & ({itsok(tr) == True{} : Bool} &
+    ({allws(tw) == True{} : Bool} & ({Laws.spell_ok(tp) == True{} : Bool} & ({Laws.spelled(tp) == xx : String} &
+    {fr(fits, acc) == fr(tr, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(tp)), '"' <> List.append(&2,
+      Char, tw, acc))) : List<&2, Char>}))))))
+  for kk: @tw: List<&2, Char> -> @tp: List<&2, Laws.Piece> -> @tr: List<&2, It> -> {dens(rtoks(tr)) == rr : List<&2,
+    Lex.Tok>} -> {itsok(tr) == True{} : Bool} ->
+    {allws(tw) == True{} : Bool} -> {Laws.spell_ok(tp) == True{} : Bool} -> {Laws.spelled(tp) == xx : String} ->
+    {fr(fits, acc) == fr(tr, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(tp)), '"' <> List.append(&2,
+      Char, tw, acc))) : List<&2, Char>} -> gl
+  gl
+
+def use_s(_gl, _fits, _xx, _rr, _acc, r, kk):
+  (tw, (tp, (tr, (aa, (bb, (cc, (dd, (ee, ff)))))))) = r
+  kk(tw, tp, tr, aa, bb, cc, dd, ee, ff)
+
+# a derivation built, passed on
+law use_bv:
+  for -gl: Type
+  for fits: List<&2, It>
+  for rr: List<&2, Lex.Tok>
+  for acc: List<&2, Char>
+  for r: bldg(V.WVal{}, fits, rr, acc)
+  for kk: @bw: List<&2, Char> -> @bg: Laws.Gv -> @br: List<&2, It> -> {dens(rtoks(br)) == rr : List<&2,
+    Lex.Tok>} -> {itsok(br) == True{} : Bool} ->
+    {allws(bw) == True{} : Bool} -> {Laws.g.ok(bg, Laws.GKVal{}) == True{} : Bool} -> {fr(fits, acc) == fr(br,
+    List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)), List.append(&2, Char, bw, acc))) : List<&2, Char>} -> gl
+  gl
+
+def use_bv(_gl, _fits, _rr, _acc, r, kk):
+  (bw, (bg, (br, (aa, (bb, (cc, (dd, ee))))))) = r
+  kk(bw, bg, br, aa, bb, cc, dd, ee)
+
+# a derivation built, passed on
+law use_ba:
+  for -gl: Type
+  for fits: List<&2, It>
+  for rr: List<&2, Lex.Tok>
+  for acc: List<&2, Char>
+  for r: bldg(V.WArr{}, fits, rr, acc)
+  for kk: @bw: List<&2, Char> -> @bg: Laws.Gv -> @br: List<&2, It> -> {dens(rtoks(br)) == rr : List<&2,
+    Lex.Tok>} -> {itsok(br) == True{} : Bool} ->
+    {allws(bw) == True{} : Bool} -> {Laws.g.ok(bg, Laws.GKArr{}) == True{} : Bool} -> {fr(fits, acc) == fr(br,
+    ']' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)), List.append(&2, Char, bw, acc))) : List<&2,
+      Char>} -> gl
+  gl
+
+def use_ba(_gl, _fits, _rr, _acc, r, kk):
+  (bw, (bg, (br, (aa, (bb, (cc, (dd, ee))))))) = r
+  kk(bw, bg, br, aa, bb, cc, dd, ee)
+
+# a derivation built, passed on
+law use_bo:
+  for -gl: Type
+  for fits: List<&2, It>
+  for rr: List<&2, Lex.Tok>
+  for acc: List<&2, Char>
+  for r: bldg(V.WObj{}, fits, rr, acc)
+  for kk: @bw: List<&2, Char> -> @bg: Laws.Gv -> @br: List<&2, It> -> {dens(rtoks(br)) == rr : List<&2,
+    Lex.Tok>} -> {itsok(br) == True{} : Bool} ->
+    {allws(bw) == True{} : Bool} -> {Laws.g.ok(bg, Laws.GKObj{}) == True{} : Bool} -> {fr(fits, acc) == fr(br,
+    '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)), List.append(&2, Char, bw, acc))) : List<&2,
+      Char>} -> gl
+  gl
+
+def use_bo(_gl, _fits, _rr, _acc, r, kk):
+  (bw, (bg, (br, (aa, (bb, (cc, (dd, ee))))))) = r
+  kk(bw, bg, br, aa, bb, cc, dd, ee)
+
+# a derivation read off lexemes whose tokens are a well-formed value's, or
+# an array's or object's cells' and closing bracket
+law bld:
+  for val: V.Json
+  for sh: V.Shape
+  for +fits: List<&2, It>
+  for +rr: List<&2, Lex.Tok>
+  for +acc: List<&2, Char>
+  for +hw: {V.wf.go(val, sh) == True{} : Bool}
+  for +ht: {dens(rtoks(fits)) == btk(val, sh, rr) : List<&2, Lex.Tok>}
+  for +ho: {itsok(fits) == True{} : Bool}
+  bldg(sh, fits, rr, acc)
+
+def bld(val, sh, fits, rr, acc, hw, ht, ho):
+  match val:
+    case V.JNull{}:
+      match sh:
+        case V.WVal{}:
+          use_w(bldg(V.WVal{}, fits, rr, acc), fits, "null", rr, acc, take_w(fits, "null", rr, acc, ht, ho),
+            +w => +f1 => t1 => o1 => a1 => e1 => (w, (Laws.GWord{"null"}, (f1, (t1, (o1, (a1, ({==}, e1))))))))
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JBool{True{}}:
+      match sh:
+        case V.WVal{}:
+          use_w(bldg(V.WVal{}, fits, rr, acc), fits, "true", rr, acc, take_w(fits, "true", rr, acc, ht, ho),
+            +w => +f1 => t1 => o1 => a1 => e1 => (w, (Laws.GWord{"true"}, (f1, (t1, (o1, (a1, ({==}, e1))))))))
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JBool{False{}}:
+      match sh:
+        case V.WVal{}:
+          use_w(bldg(V.WVal{}, fits, rr, acc), fits, "false", rr, acc, take_w(fits, "false", rr, acc, ht, ho),
+            +w => +f1 => t1 => o1 => a1 => e1 => (w, (Laws.GWord{"false"}, (f1, (t1, (o1, (a1, ({==}, e1))))))))
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JNum{+x1}:
+      match sh:
+        case V.WVal{}:
+          use_w(bldg(V.WVal{}, fits, rr, acc), fits, x1, rr, acc, take_w(fits, x1, rr, acc, ht, ho),
+            +w => +f1 => t1 => o1 => a1 => e1 => (w, (Laws.GWord{x1}, (f1, (t1, (o1, (a1, (or4(String.eq(x1, "null"),
+            String.eq(x1, "true"), String.eq(x1, "false"), Laws.number(String.to_list(x1)), Equal.trans(Bool,
+            Laws.number(String.to_list(x1)), V.num.ok(x1), True{}, Equal.sym(Bool, V.num.ok(x1),
+            Laws.number(String.to_list(x1)), Laws.num_grammar(x1)), hw)), e1))))))))
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JStr{+x1}:
+      match sh:
+        case V.WVal{}:
+          use_s(bldg(V.WVal{}, fits, rr, acc), fits, x1, rr, acc, take_s(fits, x1, rr, acc, ht, ho),
+            +w => +ps => +f1 => t1 => o1 => a1 => okp => _esp => e1 => (w, (Laws.GStr{ps}, (f1, (t1, (o1, (a1, (okp,
+            Equal.trans(List<&2, Char>, fr(fits, acc), fr(f1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w, acc))), fr(f1, List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\""), List.append(&2, Char, w, acc))), e1, Equal.cong(List<&2,
+            Char>, List<&2, Char>, zz => fr(f1, zz), '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w, acc)), List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\""), List.append(&2, Char, w, acc)), Equal.sym(List<&2, Char>,
+            List.reverse.go(&2, Char, String.to_list("\"" ++ Laws.spell(ps) ++ "\""), List.append(&2, Char, w, acc)),
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w, acc)),
+            Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, String.to_list("\"" ++ Laws.spell(ps) ++ "\""),
+            List.append(&2, Char, w, acc)), List.reverse.go(&2, Char, String.to_list(Laws.spell(ps) ++ "\""),
+            '"' <> List.append(&2, Char, w, acc)), '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w, acc)), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps) ++ "\""), '"' <> List.append(&2, Char, w, acc)), List.reverse.go(&2, Char,
+            String.to_list("\""), List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2,
+            Char, w, acc))), '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2,
+            Char, w, acc)), srev_app(Laws.spell(ps), "\"", '"' <> List.append(&2, Char, w, acc)), {==})))))))))))))
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JArr{V.JNull{}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JArr{V.JBool{+x1}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JArr{V.JNum{+x1}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JArr{V.JStr{+x1}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JArr{V.JArr{+x1}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JArr{V.JObj{+x1}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JArr{V.JNil{}}:
+      match sh:
+        case V.WVal{}:
+          use_p(bldg(V.WVal{}, fits, rr, acc), fits, Lex.TCloseArr{} <> rr, acc, '[', take_oa(fits,
+            Lex.TCloseArr{} <> rr, acc, ht, ho), +w => +f1 => t1 => o1 => a1 => e1 => use_p(bldg(V.WVal{}, fits, rr,
+            acc), f1, rr, '[' <> List.append(&2, Char, w, acc), ']', take_ca(f1, rr, '[' <> List.append(&2, Char, w,
+            acc), t1, o1), +w0 => +f2 => t2 => o2 => a2 => e2 => (w, (Laws.GArr0{Lex.text(w0)}, (f2, (t2, (o2, (a1,
+            (aw_text(w0, "", a2, {==}), Equal.trans(List<&2, Char>, fr(fits, acc), fr(f1, '[' <> List.append(&2, Char,
+            w, acc)), fr(f2, List.reverse.go(&2, Char, String.to_list("[" ++ Lex.text(w0) ++ "]"), List.append(&2,
+            Char, w, acc))), e1, Equal.trans(List<&2, Char>, fr(f1, '[' <> List.append(&2, Char, w, acc)), fr(f2,
+            ']' <> List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc))), fr(f2, List.reverse.go(&2, Char,
+            String.to_list("[" ++ Lex.text(w0) ++ "]"), List.append(&2, Char, w, acc))), e2, Equal.cong(List<&2, Char>,
+            List<&2, Char>, zz => fr(f2, zz), ']' <> List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char, String.to_list("[" ++ Lex.text(w0) ++ "]"), List.append(&2, Char, w, acc)),
+            Equal.sym(List<&2, Char>, List.reverse.go(&2, Char, String.to_list("[" ++ Lex.text(w0) ++ "]"),
+            List.append(&2, Char, w, acc)), ']' <> List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc)),
+            Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, String.to_list("[" ++ Lex.text(w0) ++ "]"),
+            List.append(&2, Char, w, acc)), List.reverse.go(&2, Char, String.to_list(Lex.text(w0) ++ "]"),
+            '[' <> List.append(&2, Char, w, acc)), ']' <> List.append(&2, Char, w0, '[' <> List.append(&2, Char, w,
+            acc)), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, String.to_list(Lex.text(w0) ++ "]"),
+            '[' <> List.append(&2, Char, w, acc)), List.reverse.go(&2, Char, String.to_list("]"), List.reverse.go(&2,
+            Char, String.to_list(Lex.text(w0)), '[' <> List.append(&2, Char, w, acc))), ']' <> List.append(&2, Char,
+            w0, '[' <> List.append(&2, Char, w, acc)), srev_app(Lex.text(w0), "]", '[' <> List.append(&2, Char, w,
+            acc)), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, String.to_list("]"), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w0)), '[' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char,
+            String.to_list("]"), List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc))),
+            ']' <> List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc)), Equal.cong(List<&2, Char>, List<&2,
+            Char>, zz => List.reverse.go(&2, Char, String.to_list("]"), zz), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w0)), '[' <> List.append(&2, Char, w, acc)), List.append(&2, Char, w0,
+            '[' <> List.append(&2, Char, w, acc)), text_rc(w0, "", '[' <> List.append(&2, Char, w, acc))),
+            {==}))))))))))))))))
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JArr{V.JCons{+x1, +x2}}:
+      match sh:
+        case V.WVal{}:
+          use_p(bldg(V.WVal{}, fits, rr, acc), fits, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(V.JCons{x1,
+            x2}, V.WArr{}), [Lex.TCloseArr{}]), rr), acc, '[', take_oa(fits, List.append(&2, Lex.Tok, List.append(&2,
+            Lex.Tok, tj_r(V.JCons{x1, x2}, V.WArr{}), [Lex.TCloseArr{}]), rr), acc, ht, ho),
+            +w => +f1 => t1 => o1 => a1 => e1 => use_bv(bldg(V.WVal{}, fits, rr, acc), f1, List.append(&2, Lex.Tok,
+            ctk(x2), Lex.TCloseArr{} <> rr), '[' <> List.append(&2, Char, w, acc), bld(x1, V.WVal{}, f1,
+            List.append(&2, Lex.Tok, ctk(x2), Lex.TCloseArr{} <> rr), '[' <> List.append(&2, Char, w, acc),
+            stop_l(V.wf(x1), V.wf.go(x2, V.WArr{}), hw), Equal.trans(List<&2, Lex.Tok>, dens(rtoks(f1)),
+            List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(V.JCons{x1, x2}, V.WArr{}), [Lex.TCloseArr{}]), rr),
+            List.append(&2, Lex.Tok, tj_r(x1, V.WVal{}), List.append(&2, Lex.Tok, ctk(x2), Lex.TCloseArr{} <> rr)), t1,
+            Equal.trans(List<&2, Lex.Tok>, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(V.JCons{x1, x2},
+            V.WArr{}), [Lex.TCloseArr{}]), rr), List.append(&2, Lex.Tok, tj_r(V.JCons{x1, x2}, V.WArr{}),
+            Lex.TCloseArr{} <> rr), List.append(&2, Lex.Tok, tj_r(x1, V.WVal{}), List.append(&2, Lex.Tok, ctk(x2),
+            Lex.TCloseArr{} <> rr)), lapp_assoc(tj_r(V.JCons{x1, x2}, V.WArr{}), [Lex.TCloseArr{}], rr), ctoks(x1, x2,
+            Lex.TCloseArr{} <> rr))), o1), +w0 => +g1 => +f2 => t2 => o2 => a2 => k2 => e2 => use_ba(bldg(V.WVal{},
+            fits, rr, acc), f2, rr, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char,
+            w0, '[' <> List.append(&2, Char, w, acc))), bld(x2, V.WArr{}, f2, rr, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc))),
+            stop_r(V.wf(x1), V.wf.go(x2, V.WArr{}), hw), t2, o2),
+            +w1 => +gc => +f3 => t3 => o3 => a3 => k3 => e3 => (w, (Laws.GArr{Lex.text(w0), g1, Lex.text(w1), gc}, (f3,
+            (t3, (o3, (a1, (and2(Laws.all_ws(Lex.text(w0)), Bool.and(Laws.g.ok(g1, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w1)), Laws.g.ok(gc, Laws.GKArr{}))), aw_text(w0, "", a2, {==}),
+            and2(Laws.g.ok(g1, Laws.GKVal{}), Bool.and(Laws.all_ws(Lex.text(w1)), Laws.g.ok(gc, Laws.GKArr{})), k2,
+            and2(Laws.all_ws(Lex.text(w1)), Laws.g.ok(gc, Laws.GKArr{}), aw_text(w1, "", a3, {==}), k3))),
+            Equal.trans(List<&2, Char>, fr(fits, acc), fr(f1, '[' <> List.append(&2, Char, w, acc)), fr(f3,
+            List.reverse.go(&2, Char,
+            String.to_list("[" ++ Lex.text(w0) ++ Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"),
+            List.append(&2, Char, w, acc))), e1, Equal.trans(List<&2, Char>, fr(f1, '[' <> List.append(&2, Char, w,
+            acc)), fr(f2, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0,
+            '[' <> List.append(&2, Char, w, acc)))), fr(f3, List.reverse.go(&2, Char,
+            String.to_list("[" ++ Lex.text(w0) ++ Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"),
+            List.append(&2, Char, w, acc))), e2, Equal.trans(List<&2, Char>, fr(f2, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc)))), fr(f3,
+            ']' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w1,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2,
+            Char, w, acc)))))), fr(f3, List.reverse.go(&2, Char,
+            String.to_list("[" ++ Lex.text(w0) ++ Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"),
+            List.append(&2, Char, w, acc))), e3, Equal.cong(List<&2, Char>, List<&2, Char>, zz => fr(f3, zz),
+            ']' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w1,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2,
+            Char, w, acc))))), List.reverse.go(&2, Char,
+            String.to_list("[" ++ Lex.text(w0) ++ Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"),
+            List.append(&2, Char, w, acc)), Equal.sym(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list("[" ++ Lex.text(w0) ++ Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"),
+            List.append(&2, Char, w, acc)), ']' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)),
+            List.append(&2, Char, w1, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char,
+            w0, '[' <> List.append(&2, Char, w, acc))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list("[" ++ Lex.text(w0) ++ Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"),
+            List.append(&2, Char, w, acc)), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w0) ++ Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"),
+            '[' <> List.append(&2, Char, w, acc)), ']' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)),
+            List.append(&2, Char, w1, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char,
+            w0, '[' <> List.append(&2, Char, w, acc))))), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w0) ++ Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"),
+            '[' <> List.append(&2, Char, w, acc)), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w0)), '[' <> List.append(&2, Char, w, acc))), ']' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w1, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc))))),
+            srev_app(Lex.text(w0), Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]", '[' <> List.append(&2,
+            Char, w, acc)), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w0)), '[' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"), List.append(&2, Char, w0,
+            '[' <> List.append(&2, Char, w, acc))), ']' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)),
+            List.append(&2, Char, w1, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char,
+            w0, '[' <> List.append(&2, Char, w, acc))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"),
+            zz), List.reverse.go(&2, Char, String.to_list(Lex.text(w0)), '[' <> List.append(&2, Char, w, acc)),
+            List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc)), text_rc(w0, "", '[' <> List.append(&2,
+            Char, w, acc))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1) ++ Lex.text(w1) ++ Laws.g.text(gc) ++ "]"), List.append(&2, Char, w0,
+            '[' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w1) ++ Laws.g.text(gc) ++ "]"), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc)))),
+            ']' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w1,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2,
+            Char, w, acc))))), srev_app(Laws.g.text(g1), Lex.text(w1) ++ Laws.g.text(gc) ++ "]", List.append(&2, Char,
+            w0, '[' <> List.append(&2, Char, w, acc))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w1) ++ Laws.g.text(gc) ++ "]"), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc)))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc) ++ "]"), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w1)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2,
+            Char, w0, '[' <> List.append(&2, Char, w, acc))))), ']' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w1, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc))))),
+            srev_app(Lex.text(w1), Laws.g.text(gc) ++ "]", List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)),
+            List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc)))), Equal.trans(List<&2, Char>,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc) ++ "]"), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w1)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2,
+            Char, w0, '[' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc) ++ "]"), List.append(&2, Char, w1, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc))))),
+            ']' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w1,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2,
+            Char, w, acc))))), Equal.cong(List<&2, Char>, List<&2, Char>, zz => List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc) ++ "]"), zz), List.reverse.go(&2, Char, String.to_list(Lex.text(w1)),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2,
+            Char, w, acc)))), List.append(&2, Char, w1, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)),
+            List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc)))), text_rc(w1, "", List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc))))),
+            Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc) ++ "]"),
+            List.append(&2, Char, w1, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char,
+            w0, '[' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char, String.to_list("]"),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w1, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc)))))),
+            ']' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w1,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2,
+            Char, w, acc))))), srev_app(Laws.g.text(gc), "]", List.append(&2, Char, w1, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w0, '[' <> List.append(&2, Char, w, acc))))),
+            {==}))))))))))))))))))))))
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JArr{V.JPair{+x1, +x2, +x3}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JArr{V.JSpan{+x1, +x2}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JArr{V.JBind{+x1, +x2, +x3, +x4}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JObj{V.JNull{}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JObj{V.JBool{+x1}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JObj{V.JNum{+x1}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JObj{V.JStr{+x1}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JObj{V.JArr{+x1}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JObj{V.JObj{+x1}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JObj{V.JNil{}}:
+      match sh:
+        case V.WVal{}:
+          use_p(bldg(V.WVal{}, fits, rr, acc), fits, Lex.TCloseObj{} <> rr, acc, '{', take_oo(fits,
+            Lex.TCloseObj{} <> rr, acc, ht, ho), +w => +f1 => t1 => o1 => a1 => e1 => use_p(bldg(V.WVal{}, fits, rr,
+            acc), f1, rr, '{' <> List.append(&2, Char, w, acc), '}', take_co(f1, rr, '{' <> List.append(&2, Char, w,
+            acc), t1, o1), +w0 => +f2 => t2 => o2 => a2 => e2 => (w, (Laws.GObj0{Lex.text(w0)}, (f2, (t2, (o2, (a1,
+            (aw_text(w0, "", a2, {==}), Equal.trans(List<&2, Char>, fr(fits, acc), fr(f1, '{' <> List.append(&2, Char,
+            w, acc)), fr(f2, List.reverse.go(&2, Char, String.to_list("{" ++ Lex.text(w0) ++ "}"), List.append(&2,
+            Char, w, acc))), e1, Equal.trans(List<&2, Char>, fr(f1, '{' <> List.append(&2, Char, w, acc)), fr(f2,
+            '}' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))), fr(f2, List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "}"), List.append(&2, Char, w, acc))), e2, Equal.cong(List<&2, Char>,
+            List<&2, Char>, zz => fr(f2, zz), '}' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char, String.to_list("{" ++ Lex.text(w0) ++ "}"), List.append(&2, Char, w, acc)),
+            Equal.sym(List<&2, Char>, List.reverse.go(&2, Char, String.to_list("{" ++ Lex.text(w0) ++ "}"),
+            List.append(&2, Char, w, acc)), '}' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)),
+            Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, String.to_list("{" ++ Lex.text(w0) ++ "}"),
+            List.append(&2, Char, w, acc)), List.reverse.go(&2, Char, String.to_list(Lex.text(w0) ++ "}"),
+            '{' <> List.append(&2, Char, w, acc)), '}' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w,
+            acc)), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, String.to_list(Lex.text(w0) ++ "}"),
+            '{' <> List.append(&2, Char, w, acc)), List.reverse.go(&2, Char, String.to_list("}"), List.reverse.go(&2,
+            Char, String.to_list(Lex.text(w0)), '{' <> List.append(&2, Char, w, acc))), '}' <> List.append(&2, Char,
+            w0, '{' <> List.append(&2, Char, w, acc)), srev_app(Lex.text(w0), "}", '{' <> List.append(&2, Char, w,
+            acc)), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, String.to_list("}"), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w0)), '{' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char,
+            String.to_list("}"), List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))),
+            '}' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)), Equal.cong(List<&2, Char>, List<&2,
+            Char>, zz => List.reverse.go(&2, Char, String.to_list("}"), zz), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w0)), '{' <> List.append(&2, Char, w, acc)), List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)), text_rc(w0, "", '{' <> List.append(&2, Char, w, acc))),
+            {==}))))))))))))))))
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JObj{V.JCons{+x1, +x2}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JObj{V.JPair{+x1, +x2, +x3}}:
+      match sh:
+        case V.WVal{}:
+          use_p(bldg(V.WVal{}, fits, rr, acc), fits, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(V.JPair{x1,
+            x2, x3}, V.WObj{}), [Lex.TCloseObj{}]), rr), acc, '{', take_oo(fits, List.append(&2, Lex.Tok,
+            List.append(&2, Lex.Tok, tj_r(V.JPair{x1, x2, x3}, V.WObj{}), [Lex.TCloseObj{}]), rr), acc, ht, ho),
+            +w => +f1 => t1 => o1 => a1 => e1 => use_s(bldg(V.WVal{}, fits, rr, acc), f1, x1,
+            Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(x2, V.WVal{}), List.append(&2, Lex.Tok, otk(x3),
+            Lex.TCloseObj{} <> rr)), '{' <> List.append(&2, Char, w, acc), take_s(f1, x1,
+            Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(x2, V.WVal{}), List.append(&2, Lex.Tok, otk(x3),
+            Lex.TCloseObj{} <> rr)), '{' <> List.append(&2, Char, w, acc), Equal.trans(List<&2, Lex.Tok>,
+            dens(rtoks(f1)), List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(V.JPair{x1, x2, x3}, V.WObj{}),
+            [Lex.TCloseObj{}]), rr), Lex.TStr{x1} <> Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(x2, V.WVal{}),
+            List.append(&2, Lex.Tok, otk(x3), Lex.TCloseObj{} <> rr)), t1, Equal.trans(List<&2, Lex.Tok>,
+            List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(V.JPair{x1, x2, x3}, V.WObj{}), [Lex.TCloseObj{}]),
+            rr), List.append(&2, Lex.Tok, tj_r(V.JPair{x1, x2, x3}, V.WObj{}), Lex.TCloseObj{} <> rr),
+            Lex.TStr{x1} <> Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(x2, V.WVal{}), List.append(&2, Lex.Tok,
+            otk(x3), Lex.TCloseObj{} <> rr)), lapp_assoc(tj_r(V.JPair{x1, x2, x3}, V.WObj{}), [Lex.TCloseObj{}], rr),
+            ptoks(x1, x2, x3, Lex.TCloseObj{} <> rr))), o1),
+            +w0 => +ps => +f2 => t2 => o2 => a2 => okp => _esp => e2 => use_p(bldg(V.WVal{}, fits, rr, acc), f2,
+            List.append(&2, Lex.Tok, tj_r(x2, V.WVal{}), List.append(&2, Lex.Tok, otk(x3), Lex.TCloseObj{} <> rr)),
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))), ':', take_col(f2, List.append(&2, Lex.Tok, tj_r(x2, V.WVal{}),
+            List.append(&2, Lex.Tok, otk(x3), Lex.TCloseObj{} <> rr)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))),
+            t2, o2), +w1 => +f3 => t3 => o3 => a3 => e3 => use_bv(bldg(V.WVal{}, fits, rr, acc), f3, List.append(&2,
+            Lex.Tok, otk(x3), Lex.TCloseObj{} <> rr), ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))),
+            bld(x2, V.WVal{}, f3, List.append(&2, Lex.Tok, otk(x3), Lex.TCloseObj{} <> rr), ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))), stop_l(V.wf(x2), V.wf.go(x3, V.WObj{}), hw), t3, o3),
+            +w2 => +g1 => +f4 => t4 => o4 => a4 => k4 => e4 => use_bo(bldg(V.WVal{}, fits, rr, acc), f4, rr,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))), bld(x3, V.WObj{}, f4, rr, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))), stop_r(V.wf(x2), V.wf.go(x3, V.WObj{}), hw), t4, o4),
+            +w3 => +gc => +f5 => t5 => o5 => a5 => k5 => e5 => (w, (Laws.GObj{Lex.text(w0), ps, Lex.text(w1),
+            Lex.text(w2), g1, Lex.text(w3), gc}, (f5, (t5, (o5, (a1, (and2(Laws.all_ws(Lex.text(w0)),
+            Bool.and(Laws.spell_ok(ps), Bool.and(Laws.all_ws(Lex.text(w1)), Bool.and(Laws.all_ws(Lex.text(w2)),
+            Bool.and(Laws.g.ok(g1, Laws.GKVal{}), Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gc, Laws.GKObj{})))))),
+            aw_text(w0, "", a2, {==}), and2(Laws.spell_ok(ps), Bool.and(Laws.all_ws(Lex.text(w1)),
+            Bool.and(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g1, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gc, Laws.GKObj{}))))), okp, and2(Laws.all_ws(Lex.text(w1)),
+            Bool.and(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g1, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gc, Laws.GKObj{})))), aw_text(w1, "", a3, {==}),
+            and2(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g1, Laws.GKVal{}), Bool.and(Laws.all_ws(Lex.text(w3)),
+            Laws.g.ok(gc, Laws.GKObj{}))), aw_text(w2, "", a4, {==}), and2(Laws.g.ok(g1, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gc, Laws.GKObj{})), k4, and2(Laws.all_ws(Lex.text(w3)),
+            Laws.g.ok(gc, Laws.GKObj{}), aw_text(w3, "", a5, {==}), k5)))))), Equal.trans(List<&2, Char>, fr(fits,
+            acc), fr(f1, '{' <> List.append(&2, Char, w, acc)), fr(f5, List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w,
+            acc))), e1, Equal.trans(List<&2, Char>, fr(f1, '{' <> List.append(&2, Char, w, acc)), fr(f2,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))), fr(f5, List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w,
+            acc))), e2, Equal.trans(List<&2, Char>, fr(f2, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))),
+            fr(f3, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))), fr(f5, List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w,
+            acc))), e3, Equal.trans(List<&2, Char>, fr(f3, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2,
+            Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w,
+            acc))))), fr(f4, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))))), fr(f5, List.reverse.go(&2,
+            Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w,
+            acc))), e4, Equal.trans(List<&2, Char>, fr(f4, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w,
+            acc))))))), fr(f5, '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char,
+            w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))))))), fr(f5, List.reverse.go(&2,
+            Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w,
+            acc))), e5, Equal.cong(List<&2, Char>, List<&2, Char>, zz => fr(f5, zz), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w, acc)),
+            Equal.sym(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w, acc)),
+            '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++
+            Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), '{' <> List.append(&2, Char, w, acc)),
+            '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++
+            Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), '{' <> List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char, String.to_list(Lex.text(w0)),
+            '{' <> List.append(&2, Char, w, acc))), '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w0),
+            "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++
+            Laws.g.text(gc) ++ "}", '{' <> List.append(&2, Char, w, acc)), Equal.trans(List<&2, Char>,
+            List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char, String.to_list(Lex.text(w0)),
+            '{' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))),
+            '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), zz), List.reverse.go(&2, Char, String.to_list(Lex.text(w0)),
+            '{' <> List.append(&2, Char, w, acc)), List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)),
+            text_rc(w0, "", '{' <> List.append(&2, Char, w, acc))), Equal.trans(List<&2, Char>, List.reverse.go(&2,
+            Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))),
+            List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w,
+            acc))), '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w,
+            acc))), List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++
+            Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2,
+            Char, w0, '{' <> List.append(&2, Char, w, acc)))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Laws.spell(ps),
+            "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}",
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))), Equal.trans(List<&2, Char>,
+            List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++
+            Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2,
+            Char, w0, '{' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++
+            "}"), '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))), '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2,
+            Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++
+            "}"), '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w1)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))),
+            '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w1),
+            ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}",
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w1)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))),
+            List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), zz),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w1)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))),
+            List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))), text_rc(w1, "",
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2)), ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))))),
+            '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w2),
+            Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}", ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2)), ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))))),
+            '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            zz), List.reverse.go(&2, Char, String.to_list(Lex.text(w2)), ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))), text_rc(w2, "", ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Laws.g.text(g1),
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}", List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char, String.to_list(Lex.text(w3)),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w3), Laws.g.text(gc) ++ "}",
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char, String.to_list(Lex.text(w3)),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc) ++ "}"), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc) ++ "}"), zz), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w3)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2,
+            Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))))), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))))), text_rc(w3, "", List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc) ++ "}"), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), List.reverse.go(&2, Char, String.to_list("}"),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))))))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Laws.g.text(gc), "}", List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), {==}))))))))))))))))))))))))))))))))))
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JObj{V.JSpan{+x1, +x2}}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JObj{V.JBind{+x1, +x2, +x3, +x4}}:
+      match sh:
+        case V.WVal{}:
+          use_p(bldg(V.WVal{}, fits, rr, acc), fits, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(V.JBind{x1,
+            x2, x3, x4}, V.WObj{}), [Lex.TCloseObj{}]), rr), acc, '{', take_oo(fits, List.append(&2, Lex.Tok,
+            List.append(&2, Lex.Tok, tj_r(V.JBind{x1, x2, x3, x4}, V.WObj{}), [Lex.TCloseObj{}]), rr), acc, ht, ho),
+            +w => +f1 => t1 => o1 => a1 => e1 => use_s(bldg(V.WVal{}, fits, rr, acc), f1, V.span.str(x1, x2,
+            U32.is_zero(x2)), Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(x3, V.WVal{}), List.append(&2, Lex.Tok,
+            otk(x4), Lex.TCloseObj{} <> rr)), '{' <> List.append(&2, Char, w, acc), take_s(f1, V.span.str(x1, x2,
+            U32.is_zero(x2)), Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(x3, V.WVal{}), List.append(&2, Lex.Tok,
+            otk(x4), Lex.TCloseObj{} <> rr)), '{' <> List.append(&2, Char, w, acc), Equal.trans(List<&2, Lex.Tok>,
+            dens(rtoks(f1)), List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(V.JBind{x1, x2, x3, x4}, V.WObj{}),
+            [Lex.TCloseObj{}]), rr), Lex.TStr{V.span.str(x1, x2, U32.is_zero(x2))} <> Lex.TColon{} <> List.append(&2,
+            Lex.Tok, tj_r(x3, V.WVal{}), List.append(&2, Lex.Tok, otk(x4), Lex.TCloseObj{} <> rr)), t1,
+            Equal.trans(List<&2, Lex.Tok>, List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, tj_r(V.JBind{x1, x2, x3,
+            x4}, V.WObj{}), [Lex.TCloseObj{}]), rr), List.append(&2, Lex.Tok, tj_r(V.JBind{x1, x2, x3, x4}, V.WObj{}),
+            Lex.TCloseObj{} <> rr), Lex.TStr{V.span.str(x1, x2, U32.is_zero(x2))} <> Lex.TColon{} <> List.append(&2,
+            Lex.Tok, tj_r(x3, V.WVal{}), List.append(&2, Lex.Tok, otk(x4), Lex.TCloseObj{} <> rr)),
+            lapp_assoc(tj_r(V.JBind{x1, x2, x3, x4}, V.WObj{}), [Lex.TCloseObj{}], rr), btoks(x1, x2, x3, x4,
+            Lex.TCloseObj{} <> rr))), o1),
+            +w0 => +ps => +f2 => t2 => o2 => a2 => okp => _esp => e2 => use_p(bldg(V.WVal{}, fits, rr, acc), f2,
+            List.append(&2, Lex.Tok, tj_r(x3, V.WVal{}), List.append(&2, Lex.Tok, otk(x4), Lex.TCloseObj{} <> rr)),
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))), ':', take_col(f2, List.append(&2, Lex.Tok, tj_r(x3, V.WVal{}),
+            List.append(&2, Lex.Tok, otk(x4), Lex.TCloseObj{} <> rr)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))),
+            t2, o2), +w1 => +f3 => t3 => o3 => a3 => e3 => use_bv(bldg(V.WVal{}, fits, rr, acc), f3, List.append(&2,
+            Lex.Tok, otk(x4), Lex.TCloseObj{} <> rr), ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))),
+            bld(x3, V.WVal{}, f3, List.append(&2, Lex.Tok, otk(x4), Lex.TCloseObj{} <> rr), ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))), stop_l(V.wf(x3), V.wf.go(x4, V.WObj{}), hw), t3, o3),
+            +w2 => +g1 => +f4 => t4 => o4 => a4 => k4 => e4 => use_bo(bldg(V.WVal{}, fits, rr, acc), f4, rr,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))), bld(x4, V.WObj{}, f4, rr, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))), stop_r(V.wf(x3), V.wf.go(x4, V.WObj{}), hw), t4, o4),
+            +w3 => +gc => +f5 => t5 => o5 => a5 => k5 => e5 => (w, (Laws.GObj{Lex.text(w0), ps, Lex.text(w1),
+            Lex.text(w2), g1, Lex.text(w3), gc}, (f5, (t5, (o5, (a1, (and2(Laws.all_ws(Lex.text(w0)),
+            Bool.and(Laws.spell_ok(ps), Bool.and(Laws.all_ws(Lex.text(w1)), Bool.and(Laws.all_ws(Lex.text(w2)),
+            Bool.and(Laws.g.ok(g1, Laws.GKVal{}), Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gc, Laws.GKObj{})))))),
+            aw_text(w0, "", a2, {==}), and2(Laws.spell_ok(ps), Bool.and(Laws.all_ws(Lex.text(w1)),
+            Bool.and(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g1, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gc, Laws.GKObj{}))))), okp, and2(Laws.all_ws(Lex.text(w1)),
+            Bool.and(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g1, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gc, Laws.GKObj{})))), aw_text(w1, "", a3, {==}),
+            and2(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g1, Laws.GKVal{}), Bool.and(Laws.all_ws(Lex.text(w3)),
+            Laws.g.ok(gc, Laws.GKObj{}))), aw_text(w2, "", a4, {==}), and2(Laws.g.ok(g1, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gc, Laws.GKObj{})), k4, and2(Laws.all_ws(Lex.text(w3)),
+            Laws.g.ok(gc, Laws.GKObj{}), aw_text(w3, "", a5, {==}), k5)))))), Equal.trans(List<&2, Char>, fr(fits,
+            acc), fr(f1, '{' <> List.append(&2, Char, w, acc)), fr(f5, List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w,
+            acc))), e1, Equal.trans(List<&2, Char>, fr(f1, '{' <> List.append(&2, Char, w, acc)), fr(f2,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))), fr(f5, List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w,
+            acc))), e2, Equal.trans(List<&2, Char>, fr(f2, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))),
+            fr(f3, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))), fr(f5, List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w,
+            acc))), e3, Equal.trans(List<&2, Char>, fr(f3, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2,
+            Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w,
+            acc))))), fr(f4, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))))), fr(f5, List.reverse.go(&2,
+            Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w,
+            acc))), e4, Equal.trans(List<&2, Char>, fr(f4, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w,
+            acc))))))), fr(f5, '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char,
+            w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))))))), fr(f5, List.reverse.go(&2,
+            Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w,
+            acc))), e5, Equal.cong(List<&2, Char>, List<&2, Char>, zz => fr(f5, zz), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w, acc)),
+            Equal.sym(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w, acc)),
+            '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list("{" ++ Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++
+            Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), '{' <> List.append(&2, Char, w, acc)),
+            '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w0) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++
+            Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), '{' <> List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char, String.to_list(Lex.text(w0)),
+            '{' <> List.append(&2, Char, w, acc))), '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w0),
+            "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++
+            Laws.g.text(gc) ++ "}", '{' <> List.append(&2, Char, w, acc)), Equal.trans(List<&2, Char>,
+            List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char, String.to_list(Lex.text(w0)),
+            '{' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))),
+            '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), zz), List.reverse.go(&2, Char, String.to_list(Lex.text(w0)),
+            '{' <> List.append(&2, Char, w, acc)), List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)),
+            text_rc(w0, "", '{' <> List.append(&2, Char, w, acc))), Equal.trans(List<&2, Char>, List.reverse.go(&2,
+            Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))),
+            List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w,
+            acc))), '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w,
+            acc))), List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++
+            Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2,
+            Char, w0, '{' <> List.append(&2, Char, w, acc)))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Laws.spell(ps),
+            "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}",
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))), Equal.trans(List<&2, Char>,
+            List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++
+            Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2,
+            Char, w0, '{' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++
+            "}"), '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))), '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2,
+            Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++
+            "}"), '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w1)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))),
+            '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w1),
+            ":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}",
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w1)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))),
+            List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), zz),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w1)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))),
+            List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))), text_rc(w1, "",
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2) ++ Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2)), ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))))),
+            '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w2),
+            Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}", ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2)), ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))))),
+            '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"),
+            zz), List.reverse.go(&2, Char, String.to_list(Lex.text(w2)), ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))), text_rc(w2, "", ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1) ++ Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc)))))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Laws.g.text(g1),
+            Lex.text(w3) ++ Laws.g.text(gc) ++ "}", List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w3) ++ Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char, String.to_list(Lex.text(w3)),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w3), Laws.g.text(gc) ++ "}",
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc) ++ "}"), List.reverse.go(&2, Char, String.to_list(Lex.text(w3)),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc) ++ "}"), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc) ++ "}"), zz), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w3)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2,
+            Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w0, '{' <> List.append(&2, Char, w, acc))))))), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))))), text_rc(w3, "", List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc) ++ "}"), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), List.reverse.go(&2, Char, String.to_list("}"),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc))))))))), '}' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gc)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), srev_app(Laws.g.text(gc), "}", List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g1)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w0,
+            '{' <> List.append(&2, Char, w, acc)))))))), {==}))))))))))))))))))))))))))))))))))
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JNil{}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          use_p(bldg(V.WArr{}, fits, rr, acc), fits, rr, acc, ']', take_ca(fits, rr, acc, ht, ho),
+            +w => +f1 => t1 => o1 => a1 => e1 => (w, (Laws.GEnd{}, (f1, (t1, (o1, (a1, ({==}, e1))))))))
+        case V.WObj{}:
+          use_p(bldg(V.WObj{}, fits, rr, acc), fits, rr, acc, '}', take_co(fits, rr, acc, ht, ho),
+            +w => +f1 => t1 => o1 => a1 => e1 => (w, (Laws.GEnd{}, (f1, (t1, (o1, (a1, ({==}, e1))))))))
+    case V.JCons{+x1, +x2}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          use_p(bldg(V.WArr{}, fits, rr, acc), fits, List.append(&2, Lex.Tok, tj_r(V.JCons{x1, x2}, V.WArr{}),
+            Lex.TCloseArr{} <> rr), acc, ',', take_com(fits, List.append(&2, Lex.Tok, tj_r(V.JCons{x1, x2}, V.WArr{}),
+            Lex.TCloseArr{} <> rr), acc, ht, ho), +w => +f1 => t1 => o1 => a1 => e1 => use_bv(bldg(V.WArr{}, fits, rr,
+            acc), f1, List.append(&2, Lex.Tok, ctk(x2), Lex.TCloseArr{} <> rr), ',' <> List.append(&2, Char, w, acc),
+            bld(x1, V.WVal{}, f1, List.append(&2, Lex.Tok, ctk(x2), Lex.TCloseArr{} <> rr), ',' <> List.append(&2,
+            Char, w, acc), stop_l(V.wf(x1), V.wf.go(x2, V.WArr{}), hw), Equal.trans(List<&2, Lex.Tok>, dens(rtoks(f1)),
+            List.append(&2, Lex.Tok, tj_r(V.JCons{x1, x2}, V.WArr{}), Lex.TCloseArr{} <> rr), List.append(&2, Lex.Tok,
+            tj_r(x1, V.WVal{}), List.append(&2, Lex.Tok, ctk(x2), Lex.TCloseArr{} <> rr)), t1, ctoks(x1, x2,
+            Lex.TCloseArr{} <> rr)), o1), +w2 => +g2 => +f2 => t2 => o2 => a2 => k2 => e2 => use_ba(bldg(V.WArr{},
+            fits, rr, acc), f2, rr, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ',' <> List.append(&2, Char, w, acc))), bld(x2, V.WArr{}, f2, rr, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2, Char, w, acc))),
+            stop_r(V.wf(x1), V.wf.go(x2, V.WArr{}), hw), t2, o2),
+            +wb => +gr => +f3 => t3 => o3 => a3 => k3 => e3 => (w, (Laws.GNext{Lex.text(w2), g2, Lex.text(wb), gr},
+            (f3, (t3, (o3, (a1, (and2(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g2, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(wb)), Laws.g.ok(gr, Laws.GKArr{}))), aw_text(w2, "", a2, {==}),
+            and2(Laws.g.ok(g2, Laws.GKVal{}), Bool.and(Laws.all_ws(Lex.text(wb)), Laws.g.ok(gr, Laws.GKArr{})), k2,
+            and2(Laws.all_ws(Lex.text(wb)), Laws.g.ok(gr, Laws.GKArr{}), aw_text(wb, "", a3, {==}), k3))),
+            Equal.trans(List<&2, Char>, fr(fits, acc), fr(f1, ',' <> List.append(&2, Char, w, acc)), fr(f3,
+            ']' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), List.append(&2,
+            Char, w, acc))), e1, Equal.trans(List<&2, Char>, fr(f1, ',' <> List.append(&2, Char, w, acc)), fr(f2,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2,
+            Char, w, acc)))), fr(f3, ']' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), List.append(&2,
+            Char, w, acc))), e2, Equal.trans(List<&2, Char>, fr(f2, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2, Char, w, acc)))), fr(f3,
+            ']' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, wb,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2,
+            Char, w, acc)))))), fr(f3, ']' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), List.append(&2,
+            Char, w, acc))), e3, Equal.cong(List<&2, Char>, List<&2, Char>, zz => fr(f3, ']' <> zz),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, wb, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2, Char, w, acc))))),
+            List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), List.append(&2,
+            Char, w, acc)), Equal.sym(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), List.append(&2,
+            Char, w, acc)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, wb,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2,
+            Char, w, acc))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), List.append(&2,
+            Char, w, acc)), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), ',' <> List.append(&2,
+            Char, w, acc)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, wb,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2,
+            Char, w, acc))))), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), ',' <> List.append(&2,
+            Char, w, acc)), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2)), ',' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gr)), List.append(&2, Char, wb, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2, Char, w, acc))))),
+            srev_app(Lex.text(w2), Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr), ',' <> List.append(&2, Char, w,
+            acc)), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2)), ',' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), List.append(&2, Char, w2,
+            ',' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, wb, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ',' <> List.append(&2, Char, w, acc))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), zz),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w2)), ',' <> List.append(&2, Char, w, acc)),
+            List.append(&2, Char, w2, ',' <> List.append(&2, Char, w, acc)), text_rc(w2, "", ',' <> List.append(&2,
+            Char, w, acc))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2) ++ Lex.text(wb) ++ Laws.g.text(gr)), List.append(&2, Char, w2,
+            ',' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(wb) ++ Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)),
+            List.append(&2, Char, w2, ',' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gr)), List.append(&2, Char, wb, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2, Char, w, acc))))),
+            srev_app(Laws.g.text(g2), Lex.text(wb) ++ Laws.g.text(gr), List.append(&2, Char, w2, ',' <> List.append(&2,
+            Char, w, acc))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(wb) ++ Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)),
+            List.append(&2, Char, w2, ',' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Lex.text(wb)),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2,
+            Char, w, acc))))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, wb,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2,
+            Char, w, acc))))), srev_app(Lex.text(wb), Laws.g.text(gr), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2, Char, w, acc)))),
+            Equal.cong(List<&2, Char>, List<&2, Char>, zz => List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            zz), List.reverse.go(&2, Char, String.to_list(Lex.text(wb)), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2, Char, w, acc)))),
+            List.append(&2, Char, wb, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ',' <> List.append(&2, Char, w, acc)))), text_rc(wb, "", List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ',' <> List.append(&2, Char, w,
+            acc)))))))))))))))))))))))))
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JPair{+x1, +x2, +x3}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          use_p(bldg(V.WObj{}, fits, rr, acc), fits, List.append(&2, Lex.Tok, tj_r(V.JPair{x1, x2, x3}, V.WObj{}),
+            Lex.TCloseObj{} <> rr), acc, ',', take_com(fits, List.append(&2, Lex.Tok, tj_r(V.JPair{x1, x2, x3},
+            V.WObj{}), Lex.TCloseObj{} <> rr), acc, ht, ho), +w => +f1 => t1 => o1 => a1 => e1 => use_s(bldg(V.WObj{},
+            fits, rr, acc), f1, x1, Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(x2, V.WVal{}), List.append(&2,
+            Lex.Tok, otk(x3), Lex.TCloseObj{} <> rr)), ',' <> List.append(&2, Char, w, acc), take_s(f1, x1,
+            Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(x2, V.WVal{}), List.append(&2, Lex.Tok, otk(x3),
+            Lex.TCloseObj{} <> rr)), ',' <> List.append(&2, Char, w, acc), Equal.trans(List<&2, Lex.Tok>,
+            dens(rtoks(f1)), List.append(&2, Lex.Tok, tj_r(V.JPair{x1, x2, x3}, V.WObj{}), Lex.TCloseObj{} <> rr),
+            Lex.TStr{x1} <> Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(x2, V.WVal{}), List.append(&2, Lex.Tok,
+            otk(x3), Lex.TCloseObj{} <> rr)), t1, ptoks(x1, x2, x3, Lex.TCloseObj{} <> rr)), o1),
+            +w4 => +ps => +f2 => t2 => o2 => a2 => okp => _esp => e2 => use_p(bldg(V.WObj{}, fits, rr, acc), f2,
+            List.append(&2, Lex.Tok, tj_r(x2, V.WVal{}), List.append(&2, Lex.Tok, otk(x3), Lex.TCloseObj{} <> rr)),
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))), ':', take_col(f2, List.append(&2, Lex.Tok, tj_r(x2, V.WVal{}),
+            List.append(&2, Lex.Tok, otk(x3), Lex.TCloseObj{} <> rr)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))),
+            t2, o2), +w1 => +f3 => t3 => o3 => a3 => e3 => use_bv(bldg(V.WObj{}, fits, rr, acc), f3, List.append(&2,
+            Lex.Tok, otk(x3), Lex.TCloseObj{} <> rr), ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))),
+            bld(x2, V.WVal{}, f3, List.append(&2, Lex.Tok, otk(x3), Lex.TCloseObj{} <> rr), ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))), stop_l(V.wf(x2), V.wf.go(x3, V.WObj{}), hw), t3, o3),
+            +w2 => +g2 => +f4 => t4 => o4 => a4 => k4 => e4 => use_bo(bldg(V.WObj{}, fits, rr, acc), f4, rr,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))), bld(x3, V.WObj{}, f4, rr, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))), stop_r(V.wf(x2), V.wf.go(x3, V.WObj{}), hw), t4, o4),
+            +w3 => +gr => +f5 => t5 => o5 => a5 => k5 => e5 => (w, (Laws.GNextM{Lex.text(w4), ps, Lex.text(w1),
+            Lex.text(w2), g2, Lex.text(w3), gr}, (f5, (t5, (o5, (a1, (and2(Laws.all_ws(Lex.text(w4)),
+            Bool.and(Laws.spell_ok(ps), Bool.and(Laws.all_ws(Lex.text(w1)), Bool.and(Laws.all_ws(Lex.text(w2)),
+            Bool.and(Laws.g.ok(g2, Laws.GKVal{}), Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gr, Laws.GKObj{})))))),
+            aw_text(w4, "", a2, {==}), and2(Laws.spell_ok(ps), Bool.and(Laws.all_ws(Lex.text(w1)),
+            Bool.and(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g2, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gr, Laws.GKObj{}))))), okp, and2(Laws.all_ws(Lex.text(w1)),
+            Bool.and(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g2, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gr, Laws.GKObj{})))), aw_text(w1, "", a3, {==}),
+            and2(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g2, Laws.GKVal{}), Bool.and(Laws.all_ws(Lex.text(w3)),
+            Laws.g.ok(gr, Laws.GKObj{}))), aw_text(w2, "", a4, {==}), and2(Laws.g.ok(g2, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gr, Laws.GKObj{})), k4, and2(Laws.all_ws(Lex.text(w3)),
+            Laws.g.ok(gr, Laws.GKObj{}), aw_text(w3, "", a5, {==}), k5)))))), Equal.trans(List<&2, Char>, fr(fits,
+            acc), fr(f1, ',' <> List.append(&2, Char, w, acc)), fr(f5, '}' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc))), e1,
+            Equal.trans(List<&2, Char>, fr(f1, ',' <> List.append(&2, Char, w, acc)), fr(f2, '"' <> List.reverse.go(&2,
+            Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w,
+            acc)))), fr(f5, '}' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc))), e2,
+            Equal.trans(List<&2, Char>, fr(f2, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))), fr(f3, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), fr(f5, '}' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc))), e3,
+            Equal.trans(List<&2, Char>, fr(f3, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))),
+            fr(f4, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))))), fr(f5,
+            '}' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc))), e4,
+            Equal.trans(List<&2, Char>, fr(f4, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w,
+            acc))))))), fr(f5, '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char,
+            w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))))))), fr(f5,
+            '}' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc))), e5,
+            Equal.cong(List<&2, Char>, List<&2, Char>, zz => fr(f5, '}' <> zz), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc)),
+            Equal.sym(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++
+            Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), ',' <> List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++
+            Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), ',' <> List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Lex.text(w4)),
+            ',' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w4),
+            "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++
+            Laws.g.text(gr), ',' <> List.append(&2, Char, w, acc)), Equal.trans(List<&2, Char>, List.reverse.go(&2,
+            Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Lex.text(w4)),
+            ',' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), zz), List.reverse.go(&2, Char, String.to_list(Lex.text(w4)),
+            ',' <> List.append(&2, Char, w, acc)), List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)),
+            text_rc(w4, "", ',' <> List.append(&2, Char, w, acc))), Equal.trans(List<&2, Char>, List.reverse.go(&2,
+            Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))),
+            List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))),
+            List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++
+            Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char,
+            w4, ',' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))))), srev_app(Laws.spell(ps),
+            "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))), Equal.trans(List<&2, Char>,
+            List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++
+            Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char,
+            w4, ',' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)),
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2,
+            Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)),
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w1)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w1),
+            ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))),
+            Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w1)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))),
+            List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>,
+            List<&2, Char>, zz => List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), zz),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w1)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))),
+            List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))), text_rc(w1, "",
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2,
+            Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2)), ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w2),
+            Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr), ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2)), ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), zz),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w2)), ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), text_rc(w2, "", ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w3) ++ Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w,
+            acc))))))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), srev_app(Laws.g.text(g2), Lex.text(w3) ++ Laws.g.text(gr),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))),
+            Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, String.to_list(Lex.text(w3) ++ Laws.g.text(gr)),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w3)), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w3),
+            Laws.g.text(gr), List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))))), Equal.cong(List<&2, Char>,
+            List<&2, Char>, zz => List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), zz), List.reverse.go(&2,
+            Char, String.to_list(Lex.text(w3)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w,
+            acc))))))), List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w,
+            acc))))))), text_rc(w3, "", List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2,
+            Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))))))))))))))))))))))))))))))))))))))
+    case V.JSpan{+x1, +x2}:
+      match sh:
+        case V.WVal{}:
+          use_s(bldg(V.WVal{}, fits, rr, acc), fits, V.span.str(x1, x2, U32.is_zero(x2)), rr, acc, take_s(fits,
+            V.span.str(x1, x2, U32.is_zero(x2)), rr, acc, ht, ho),
+            +w => +ps => +f1 => t1 => o1 => a1 => okp => _esp => e1 => (w, (Laws.GStr{ps}, (f1, (t1, (o1, (a1, (okp,
+            Equal.trans(List<&2, Char>, fr(fits, acc), fr(f1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w, acc))), fr(f1, List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\""), List.append(&2, Char, w, acc))), e1, Equal.cong(List<&2,
+            Char>, List<&2, Char>, zz => fr(f1, zz), '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w, acc)), List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\""), List.append(&2, Char, w, acc)), Equal.sym(List<&2, Char>,
+            List.reverse.go(&2, Char, String.to_list("\"" ++ Laws.spell(ps) ++ "\""), List.append(&2, Char, w, acc)),
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w, acc)),
+            Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, String.to_list("\"" ++ Laws.spell(ps) ++ "\""),
+            List.append(&2, Char, w, acc)), List.reverse.go(&2, Char, String.to_list(Laws.spell(ps) ++ "\""),
+            '"' <> List.append(&2, Char, w, acc)), '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w, acc)), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps) ++ "\""), '"' <> List.append(&2, Char, w, acc)), List.reverse.go(&2, Char,
+            String.to_list("\""), List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2,
+            Char, w, acc))), '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2,
+            Char, w, acc)), srev_app(Laws.spell(ps), "\"", '"' <> List.append(&2, Char, w, acc)), {==})))))))))))))
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          no(bldg(V.WObj{}, fits, rr, acc), hw)
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      match sh:
+        case V.WVal{}:
+          no(bldg(V.WVal{}, fits, rr, acc), hw)
+        case V.WArr{}:
+          no(bldg(V.WArr{}, fits, rr, acc), hw)
+        case V.WObj{}:
+          use_p(bldg(V.WObj{}, fits, rr, acc), fits, List.append(&2, Lex.Tok, tj_r(V.JBind{x1, x2, x3, x4}, V.WObj{}),
+            Lex.TCloseObj{} <> rr), acc, ',', take_com(fits, List.append(&2, Lex.Tok, tj_r(V.JBind{x1, x2, x3, x4},
+            V.WObj{}), Lex.TCloseObj{} <> rr), acc, ht, ho), +w => +f1 => t1 => o1 => a1 => e1 => use_s(bldg(V.WObj{},
+            fits, rr, acc), f1, V.span.str(x1, x2, U32.is_zero(x2)), Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(x3,
+            V.WVal{}), List.append(&2, Lex.Tok, otk(x4), Lex.TCloseObj{} <> rr)), ',' <> List.append(&2, Char, w, acc),
+            take_s(f1, V.span.str(x1, x2, U32.is_zero(x2)), Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(x3,
+            V.WVal{}), List.append(&2, Lex.Tok, otk(x4), Lex.TCloseObj{} <> rr)), ',' <> List.append(&2, Char, w, acc),
+            Equal.trans(List<&2, Lex.Tok>, dens(rtoks(f1)), List.append(&2, Lex.Tok, tj_r(V.JBind{x1, x2, x3, x4},
+            V.WObj{}), Lex.TCloseObj{} <> rr), Lex.TStr{V.span.str(x1, x2,
+            U32.is_zero(x2))} <> Lex.TColon{} <> List.append(&2, Lex.Tok, tj_r(x3, V.WVal{}), List.append(&2, Lex.Tok,
+            otk(x4), Lex.TCloseObj{} <> rr)), t1, btoks(x1, x2, x3, x4, Lex.TCloseObj{} <> rr)), o1),
+            +w4 => +ps => +f2 => t2 => o2 => a2 => okp => _esp => e2 => use_p(bldg(V.WObj{}, fits, rr, acc), f2,
+            List.append(&2, Lex.Tok, tj_r(x3, V.WVal{}), List.append(&2, Lex.Tok, otk(x4), Lex.TCloseObj{} <> rr)),
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))), ':', take_col(f2, List.append(&2, Lex.Tok, tj_r(x3, V.WVal{}),
+            List.append(&2, Lex.Tok, otk(x4), Lex.TCloseObj{} <> rr)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))),
+            t2, o2), +w1 => +f3 => t3 => o3 => a3 => e3 => use_bv(bldg(V.WObj{}, fits, rr, acc), f3, List.append(&2,
+            Lex.Tok, otk(x4), Lex.TCloseObj{} <> rr), ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))),
+            bld(x3, V.WVal{}, f3, List.append(&2, Lex.Tok, otk(x4), Lex.TCloseObj{} <> rr), ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))), stop_l(V.wf(x3), V.wf.go(x4, V.WObj{}), hw), t3, o3),
+            +w2 => +g2 => +f4 => t4 => o4 => a4 => k4 => e4 => use_bo(bldg(V.WObj{}, fits, rr, acc), f4, rr,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))), bld(x4, V.WObj{}, f4, rr, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))), stop_r(V.wf(x3), V.wf.go(x4, V.WObj{}), hw), t4, o4),
+            +w3 => +gr => +f5 => t5 => o5 => a5 => k5 => e5 => (w, (Laws.GNextM{Lex.text(w4), ps, Lex.text(w1),
+            Lex.text(w2), g2, Lex.text(w3), gr}, (f5, (t5, (o5, (a1, (and2(Laws.all_ws(Lex.text(w4)),
+            Bool.and(Laws.spell_ok(ps), Bool.and(Laws.all_ws(Lex.text(w1)), Bool.and(Laws.all_ws(Lex.text(w2)),
+            Bool.and(Laws.g.ok(g2, Laws.GKVal{}), Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gr, Laws.GKObj{})))))),
+            aw_text(w4, "", a2, {==}), and2(Laws.spell_ok(ps), Bool.and(Laws.all_ws(Lex.text(w1)),
+            Bool.and(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g2, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gr, Laws.GKObj{}))))), okp, and2(Laws.all_ws(Lex.text(w1)),
+            Bool.and(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g2, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gr, Laws.GKObj{})))), aw_text(w1, "", a3, {==}),
+            and2(Laws.all_ws(Lex.text(w2)), Bool.and(Laws.g.ok(g2, Laws.GKVal{}), Bool.and(Laws.all_ws(Lex.text(w3)),
+            Laws.g.ok(gr, Laws.GKObj{}))), aw_text(w2, "", a4, {==}), and2(Laws.g.ok(g2, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(Lex.text(w3)), Laws.g.ok(gr, Laws.GKObj{})), k4, and2(Laws.all_ws(Lex.text(w3)),
+            Laws.g.ok(gr, Laws.GKObj{}), aw_text(w3, "", a5, {==}), k5)))))), Equal.trans(List<&2, Char>, fr(fits,
+            acc), fr(f1, ',' <> List.append(&2, Char, w, acc)), fr(f5, '}' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc))), e1,
+            Equal.trans(List<&2, Char>, fr(f1, ',' <> List.append(&2, Char, w, acc)), fr(f2, '"' <> List.reverse.go(&2,
+            Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w,
+            acc)))), fr(f5, '}' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc))), e2,
+            Equal.trans(List<&2, Char>, fr(f2, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))), fr(f3, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), fr(f5, '}' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc))), e3,
+            Equal.trans(List<&2, Char>, fr(f3, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))),
+            fr(f4, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))))), fr(f5,
+            '}' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc))), e4,
+            Equal.trans(List<&2, Char>, fr(f4, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w,
+            acc))))))), fr(f5, '}' <> List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char,
+            w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))))))), fr(f5,
+            '}' <> List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc))), e5,
+            Equal.cong(List<&2, Char>, List<&2, Char>, zz => fr(f5, '}' <> zz), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc)),
+            Equal.sym(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list("," ++ Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++
+            Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++
+            Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), ',' <> List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w4) ++ "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++
+            Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), ',' <> List.append(&2, Char, w, acc)),
+            List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Lex.text(w4)),
+            ',' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w4),
+            "\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++
+            Laws.g.text(gr), ',' <> List.append(&2, Char, w, acc)), Equal.trans(List<&2, Char>, List.reverse.go(&2,
+            Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Lex.text(w4)),
+            ',' <> List.append(&2, Char, w, acc))), List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), zz), List.reverse.go(&2, Char, String.to_list(Lex.text(w4)),
+            ',' <> List.append(&2, Char, w, acc)), List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)),
+            text_rc(w4, "", ',' <> List.append(&2, Char, w, acc))), Equal.trans(List<&2, Char>, List.reverse.go(&2,
+            Char,
+            String.to_list("\"" ++ Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))),
+            List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps) ++ "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++
+            Lex.text(w3) ++ Laws.g.text(gr)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))),
+            List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++
+            Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char,
+            w4, ',' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))))), srev_app(Laws.spell(ps),
+            "\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))), Equal.trans(List<&2, Char>,
+            List.reverse.go(&2, Char,
+            String.to_list("\"" ++ Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++
+            Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char,
+            w4, ',' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)),
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2,
+            Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w1) ++ ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)),
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))), List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w1)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w1),
+            ":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))),
+            Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w1)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))),
+            List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>,
+            List<&2, Char>, zz => List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), zz),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w1)), '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))),
+            List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))), text_rc(w1, "",
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(":" ++ Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))))), {==}, Equal.trans(List<&2,
+            Char>, List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2) ++ Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2)), ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w2),
+            Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr), ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w2)), ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3, List.reverse.go(&2,
+            Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), Equal.cong(List<&2, Char>, List<&2, Char>,
+            zz => List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), zz),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w2)), ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))), text_rc(w2, "", ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2) ++ Lex.text(w3) ++ Laws.g.text(gr)), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))), List.reverse.go(&2, Char,
+            String.to_list(Lex.text(w3) ++ Laws.g.text(gr)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w,
+            acc))))))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), List.append(&2, Char, w3,
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), srev_app(Laws.g.text(g2), Lex.text(w3) ++ Laws.g.text(gr),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))),
+            Equal.trans(List<&2, Char>, List.reverse.go(&2, Char, String.to_list(Lex.text(w3) ++ Laws.g.text(gr)),
+            List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2,
+            Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc))))))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.reverse.go(&2, Char, String.to_list(Lex.text(w3)), List.reverse.go(&2, Char,
+            String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1,
+            '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4,
+            ',' <> List.append(&2, Char, w, acc)))))))), List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)),
+            List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char,
+            w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc)))))))), srev_app(Lex.text(w3),
+            Laws.g.text(gr), List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2, Char, w2,
+            ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))))), Equal.cong(List<&2, Char>,
+            List<&2, Char>, zz => List.reverse.go(&2, Char, String.to_list(Laws.g.text(gr)), zz), List.reverse.go(&2,
+            Char, String.to_list(Lex.text(w3)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w,
+            acc))))))), List.append(&2, Char, w3, List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)),
+            List.append(&2, Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char,
+            String.to_list(Laws.spell(ps)), '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w,
+            acc))))))), text_rc(w3, "", List.reverse.go(&2, Char, String.to_list(Laws.g.text(g2)), List.append(&2,
+            Char, w2, ':' <> List.append(&2, Char, w1, '"' <> List.reverse.go(&2, Char, String.to_list(Laws.spell(ps)),
+            '"' <> List.append(&2, Char, w4, ',' <> List.append(&2, Char, w, acc))))))))))))))))))))))))))))))))))))))))
+
+
+# JSON-TEXT-1: a text that parses is derived
+
+# is_some sees through own_m
+law is_some_own:
+  for mb: Maybe<&2, V.Json>
+  {Laws.is_some(Laws.own_m(mb)) == Laws.is_some(mb) : Bool}
+
+def is_some_own(mb):
+  match mb:
+    case None{}:
+      {==}
+    case Some{_jj}:
+      {==}
+
+# a Maybe that holds a value is Some of it
+law some_un:
+  for +mb: Maybe<&2, V.Json>
+  for h: {Laws.is_some(mb) == True{} : Bool}
+  {mb == Some{unsome(mb)} : Maybe<&2, V.Json>}
+
+def some_un(mb, h):
+  match mb:
+    case None{}:
+      no({None{} == Some{unsome(None{})} : Maybe<&2, V.Json>}, h)
+    case Some{_jj}:
+      {==}
+
+# a text that parses leaves the character lexer with no error token, once
+# whether it does is named
+law lnb.at:
+  for bb: Bool
+  for +txt: String
+  for h_s: {Laws.short(txt) == True{} : Bool}
+  for h_p: {Laws.is_some(Ezjson.parse(txt)) == True{} : Bool}
+  for e: {has_bad(Lex.finish(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [], []}))) == bb : Bool}
+  {has_bad(Lex.finish(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [], []}))) == False{} : Bool}
+
+def lnb.at(bb, txt, h_s, h_p, e):
+  match bb:
+    case True{}:
+      no({has_bad(Lex.finish(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [], []}))) == False{} : Bool},
+        Equal.trans(Bool, False{}, Laws.is_some(Ezjson.parse(txt)),
+        True{}, Equal.sym(Bool, Laws.is_some(Ezjson.parse(txt)), False{}, Equal.cong(Maybe<&2, V.Json>, Bool,
+          zz => Laws.is_some(zz),
+        Ezjson.parse(txt), None{}, lex_none(txt, h_s, e))), h_p))
+    case False{}:
+      e
+
+# a text that parses leaves the character lexer with no error token
+law lnb:
+  for +txt: String
+  for h_s: {Laws.short(txt) == True{} : Bool}
+  for h_p: {Laws.is_some(Ezjson.parse(txt)) == True{} : Bool}
+  {has_bad(Lex.finish(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [], []}))) == False{} : Bool}
+
+def lnb(txt, h_s, h_p):
+  lnb.at(has_bad(Lex.finish(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [], []}))), txt, h_s, h_p, {==})
+
+# a lexer state with no error token at the end, by its mode: lexemes read and
+# whitespace, the tokens the lexer ends with being the lexemes'
+law lx_fin.m:
+  for md: Lex.Mode
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for +rc: List<&2, Char>
+  for h: jm(md, bf, tk, rc)
+  for hb: {has_bad(Lex.finish(Lex.Lex{md, bf, tk})) == False{} : Bool}
+  (&its: List<&2, It> -> &rws: List<&2, Char> -> ({rc == List.append(&2, Char, rws, ritems(its)) : List<&2,
+    Char>} & ({Lex.finish(Lex.Lex{md, bf, tk}) == List.reverse(&2, Lex.Tok, rtoks(its)) : List<&2,
+    Lex.Tok>} & ({itsok(its) == True{} : Bool} & {allws(rws) == True{} : Bool}))))
+
+def lx_fin.m(md, bf, tk, rc, h, hb):
+  match md:
+    case Lex.Idle{}:
+      (+its, (+rws, ((etk, (hok, hws)), erc))) = h
+      (its, (rws, (erc, (Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => List.reverse(&2, Lex.Tok, zz), tk,
+        rtoks(its), etk), (hok, hws)))))
+    case Lex.Word{}:
+      (+its, (+rws, ((etk, (hok, hws)), erc))) = h
+      (It{rws, LW{Lex.text(bf)}} <> its, ([], (Equal.trans(List<&2, Char>, rc, List.append(&2, Char, bf,
+        List.append(&2, Char, rws, ritems(its))), List.reverse.go(&2, Char, String.to_list(Lex.text(bf)),
+        List.append(&2, Char, rws, ritems(its))), erc, Equal.sym(List<&2, Char>, List.reverse.go(&2, Char,
+        String.to_list(Lex.text(bf)), List.append(&2, Char, rws, ritems(its))), List.append(&2, Char, bf,
+        List.append(&2, Char, rws, ritems(its))), text_rc(bf, "", List.append(&2, Char, rws, ritems(its))))),
+        (Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => List.reverse(&2, Lex.Tok,
+          Lex.TWord{Lex.text(bf)} <> zz), tk, rtoks(its), etk), (and2(allws(rws), itsok(its),
+        hws, hok), {==})))))
+    case Lex.Str{}:
+      no((&its: List<&2, It> -> &rws: List<&2, Char> -> ({rc == List.append(&2, Char, rws, ritems(its)) : List<&2,
+        Char>} & ({Lex.finish(Lex.Lex{Lex.Str{}, bf, tk}) == List.reverse(&2, Lex.Tok, rtoks(its)) : List<&2,
+        Lex.Tok>} & ({itsok(its) == True{} : Bool} & {allws(rws) == True{} : Bool})))), Equal.trans(Bool, False{},
+        has_bad(Lex.finish(Lex.Lex{Lex.Str{}, bf, tk})), True{}, Equal.sym(Bool,
+        has_bad(Lex.finish(Lex.Lex{Lex.Str{}, bf, tk})), False{}, hb), hb_rev(tk, [Lex.TBad{}], {==})))
+    case Lex.Esc{}:
+      no((&its: List<&2, It> -> &rws: List<&2, Char> -> ({rc == List.append(&2, Char, rws, ritems(its)) : List<&2,
+        Char>} & ({Lex.finish(Lex.Lex{Lex.Esc{}, bf, tk}) == List.reverse(&2, Lex.Tok, rtoks(its)) : List<&2,
+        Lex.Tok>} & ({itsok(its) == True{} : Bool} & {allws(rws) == True{} : Bool})))), Equal.trans(Bool, False{},
+        has_bad(Lex.finish(Lex.Lex{Lex.Esc{}, bf, tk})), True{}, Equal.sym(Bool,
+        has_bad(Lex.finish(Lex.Lex{Lex.Esc{}, bf, tk})), False{}, hb), hb_rev(tk, [Lex.TBad{}], {==})))
+    case Lex.Uni{ul, ua}:
+      no((&its: List<&2, It> -> &rws: List<&2, Char> -> ({rc == List.append(&2, Char, rws, ritems(its)) : List<&2,
+        Char>} & ({Lex.finish(Lex.Lex{Lex.Uni{ul, ua}, bf, tk}) == List.reverse(&2, Lex.Tok, rtoks(its)) : List<&2,
+        Lex.Tok>} & ({itsok(its) == True{} : Bool} & {allws(rws) == True{} : Bool})))), Equal.trans(Bool, False{},
+        has_bad(Lex.finish(Lex.Lex{Lex.Uni{ul, ua}, bf, tk})), True{}, Equal.sym(Bool,
+        has_bad(Lex.finish(Lex.Lex{Lex.Uni{ul, ua}, bf, tk})), False{}, hb), hb_rev(tk, [Lex.TBad{}], {==})))
+    case Lex.Hi{uh}:
+      no((&its: List<&2, It> -> &rws: List<&2, Char> -> ({rc == List.append(&2, Char, rws, ritems(its)) : List<&2,
+        Char>} & ({Lex.finish(Lex.Lex{Lex.Hi{uh}, bf, tk}) == List.reverse(&2, Lex.Tok, rtoks(its)) : List<&2,
+        Lex.Tok>} & ({itsok(its) == True{} : Bool} & {allws(rws) == True{} : Bool})))), Equal.trans(Bool, False{},
+        has_bad(Lex.finish(Lex.Lex{Lex.Hi{uh}, bf, tk})), True{}, Equal.sym(Bool,
+        has_bad(Lex.finish(Lex.Lex{Lex.Hi{uh}, bf, tk})), False{}, hb), hb_rev(tk, [Lex.TBad{}], {==})))
+    case Lex.HiEsc{uh}:
+      no((&its: List<&2, It> -> &rws: List<&2, Char> -> ({rc == List.append(&2, Char, rws, ritems(its)) : List<&2,
+        Char>} & ({Lex.finish(Lex.Lex{Lex.HiEsc{uh}, bf, tk}) == List.reverse(&2, Lex.Tok, rtoks(its)) : List<&2,
+        Lex.Tok>} & ({itsok(its) == True{} : Bool} & {allws(rws) == True{} : Bool})))), Equal.trans(Bool, False{},
+        has_bad(Lex.finish(Lex.Lex{Lex.HiEsc{uh}, bf, tk})), True{}, Equal.sym(Bool,
+        has_bad(Lex.finish(Lex.Lex{Lex.HiEsc{uh}, bf, tk})), False{}, hb), hb_rev(tk, [Lex.TBad{}], {==})))
+    case Lex.Lo{ul, ua, uh}:
+      no((&its: List<&2, It> -> &rws: List<&2, Char> -> ({rc == List.append(&2, Char, rws, ritems(its)) : List<&2,
+        Char>} & ({Lex.finish(Lex.Lex{Lex.Lo{ul, ua, uh}, bf, tk}) == List.reverse(&2, Lex.Tok, rtoks(its)) : List<&2,
+        Lex.Tok>} & ({itsok(its) == True{} : Bool} & {allws(rws) == True{} : Bool})))), Equal.trans(Bool, False{},
+        has_bad(Lex.finish(Lex.Lex{Lex.Lo{ul, ua, uh}, bf, tk})), True{}, Equal.sym(Bool,
+        has_bad(Lex.finish(Lex.Lex{Lex.Lo{ul, ua, uh}, bf, tk})), False{}, hb), hb_rev(tk, [Lex.TBad{}], {==})))
+    case Lex.Bad{}:
+      no((&its: List<&2, It> -> &rws: List<&2, Char> -> ({rc == List.append(&2, Char, rws, ritems(its)) : List<&2,
+        Char>} & ({Lex.finish(Lex.Lex{Lex.Bad{}, bf, tk}) == List.reverse(&2, Lex.Tok, rtoks(its)) : List<&2,
+        Lex.Tok>} & ({itsok(its) == True{} : Bool} & {allws(rws) == True{} : Bool})))), Equal.trans(Bool, False{},
+        has_bad(Lex.finish(Lex.Lex{Lex.Bad{}, bf, tk})), True{}, Equal.sym(Bool,
+        has_bad(Lex.finish(Lex.Lex{Lex.Bad{}, bf, tk})), False{}, hb), hb_rev(tk, [Lex.TBad{}], {==})))
+
+# a lexer state with no error token at the end
+law lx_fin:
+  for st: Lex.Lex
+  for +rc: List<&2, Char>
+  for h: jl(st, rc)
+  for hb: {has_bad(Lex.finish(st)) == False{} : Bool}
+  (&its: List<&2, It> -> &rws: List<&2, Char> -> ({rc == List.append(&2, Char, rws, ritems(its)) : List<&2,
+    Char>} & ({Lex.finish(st) == List.reverse(&2, Lex.Tok, rtoks(its)) : List<&2,
+    Lex.Tok>} & ({itsok(its) == True{} : Bool} & {allws(rws) == True{} : Bool}))))
+
+def lx_fin(st, rc, h, hb):
+  match st:
+    case Lex.Lex{md, +bf, +tk}:
+      lx_fin.m(md, bf, tk, rc, h, hb)
+
+# lexemes read, passed on
+law use_fin:
+  for -gl: Type
+  for st: Lex.Lex
+  for rc: List<&2, Char>
+  for r: (&its: List<&2, It> -> &rws: List<&2, Char> -> ({rc == List.append(&2, Char, rws, ritems(its)) : List<&2,
+    Char>} & ({Lex.finish(st) == List.reverse(&2, Lex.Tok, rtoks(its)) : List<&2,
+    Lex.Tok>} & ({itsok(its) == True{} : Bool} & {allws(rws) == True{} : Bool}))))
+  for kk: @its: List<&2, It> -> @rws: List<&2, Char> -> {rc == List.append(&2, Char, rws, ritems(its)) : List<&2,
+    Char>} -> {Lex.finish(st) ==
+    List.reverse(&2, Lex.Tok, rtoks(its)) : List<&2,
+      Lex.Tok>} -> {itsok(its) == True{} : Bool} -> {allws(rws) == True{} : Bool} -> gl
+  gl
+
+def use_fin(_gl, _st, _rc, r, kk):
+  (its, (rws, (aa, (bb, (cc, dd))))) = r
+  kk(its, rws, aa, bb, cc, dd)
+
+# the derivation read off a text's lexemes and the value its tokens parse to
+law derive_from:
+  for +its: List<&2, It>
+  for +rws: List<&2, Char>
+  for +txt: String
+  for +jv: V.Json
+  for erc: {List.reverse.go(&2, Char, String.to_list(txt), []) == List.append(&2, Char, rws, ritems(its)) : List<&2,
+    Char>}
+  for efin: {Lex.finish(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [], []})) == List.reverse(&2, Lex.Tok,
+    rtoks(its)) : List<&2, Lex.Tok>}
+  for +hok: {itsok(its) == True{} : Bool}
+  for +hws: {allws(rws) == True{} : Bool}
+  for ptk: {tj_r(jv, V.WVal{}) == dens(Lex.tokens(txt)) : List<&2, Lex.Tok>}
+  for la: {dens(Lex.tokens(txt)) == dens(Lex.finish(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [],
+    []}))) : List<&2, Lex.Tok>}
+  for +wfj: {V.wf.go(jv, V.WVal{}) == True{} : Bool}
+  (&wa: String -> &gg: Laws.Gv -> &wb: String -> ({txt == wa ++ Laws.g.text(gg) ++ wb : String} & {Laws.derived(wa, gg,
+    wb) == True{} : Bool}))
+
+def derive_from(its, rws, txt, jv, erc, efin, hok, hws, ptk, la, wfj):
+  use_bv((&wa: String -> &gg: Laws.Gv -> &wb: String -> ({txt == wa ++ Laws.g.text(gg) ++
+    wb : String} & {Laws.derived(wa, gg, wb) == True{} : Bool})), List.reverse.go(&2, It, its, []), [], [], bld(jv,
+    V.WVal{}, List.reverse.go(&2, It, its, []), [], [], wfj, Equal.trans(List<&2, Lex.Tok>,
+    dens(rtoks(List.reverse.go(&2, It, its, []))), dens(List.reverse.go(&2, Lex.Tok, rtoks(its), [])), List.append(&2,
+    Lex.Tok, tj_r(jv, V.WVal{}), []), Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => dens(zz),
+    rtoks(List.reverse.go(&2, It, its, [])), List.reverse.go(&2, Lex.Tok, rtoks(its), []), rtoks_rev(its, [])),
+    Equal.trans(List<&2, Lex.Tok>, dens(List.reverse.go(&2, Lex.Tok, rtoks(its), [])),
+    dens(Lex.finish(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [], []}))), List.append(&2, Lex.Tok, tj_r(jv,
+    V.WVal{}), []), Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => dens(zz), List.reverse.go(&2, Lex.Tok,
+    rtoks(its), []), Lex.finish(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [], []})), Equal.sym(List<&2,
+    Lex.Tok>, Lex.finish(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [], []})), List.reverse(&2, Lex.Tok,
+    rtoks(its)), efin)), Equal.trans(List<&2, Lex.Tok>, dens(Lex.finish(Lex.run(String.to_list(txt),
+    Lex.Lex{Lex.Idle{}, [], []}))), dens(Lex.tokens(txt)), List.append(&2, Lex.Tok, tj_r(jv, V.WVal{}), []),
+    Equal.sym(List<&2, Lex.Tok>, dens(Lex.tokens(txt)), dens(Lex.finish(Lex.run(String.to_list(txt),
+    Lex.Lex{Lex.Idle{}, [], []}))), la), Equal.trans(List<&2, Lex.Tok>, dens(Lex.tokens(txt)), tj_r(jv, V.WVal{}),
+    List.append(&2, Lex.Tok, tj_r(jv, V.WVal{}), []), Equal.sym(List<&2, Lex.Tok>, tj_r(jv, V.WVal{}),
+    dens(Lex.tokens(txt)), ptk), Equal.sym(List<&2, Lex.Tok>, List.append(&2, Lex.Tok, tj_r(jv, V.WVal{}), []),
+    tj_r(jv, V.WVal{}), lapp_nil(tj_r(jv, V.WVal{}))))))), itsok_rev(its, [], hok, {==})),
+    +bw => +bg => +br => tb => _ob => ab => kb => eb => (Lex.text(bw), (bg, (Lex.text(rws), (rc_inj(txt,
+      Lex.text(bw) ++ Laws.g.text(bg) ++ Lex.text(rws), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+      String.to_list(txt), []), List.append(&2, Char, rws, ritems(its)), List.reverse.go(&2, Char,
+      String.to_list(Lex.text(bw) ++ Laws.g.text(bg) ++ Lex.text(rws)), []), erc, Equal.trans(List<&2, Char>,
+      List.append(&2, Char, rws, ritems(its)), List.append(&2, Char, rws, ra(its, [])), List.reverse.go(&2, Char,
+      String.to_list(Lex.text(bw) ++ Laws.g.text(bg) ++ Lex.text(rws)), []), Equal.cong(List<&2, Char>, List<&2, Char>,
+      zz => List.append(&2, Char, rws, zz), ritems(its), ra(its, []), ritems_ra(its)), Equal.trans(List<&2, Char>,
+      List.append(&2, Char, rws, ra(its, [])), List.append(&2, Char, rws, fr(List.reverse.go(&2, It, its, []), [])),
+      List.reverse.go(&2, Char, String.to_list(Lex.text(bw) ++ Laws.g.text(bg) ++ Lex.text(rws)), []),
+      Equal.cong(List<&2, Char>, List<&2, Char>, zz => List.append(&2, Char, rws, zz), ra(its, []),
+      fr(List.reverse.go(&2, It, its, []), []), Equal.sym(List<&2, Char>, fr(List.reverse.go(&2, It, its, []), []),
+      ra(its, []), fr_rev(its, [], []))), Equal.trans(List<&2, Char>, List.append(&2, Char, rws, fr(List.reverse.go(&2,
+      It, its, []), [])), List.append(&2, Char, rws, fr(br, List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)),
+      List.append(&2, Char, bw, [])))), List.reverse.go(&2, Char,
+      String.to_list(Lex.text(bw) ++ Laws.g.text(bg) ++ Lex.text(rws)), []), Equal.cong(List<&2, Char>, List<&2, Char>,
+      zz => List.append(&2, Char, rws, zz), fr(List.reverse.go(&2, It, its, []), []), fr(br, List.reverse.go(&2, Char,
+      String.to_list(Laws.g.text(bg)), List.append(&2, Char, bw, []))), eb), Equal.trans(List<&2, Char>,
+      List.append(&2, Char, rws, fr(br, List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)), List.append(&2,
+      Char, bw, [])))), List.append(&2, Char, rws, List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)),
+      List.append(&2, Char, bw, []))), List.reverse.go(&2, Char,
+      String.to_list(Lex.text(bw) ++ Laws.g.text(bg) ++ Lex.text(rws)), []), Equal.cong(List<&2, It>, List<&2, Char>,
+      zz => List.append(&2, Char, rws, fr(zz, List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)),
+      List.append(&2, Char, bw, [])))), br, [], its_nil(br, tb)), Equal.sym(List<&2, Char>, List.reverse.go(&2, Char,
+      String.to_list(Lex.text(bw) ++ Laws.g.text(bg) ++ Lex.text(rws)), []), List.append(&2, Char, rws,
+      List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)), List.append(&2, Char, bw, []))), Equal.trans(List<&2,
+      Char>, List.reverse.go(&2, Char, String.to_list(Lex.text(bw) ++ Laws.g.text(bg) ++ Lex.text(rws)), []),
+      List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg) ++ Lex.text(rws)), List.reverse.go(&2, Char,
+      String.to_list(Lex.text(bw)), [])), List.append(&2, Char, rws, List.reverse.go(&2, Char,
+      String.to_list(Laws.g.text(bg)), List.append(&2, Char, bw, []))), srev_app(Lex.text(bw),
+      Laws.g.text(bg) ++ Lex.text(rws), []), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+      String.to_list(Laws.g.text(bg) ++ Lex.text(rws)), List.reverse.go(&2, Char, String.to_list(Lex.text(bw)), [])),
+      List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg) ++ Lex.text(rws)), List.append(&2, Char, bw, [])),
+      List.append(&2, Char, rws, List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)), List.append(&2, Char, bw,
+      []))), Equal.cong(List<&2, Char>, List<&2, Char>, zz => List.reverse.go(&2, Char,
+      String.to_list(Laws.g.text(bg) ++ Lex.text(rws)), zz), List.reverse.go(&2, Char, String.to_list(Lex.text(bw)),
+      []), List.append(&2, Char, bw, []), text_rc(bw, "", [])), Equal.trans(List<&2, Char>, List.reverse.go(&2, Char,
+      String.to_list(Laws.g.text(bg) ++ Lex.text(rws)), List.append(&2, Char, bw, [])), List.reverse.go(&2, Char,
+      String.to_list(Lex.text(rws)), List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)), List.append(&2, Char,
+      bw, []))), List.append(&2, Char, rws, List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)), List.append(&2,
+      Char, bw, []))), srev_app(Laws.g.text(bg), Lex.text(rws), List.append(&2, Char, bw, [])), text_rc(rws, "",
+      List.reverse.go(&2, Char, String.to_list(Laws.g.text(bg)), List.append(&2, Char, bw, []))))))))))))),
+      and2(Laws.all_ws(Lex.text(bw)), Bool.and(Laws.g.ok(bg, Laws.GKVal{}), Laws.all_ws(Lex.text(rws))), aw_text(bw,
+      "", ab, {==}), and2(Laws.g.ok(bg, Laws.GKVal{}), Laws.all_ws(Lex.text(rws)), kb, aw_text(rws, "", hws,
+      {==}))))))))
+
+def Laws.text_derives(txt, h_s, h_p):
+  use_fin((&wa: String -> &gg: Laws.Gv -> &wb: String -> ({txt == wa ++ Laws.g.text(gg) ++
+    wb : String} & {Laws.derived(wa, gg, wb) == True{} : Bool})), Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [],
+    []}), List.reverse.go(&2, Char, String.to_list(txt), []), lx_fin(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{},
+    [], []}), List.reverse.go(&2, Char, String.to_list(txt), []), jrun(String.to_list(txt), Lex.Lex{Lex.Idle{}, [],
+    []}, [], ([], ([], (({==}, ({==},
+    {==})), {==})))), lnb(txt, h_s, h_p)), +its => +rws => erc => efin => hok => hws => derive_from(its, rws, txt,
+      unsome(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}}))), erc,
+    efin, hok, hws, parse_toks(Lex.tokens(txt), unsome(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{},
+      None{}, Nil{}}))), some_un(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}})),
+      Equal.trans(Bool, Laws.is_some(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}}))),
+      Laws.is_some(Laws.own_m(Ezjson.parse(txt))), True{}, Equal.cong(Maybe<&2, V.Json>, Bool, zz => Laws.is_some(zz),
+      Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}})), Laws.own_m(Ezjson.parse(txt)),
+      Equal.sym(Maybe<&2, V.Json>, Laws.own_m(Parse.finish(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{},
+      Nil{}}))), Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}})), Equal.trans(Maybe<&2,
+      V.Json>, Laws.own_m(Parse.finish(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}}))),
+      Parse.finish(ownp(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}}))),
+      Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}})),
+      fin_own(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}})), Equal.cong(Parse.P, Maybe<&2, V.Json>,
+      zz => Parse.finish(zz), ownp(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}})),
+      Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}}), run_own(Lex.tokens(txt), Parse.P{False{},
+      None{}, Nil{}}))))), Equal.trans(Bool, Laws.is_some(Laws.own_m(Ezjson.parse(txt))),
+      Laws.is_some(Ezjson.parse(txt)), True{}, is_some_own(Ezjson.parse(txt)), h_p)))), lexers_agree(txt, h_s),
+      Equal.trans(Bool, V.wf(unsome(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}})))),
+      Laws.wf_m(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}}))), True{},
+      Equal.sym(Bool, Laws.wf_m(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}}))),
+      V.wf(unsome(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}})))),
+      Equal.cong(Maybe<&2, V.Json>, Bool, zz => Laws.wf_m(zz), Parse.finish(Parse.run(dens(Lex.tokens(txt)),
+      Parse.P{False{}, None{}, Nil{}})), Some{unsome(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{},
+      None{}, Nil{}})))}, some_un(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}})),
+      Equal.trans(Bool, Laws.is_some(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}}))),
+      Laws.is_some(Laws.own_m(Ezjson.parse(txt))), True{}, Equal.cong(Maybe<&2, V.Json>, Bool, zz => Laws.is_some(zz),
+      Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}})), Laws.own_m(Ezjson.parse(txt)),
+      Equal.sym(Maybe<&2, V.Json>, Laws.own_m(Parse.finish(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{},
+      Nil{}}))), Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}})), Equal.trans(Maybe<&2,
+      V.Json>, Laws.own_m(Parse.finish(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}}))),
+      Parse.finish(ownp(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}}))),
+      Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}})),
+      fin_own(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}})), Equal.cong(Parse.P, Maybe<&2, V.Json>,
+      zz => Parse.finish(zz), ownp(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}})),
+      Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}}), run_own(Lex.tokens(txt), Parse.P{False{},
+      None{}, Nil{}}))))), Equal.trans(Bool, Laws.is_some(Laws.own_m(Ezjson.parse(txt))),
+      Laws.is_some(Ezjson.parse(txt)), True{}, is_some_own(Ezjson.parse(txt)), h_p))))),
+      fin_inv(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}}), run_inv(dens(Lex.tokens(txt)),
+      Parse.P{False{}, None{}, Nil{}}, (Unit{}, Unit{}))))))
