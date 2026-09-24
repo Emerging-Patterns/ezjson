@@ -220,6 +220,46 @@ def take(+txt: String, left: Nat) -> String:
         case 1n+pp:
           SCon{hd, take(tl, pp)}
 
+# the event a step of the cursor gave
+def ev_of(got: (Pull.Ev & Pull.Cur)) -> Pull.Ev:
+  (ev, _cur) = got
+  ev
+
+# the cursor a step of the cursor left
+def cur_of(got: (Pull.Ev & Pull.Cur)) -> Pull.Cur:
+  (_ev, cur) = got
+  cur
+
+# the error event
+def is_err(ev: Pull.Ev) -> Bool:
+  match ev:
+    case Pull.EErr{}:
+      True{}
+    case _:
+      False{}
+
+# the end event
+def is_end(ev: Pull.Ev) -> Bool:
+  match ev:
+    case Pull.EEnd{}:
+      True{}
+    case _:
+      False{}
+
+# a cursor that has failed
+def failed(cur: Pull.Cur) -> Bool:
+  match cur:
+    case Pull.Cur{_, _, _, bad}:
+      bad
+
+# a cursor with nothing left to read, the root over, and no failure
+def ended(cur: Pull.Cur) -> Bool:
+  match cur:
+    case Pull.Cur{SNil{}, _, True{}, False{}}:
+      True{}
+    case _:
+      False{}
+
 # LAW: as_bool reads back the boolean bool built
 # JSON-TREE-1
 law as_bool_bool:
@@ -578,4 +618,25 @@ law text_none:
   for +ev: Pull.Ev
   for h_kind: {has_text(ev) == False{} : Bool}
   {Ezjson.text(ev) == None{} : Maybe<&2, String>}
+
+# LAW: an error from next comes with a failed cursor
+# JSON-PULL-2
+law pull_err_fails:
+  for +cur: Pull.Cur
+  for h_err: {is_err(ev_of(Ezjson.next(cur))) == True{} : Bool}
+  {failed(cur_of(Ezjson.next(cur))) == True{} : Bool}
+
+# LAW: an end from next comes with an ended cursor
+# JSON-PULL-3
+law pull_end_ends:
+  for +cur: Pull.Cur
+  for h_end: {is_end(ev_of(Ezjson.next(cur))) == True{} : Bool}
+  {ended(cur_of(Ezjson.next(cur))) == True{} : Bool}
+
+# LAW: next on an ended cursor is the end and the same ended cursor
+# JSON-PULL-3
+law pull_ended_next:
+  for stack: List<&2, Pull.Frame>
+  {Ezjson.next(Pull.Cur{"", stack, True{}, False{}}) == (Pull.EEnd{}, Pull.Cur{"", stack, True{}, False{}})
+    : (Pull.Ev & Pull.Cur)}
 

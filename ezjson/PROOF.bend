@@ -1435,3 +1435,149 @@ def Laws.pull_over_skip(_rest, _stack, bad):
     case False{}:
       {==}
 
+# use_err, once the step's stop is in hand
+law use_err.at:
+  for stop: Pull.Stop
+  for cc: Pull.Cur
+  for h_err: {Laws.is_err(Laws.ev_of(Pull.next.use((stop, cc)))) == True{} : Bool}
+  {Laws.failed(Laws.cur_of(Pull.next.use((stop, cc)))) == True{} : Bool}
+
+def use_err.at(stop, cc, h_err):
+  match stop:
+    case Pull.SSkip{}:
+      {==}
+    case Pull.SEv{Pull.ENull{}}:
+      Empty.absurd({Laws.failed(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.ENull{}}, cc)))) == True{} : Bool},
+        false_true(h_err))
+    case Pull.SEv{Pull.EBool{aa}}:
+      Empty.absurd({Laws.failed(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EBool{aa}}, cc)))) == True{} : Bool},
+        false_true(h_err))
+    case Pull.SEv{Pull.ENum{aa, bb}}:
+      Empty.absurd({Laws.failed(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.ENum{aa, bb}}, cc)))) == True{} : Bool},
+        false_true(h_err))
+    case Pull.SEv{Pull.EStr{aa}}:
+      Empty.absurd({Laws.failed(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EStr{aa}}, cc)))) == True{} : Bool},
+        false_true(h_err))
+    case Pull.SEv{Pull.EStrS{aa, bb}}:
+      Empty.absurd({Laws.failed(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EStrS{aa, bb}}, cc)))) == True{} : Bool},
+        false_true(h_err))
+    case Pull.SEv{Pull.EKey{aa}}:
+      Empty.absurd({Laws.failed(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EKey{aa}}, cc)))) == True{} : Bool},
+        false_true(h_err))
+    case Pull.SEv{Pull.EKeyS{aa, bb}}:
+      Empty.absurd({Laws.failed(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EKeyS{aa, bb}}, cc)))) == True{} : Bool},
+        false_true(h_err))
+    case Pull.SEv{Pull.EBeginArr{}}:
+      Empty.absurd({Laws.failed(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EBeginArr{}}, cc)))) == True{} : Bool},
+        false_true(h_err))
+    case Pull.SEv{Pull.EEndArr{}}:
+      Empty.absurd({Laws.failed(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EEndArr{}}, cc)))) == True{} : Bool},
+        false_true(h_err))
+    case Pull.SEv{Pull.EBeginObj{}}:
+      Empty.absurd({Laws.failed(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EBeginObj{}}, cc)))) == True{} : Bool},
+        false_true(h_err))
+    case Pull.SEv{Pull.EEndObj{}}:
+      Empty.absurd({Laws.failed(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EEndObj{}}, cc)))) == True{} : Bool},
+        false_true(h_err))
+    case Pull.SEv{Pull.EEnd{}}:
+      Empty.absurd({Laws.failed(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EEnd{}}, cc)))) == True{} : Bool},
+        false_true(h_err))
+    case Pull.SEv{Pull.EErr{}}:
+      {==}
+
+
+# an error from a step comes with the failed cursor
+law use_err:
+  for got: (Pull.Stop & Pull.Cur)
+  for h_err: {Laws.is_err(Laws.ev_of(Pull.next.use(got))) == True{} : Bool}
+  {Laws.failed(Laws.cur_of(Pull.next.use(got))) == True{} : Bool}
+
+def use_err(got, h_err):
+  (stop, cc) = got
+  use_err.at(stop, cc, h_err)
+
+# an end from a step comes with an ended cursor, once the stop is in hand
+law use_end.at:
+  for stop: Pull.Stop
+  for cc: Pull.Cur
+  for h_end: {Laws.is_end(Laws.ev_of(Pull.next.use((stop, cc)))) == True{} : Bool}
+  {Laws.ended(Laws.cur_of(Pull.next.use((stop, cc)))) == True{} : Bool}
+
+def use_end.at(stop, cc, h_end):
+  match stop:
+    case Pull.SSkip{}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SSkip{}, cc)))) == True{} : Bool},
+        false_true(h_end))
+    case Pull.SEv{Pull.ENull{}}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.ENull{}}, cc)))) == True{} : Bool},
+        false_true(h_end))
+    case Pull.SEv{Pull.EBool{aa}}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EBool{aa}}, cc)))) == True{} : Bool},
+        false_true(h_end))
+    case Pull.SEv{Pull.ENum{aa, bb}}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.ENum{aa, bb}}, cc)))) == True{} : Bool},
+        false_true(h_end))
+    case Pull.SEv{Pull.EStr{aa}}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EStr{aa}}, cc)))) == True{} : Bool},
+        false_true(h_end))
+    case Pull.SEv{Pull.EStrS{aa, bb}}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EStrS{aa, bb}}, cc)))) == True{} : Bool},
+        false_true(h_end))
+    case Pull.SEv{Pull.EKey{aa}}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EKey{aa}}, cc)))) == True{} : Bool},
+        false_true(h_end))
+    case Pull.SEv{Pull.EKeyS{aa, bb}}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EKeyS{aa, bb}}, cc)))) == True{} : Bool},
+        false_true(h_end))
+    case Pull.SEv{Pull.EBeginArr{}}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EBeginArr{}}, cc)))) == True{} : Bool},
+        false_true(h_end))
+    case Pull.SEv{Pull.EEndArr{}}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EEndArr{}}, cc)))) == True{} : Bool},
+        false_true(h_end))
+    case Pull.SEv{Pull.EBeginObj{}}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EBeginObj{}}, cc)))) == True{} : Bool},
+        false_true(h_end))
+    case Pull.SEv{Pull.EEndObj{}}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EEndObj{}}, cc)))) == True{} : Bool},
+        false_true(h_end))
+    case Pull.SEv{Pull.EEnd{}}:
+      match cc:
+        case Pull.Cur{_, _, _, _}:
+          {==}
+    case Pull.SEv{Pull.EErr{}}:
+      Empty.absurd({Laws.ended(Laws.cur_of(Pull.next.use((Pull.SEv{Pull.EErr{}}, cc)))) == True{} : Bool},
+        false_true(h_end))
+
+# an end from a step comes with an ended cursor
+law use_end:
+  for got: (Pull.Stop & Pull.Cur)
+  for h_end: {Laws.is_end(Laws.ev_of(Pull.next.use(got))) == True{} : Bool}
+  {Laws.ended(Laws.cur_of(Pull.next.use(got))) == True{} : Bool}
+
+def use_end(got, h_end):
+  (stop, cc) = got
+  use_end.at(stop, cc, h_end)
+
+def Laws.pull_err_fails(cur, h_err):
+  match cur:
+    case Pull.Cur{rest, stack, done, bad}:
+      match bad:
+        case True{}:
+          {==}
+        case False{}:
+          use_err(Pull.next.walk(rest, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, done, False{}}), h_err)
+
+def Laws.pull_end_ends(cur, h_end):
+  match cur:
+    case Pull.Cur{rest, stack, done, bad}:
+      match bad:
+        case True{}:
+          Empty.absurd({Laws.ended(Laws.cur_of(Ezjson.next(Pull.Cur{rest, stack, done, True{}}))) == True{} : Bool},
+            false_true(h_end))
+        case False{}:
+          use_end(Pull.next.walk(rest, Pull.S{Pull.MIdle{}, stack, Pull.GNext{}, done, False{}}), h_end)
+
+def Laws.pull_ended_next(_stack):
+  {==}
+
