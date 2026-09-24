@@ -17481,3 +17481,352 @@ def Laws.esc_hi_bad(pre, aa, bb, cc, dd, rest, h_p, h_h, h_hi, h_n, h_s):
     Lex.unicode.end.go(Laws.hex4(aa, bb, cc, dd), List.reverse.go(&2, Char, String.to_list(pre), []), [], zz)))),
     Lex.unicode.sur(Laws.hex4(aa, bb, cc, dd)), Lex.SHi{}, sur_hi(Laws.hex4(aa, bb, cc, dd), h_hi)),
     hi_rej(String.to_list(rest), Laws.hex4(aa, bb, cc, dd), List.reverse.go(&2, Char, String.to_list(pre), []), h_n)))))
+
+
+# JSON-STR-4: names compare decoded
+
+# an and with True on the right
+law and_t:
+  for aa: Bool
+  for h: {aa == True{} : Bool}
+  {Bool.and(aa, True{}) == True{} : Bool}
+
+def and_t(aa, h):
+  match aa:
+    case True{}:
+      {==}
+    case False{}:
+      no({Bool.and(False{}, True{}) == True{} : Bool}, h)
+
+# a Maybe that holds a character holds the one some_or reads
+law some_is:
+  for mb: Maybe<&2, Char>
+  for +dflt: Char
+  for h: {Laws.has_char(mb) == True{} : Bool}
+  {mb == Some{Laws.some_or(mb, dflt)} : Maybe<&2, Char>}
+
+def some_is(mb, dflt, h):
+  match mb:
+    case None{}:
+      no({None{} == Some{Laws.some_or(None{}, dflt)} : Maybe<&2, Char>}, h)
+    case Some{_ch}:
+      {==}
+
+# one well spelled piece, read inside a string
+law piece_lex:
+  for pc: Laws.Piece
+  for +h: {Laws.piece.ok(pc) == True{} : Bool}
+  for +bf: List<&2, Char>
+  {Lex.run(String.to_list(Laws.piece.text(pc)), Lex.Lex{Lex.Str{}, bf, []}) == Lex.Lex{Lex.Str{},
+    Laws.piece.char(pc) <> bf, []} : Lex.Lex}
+
+def piece_lex(pc, h, bf):
+  match pc:
+    case Laws.PRaw{+ch}:
+      lex_raw([ch], and_t(Laws.raw_char(ch), h), bf, [])
+    case Laws.PEsc{ch}:
+      match ch:
+        case Chr{+uu}:
+          esc_to(U32.is_eq(uu, 117), uu, Laws.some_or(Laws.unesc(Chr{uu}), Chr{uu}), bf, {==},
+            some_is(Laws.unesc(Chr{uu}), Chr{uu}, h))
+    case Laws.PU{+aa, +bb, +cc, +dd}:
+      Equal.trans(Lex.Lex, Lex.feed(dd, Lex.feed(cc, Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Uni{3n, 0}, bf, []})))),
+        Lex.unicode.end(Laws.hex4(aa, bb, cc, dd), bf, []), Lex.Lex{Lex.Str{}, Chr{Laws.hex4(aa, bb, cc, dd)} <> bf,
+        []}, u4_feed(aa, bb, cc, dd, bf, and4_1(Laws.hexd(aa), Laws.hexd(bb), Laws.hexd(cc), Laws.hexd(dd),
+        and_left(Bool.and(Laws.hexd(aa), Bool.and(Laws.hexd(bb), Bool.and(Laws.hexd(cc), Laws.hexd(dd)))),
+        Laws.non_sur(Laws.hex4(aa, bb, cc, dd)), h)), and4_2(Laws.hexd(aa), Laws.hexd(bb), Laws.hexd(cc),
+        Laws.hexd(dd), and_left(Bool.and(Laws.hexd(aa), Bool.and(Laws.hexd(bb), Bool.and(Laws.hexd(cc),
+        Laws.hexd(dd)))), Laws.non_sur(Laws.hex4(aa, bb, cc, dd)), h)), and4_3(Laws.hexd(aa), Laws.hexd(bb),
+        Laws.hexd(cc), Laws.hexd(dd), and_left(Bool.and(Laws.hexd(aa), Bool.and(Laws.hexd(bb), Bool.and(Laws.hexd(cc),
+        Laws.hexd(dd)))), Laws.non_sur(Laws.hex4(aa, bb, cc, dd)), h)), and4_4(Laws.hexd(aa), Laws.hexd(bb),
+        Laws.hexd(cc), Laws.hexd(dd), and_left(Bool.and(Laws.hexd(aa), Bool.and(Laws.hexd(bb), Bool.and(Laws.hexd(cc),
+        Laws.hexd(dd)))), Laws.non_sur(Laws.hex4(aa, bb, cc, dd)), h))), Equal.cong(Lex.Sur, Lex.Lex,
+        zz => Lex.unicode.end.go(Laws.hex4(aa, bb, cc, dd), bf, [], zz), Lex.unicode.sur(Laws.hex4(aa, bb, cc, dd)),
+        Lex.SOk{}, sur_ok(Laws.hex4(aa, bb, cc, dd), and_right(Bool.and(Laws.hexd(aa), Bool.and(Laws.hexd(bb),
+        Bool.and(Laws.hexd(cc), Laws.hexd(dd)))), Laws.non_sur(Laws.hex4(aa, bb, cc, dd)), h))))
+    case Laws.PPair{+h1, +h2, +h3, +h4, +l1, +l2, +l3, +l4}:
+      +hh = and_left(Bool.and(Laws.hexd(h1), Bool.and(Laws.hexd(h2), Bool.and(Laws.hexd(h3), Laws.hexd(h4)))),
+        Bool.and(Bool.and(Laws.hexd(l1), Bool.and(Laws.hexd(l2), Bool.and(Laws.hexd(l3), Laws.hexd(l4)))),
+        Bool.and(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(l1, l2, l3, l4)))), h)
+      +r1 = and_right(Bool.and(Laws.hexd(h1), Bool.and(Laws.hexd(h2), Bool.and(Laws.hexd(h3), Laws.hexd(h4)))),
+        Bool.and(Bool.and(Laws.hexd(l1), Bool.and(Laws.hexd(l2), Bool.and(Laws.hexd(l3), Laws.hexd(l4)))),
+        Bool.and(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(l1, l2, l3, l4)))), h)
+      +hl = and_left(Bool.and(Laws.hexd(l1), Bool.and(Laws.hexd(l2), Bool.and(Laws.hexd(l3), Laws.hexd(l4)))),
+        Bool.and(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(l1, l2, l3, l4))), r1)
+      +r2 = and_right(Bool.and(Laws.hexd(l1), Bool.and(Laws.hexd(l2), Bool.and(Laws.hexd(l3), Laws.hexd(l4)))),
+        Bool.and(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(l1, l2, l3, l4))), r1)
+      hhi = and_left(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(l1, l2, l3, l4)), r2)
+      hlo = and_right(Laws.in_hi(Laws.hex4(h1, h2, h3, h4)), Laws.lo_sur(Laws.hex4(l1, l2, l3, l4)), r2)
+      Equal.trans(Lex.Lex, Lex.feed(l4, Lex.feed(l3, Lex.feed(l2, Lex.feed(l1, Lex.feed('u', Lex.feed('\\',
+        Lex.feed(h4, Lex.feed(h3, Lex.feed(h2, Lex.feed(h1, Lex.Lex{Lex.Uni{3n, 0}, bf, []})))))))))), Lex.feed(l4,
+        Lex.feed(l3, Lex.feed(l2, Lex.feed(l1, Lex.feed('u', Lex.feed('\\', Lex.Lex{Lex.Hi{Laws.hex4(h1, h2, h3, h4)},
+        bf, []})))))), Lex.Lex{Lex.Str{}, Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))} <> bf,
+        []}, Equal.cong(Lex.Lex, Lex.Lex, zz => Lex.feed(l4, Lex.feed(l3, Lex.feed(l2, Lex.feed(l1, Lex.feed('u',
+        Lex.feed('\\', zz)))))), Lex.feed(h4, Lex.feed(h3, Lex.feed(h2, Lex.feed(h1, Lex.Lex{Lex.Uni{3n, 0}, bf,
+        []})))), Lex.Lex{Lex.Hi{Laws.hex4(h1, h2, h3, h4)}, bf, []}, Equal.trans(Lex.Lex, Lex.feed(h4, Lex.feed(h3,
+        Lex.feed(h2, Lex.feed(h1, Lex.Lex{Lex.Uni{3n, 0}, bf, []})))), Lex.unicode.end(Laws.hex4(h1, h2, h3, h4), bf,
+        []), Lex.Lex{Lex.Hi{Laws.hex4(h1, h2, h3, h4)}, bf, []}, u4_feed(h1, h2, h3, h4, bf, and4_1(Laws.hexd(h1),
+        Laws.hexd(h2), Laws.hexd(h3), Laws.hexd(h4), hh), and4_2(Laws.hexd(h1), Laws.hexd(h2), Laws.hexd(h3),
+        Laws.hexd(h4), hh), and4_3(Laws.hexd(h1), Laws.hexd(h2), Laws.hexd(h3), Laws.hexd(h4), hh),
+        and4_4(Laws.hexd(h1), Laws.hexd(h2), Laws.hexd(h3), Laws.hexd(h4), hh)), Equal.cong(Lex.Sur, Lex.Lex,
+        zz => Lex.unicode.end.go(Laws.hex4(h1, h2, h3, h4), bf, [], zz), Lex.unicode.sur(Laws.hex4(h1, h2, h3, h4)),
+        Lex.SHi{}, sur_hi(Laws.hex4(h1, h2, h3, h4), hhi)))), Equal.trans(Lex.Lex, Lex.feed(l4, Lex.feed(l3,
+        Lex.feed(l2, Lex.feed(l1, Lex.feed('u', Lex.feed('\\', Lex.Lex{Lex.Hi{Laws.hex4(h1, h2, h3, h4)}, bf,
+        []})))))), Lex.feed(l4, Lex.feed(l3, Lex.feed(l2, Lex.feed(l1, Lex.Lex{Lex.Lo{3n, 0, Laws.hex4(h1, h2, h3,
+        h4)}, bf, []})))), Lex.Lex{Lex.Str{}, Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3,
+        l4))} <> bf, []}, {==}, Equal.trans(Lex.Lex, Lex.feed(l4, Lex.feed(l3, Lex.feed(l2, Lex.feed(l1,
+        Lex.Lex{Lex.Lo{3n, 0, Laws.hex4(h1, h2, h3, h4)}, bf, []})))), Lex.unicode.low.end(Laws.hex4(l1, l2, l3, l4),
+        Laws.hex4(h1, h2, h3, h4), bf, []), Lex.Lex{Lex.Str{}, Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1,
+        l2, l3, l4))} <> bf, []}, l4_feed(l1, l2, l3, l4, Laws.hex4(h1, h2, h3, h4), bf, and4_1(Laws.hexd(l1),
+        Laws.hexd(l2), Laws.hexd(l3), Laws.hexd(l4), hl), and4_2(Laws.hexd(l1), Laws.hexd(l2), Laws.hexd(l3),
+        Laws.hexd(l4), hl), and4_3(Laws.hexd(l1), Laws.hexd(l2), Laws.hexd(l3), Laws.hexd(l4), hl),
+        and4_4(Laws.hexd(l1), Laws.hexd(l2), Laws.hexd(l3), Laws.hexd(l4), hl)), Equal.cong(Lex.Sur, Lex.Lex,
+        zz => Lex.unicode.low.end.go(Laws.hex4(l1, l2, l3, l4), Laws.hex4(h1, h2, h3, h4), bf, [], zz),
+        Lex.unicode.sur(Laws.hex4(l1, l2, l3, l4)), Lex.SLo{}, sur_lo(Laws.hex4(l1, l2, l3, l4), hlo)))))
+
+# well spelled pieces, read inside a string
+law spell_lex:
+  for +ps: List<&2, Laws.Piece>
+  for +h: {Laws.spell_ok(ps) == True{} : Bool}
+  for +bf: List<&2, Char>
+  {Lex.run(String.to_list(Laws.spell(ps)), Lex.Lex{Lex.Str{}, bf, []}) == Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char,
+    String.to_list(Laws.spelled(ps)), bf), []} : Lex.Lex}
+
+def spell_lex(ps, h, bf):
+  match ps:
+    case Nil{}:
+      {==}
+    case +pc <> +tl:
+      Equal.trans(Lex.Lex, Lex.run(String.to_list(Laws.piece.text(pc) ++ Laws.spell(tl)), Lex.Lex{Lex.Str{}, bf, []}),
+        Lex.run(String.to_list(Laws.spell(tl)), Lex.Lex{Lex.Str{}, Laws.piece.char(pc) <> bf, []}), Lex.Lex{Lex.Str{},
+        List.reverse.go(&2, Char, String.to_list(Laws.spelled(tl)), Laws.piece.char(pc) <> bf), []},
+        seq(Laws.piece.text(pc), Laws.spell(tl), Lex.Lex{Lex.Str{}, bf, []}, Lex.Lex{Lex.Str{},
+        Laws.piece.char(pc) <> bf, []}, piece_lex(pc, and_left(Laws.piece.ok(pc), Laws.spell_ok(tl), h), bf)),
+        spell_lex(tl, and_right(Laws.piece.ok(pc), Laws.spell_ok(tl), h), Laws.piece.char(pc) <> bf))
+
+# a token on top of a reversed prefix
+law rev_snoc_t:
+  for +pre: List<&2, Lex.Tok>
+  for +tt: Lex.Tok
+  for +acc: List<&2, Lex.Tok>
+  {List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, pre, [tt]), acc) == tt <> List.reverse.go(&2, Lex.Tok, pre,
+    acc) : List<&2, Lex.Tok>}
+
+def rev_snoc_t(pre, tt, acc):
+  match pre:
+    case Nil{}:
+      {==}
+    case +hd <> +tl:
+      rev_snoc_t(tl, tt, hd <> acc)
+
+# a string read back from its reversed characters
+law text_k:
+  for +kk: String
+  {Lex.text(List.reverse.go(&2, Char, String.to_list(kk), [])) == kk : String}
+
+def text_k(kk):
+  Equal.trans(String, Lex.text(List.reverse.go(&2, Char, String.to_list(kk), [])),
+    String.from_list(String.to_list(kk)) ++ "", kk, text_revgo(String.to_list(kk), [], ""), Equal.trans(String,
+    String.from_list(String.to_list(kk)) ++ "", String.from_list(String.to_list(kk)), kk,
+    append_nil(String.from_list(String.to_list(kk))), from_to(kk)))
+
+# a one-member object is well-formed when its value is
+law wf_one:
+  for +val: V.Json
+  for h: {V.wf(val) == True{} : Bool}
+  {Lazy.stop(Bool, Bool.not(V.wf(val)), False{}, _u => V.wf.go(V.JNil{}, V.WObj{})) == True{} : Bool}
+
+def wf_one(val, h):
+  hl = Equal.sym(Bool, V.wf(val), True{}, h)
+  %hl : {Lazy.stop(Bool, Bool.not(_), False{}, _u => V.wf.go(V.JNil{}, V.WObj{})) == True{} : Bool}
+  {==}
+
+# the character lexer on a one-member object whose name is spelled in pieces
+law obj_lex:
+  for +ps: List<&2, Laws.Piece>
+  for +val: V.Json
+  for +h_ok: {Laws.spell_ok(ps) == True{} : Bool}
+  for +h_sc: {Laws.scalars(Laws.spelled(ps)) == True{} : Bool}
+  for +h_wf: {V.wf(val) == True{} : Bool}
+  {Lex.run(String.to_list("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"), Lex.Lex{Lex.Idle{}, [],
+    []}) == pend(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, []) : Lex.Lex}
+
+def obj_lex(ps, val, h_ok, h_sc, h_wf):
+  Equal.trans(Lex.Lex, Lex.run(String.to_list("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"),
+    Lex.Lex{Lex.Idle{}, [], []}), Lex.run(String.to_list(Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"),
+    Lex.Lex{Lex.Str{}, [], [Lex.TOpenObj{}]}), pend(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, []), seq("{\"",
+    Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}", Lex.Lex{Lex.Idle{}, [], []}, Lex.Lex{Lex.Str{}, [],
+    [Lex.TOpenObj{}]}, {==}), Equal.trans(Lex.Lex,
+    Lex.run(String.to_list(Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"), Lex.Lex{Lex.Str{}, [],
+    [Lex.TOpenObj{}]}), Lex.run(String.to_list("\":" ++ Ezjson.print(val) ++ "}"), Lex.Lex{Lex.Str{},
+    List.reverse.go(&2, Char, String.to_list(Laws.spelled(ps)), []), [Lex.TOpenObj{}]}),
+    pend(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, []), seq(Laws.spell(ps), "\":" ++ Ezjson.print(val) ++ "}",
+    Lex.Lex{Lex.Str{}, [], [Lex.TOpenObj{}]}, Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char,
+    String.to_list(Laws.spelled(ps)), []), [Lex.TOpenObj{}]}, Equal.trans(Lex.Lex,
+    Lex.run(String.to_list(Laws.spell(ps)), Lex.Lex{Lex.Str{}, [], [Lex.TOpenObj{}]}),
+    lex.app(Lex.run(String.to_list(Laws.spell(ps)), Lex.Lex{Lex.Str{}, [], []}), [Lex.TOpenObj{}]), Lex.Lex{Lex.Str{},
+    List.reverse.go(&2, Char, String.to_list(Laws.spelled(ps)), []), [Lex.TOpenObj{}]},
+    run_pass(String.to_list(Laws.spell(ps)), Lex.Lex{Lex.Str{}, [], []}, [Lex.TOpenObj{}]), Equal.cong(Lex.Lex,
+    Lex.Lex, zz => lex.app(zz, [Lex.TOpenObj{}]), Lex.run(String.to_list(Laws.spell(ps)), Lex.Lex{Lex.Str{}, [], []}),
+    Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(Laws.spelled(ps)), []), []}, spell_lex(ps, h_ok,
+    [])))), Equal.trans(Lex.Lex, Lex.run(String.to_list("\":" ++ Ezjson.print(val) ++ "}"), Lex.Lex{Lex.Str{},
+    List.reverse.go(&2, Char, String.to_list(Laws.spelled(ps)), []), [Lex.TOpenObj{}]}),
+    Lex.run(String.to_list(Ezjson.print(val) ++ "}"), Lex.Lex{Lex.Idle{}, [],
+    Lex.TColon{} <> Lex.TStr{Lex.text(List.reverse.go(&2, Char, String.to_list(Laws.spelled(ps)),
+    []))} <> [Lex.TOpenObj{}]}), pend(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, []), seq("\":",
+    Ezjson.print(val) ++ "}", Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(Laws.spelled(ps)), []),
+    [Lex.TOpenObj{}]}, Lex.Lex{Lex.Idle{}, [], Lex.TColon{} <> Lex.TStr{Lex.text(List.reverse.go(&2, Char,
+    String.to_list(Laws.spelled(ps)), []))} <> [Lex.TOpenObj{}]}, {==}), Equal.trans(Lex.Lex,
+    Lex.run(String.to_list(Ezjson.print(val) ++ "}"), Lex.Lex{Lex.Idle{}, [],
+    Lex.TColon{} <> Lex.TStr{Lex.text(List.reverse.go(&2, Char, String.to_list(Laws.spelled(ps)),
+    []))} <> [Lex.TOpenObj{}]}), Lex.run(String.to_list("}"), pend(val,
+    Lex.TColon{} <> Lex.TStr{Lex.text(List.reverse.go(&2, Char, String.to_list(Laws.spelled(ps)),
+    []))} <> [Lex.TOpenObj{}])), pend(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, []), seq(Ezjson.print(val),
+    "}", Lex.Lex{Lex.Idle{}, [], Lex.TColon{} <> Lex.TStr{Lex.text(List.reverse.go(&2, Char,
+    String.to_list(Laws.spelled(ps)), []))} <> [Lex.TOpenObj{}]}, pend(val,
+    Lex.TColon{} <> Lex.TStr{Lex.text(List.reverse.go(&2, Char, String.to_list(Laws.spelled(ps)),
+    []))} <> [Lex.TOpenObj{}]), lexp(val, V.WVal{}, h_wf, Lex.TColon{} <> Lex.TStr{Lex.text(List.reverse.go(&2, Char,
+    String.to_list(Laws.spelled(ps)), []))} <> [Lex.TOpenObj{}])), Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+    pend(val, Lex.TColon{} <> Lex.TStr{Lex.text(List.reverse.go(&2, Char, String.to_list(Laws.spelled(ps)),
+    []))} <> [Lex.TOpenObj{}])), Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(val,
+    V.WVal{}), Lex.TColon{} <> Lex.TStr{Lex.text(List.reverse.go(&2, Char, String.to_list(Laws.spelled(ps)),
+    []))} <> [Lex.TOpenObj{}])}, pend(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, []), close(val, '}',
+    Lex.TCloseObj{}, {==}, Lex.TColon{} <> Lex.TStr{Lex.text(List.reverse.go(&2, Char,
+    String.to_list(Laws.spelled(ps)), []))} <> [Lex.TOpenObj{}]), Equal.trans(Lex.Lex, Lex.Lex{Lex.Idle{}, [],
+    Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(val, V.WVal{}),
+    Lex.TColon{} <> Lex.TStr{Lex.text(List.reverse.go(&2, Char, String.to_list(Laws.spelled(ps)),
+    []))} <> [Lex.TOpenObj{}])}, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(val,
+    V.WVal{}), Lex.TColon{} <> Lex.TStr{Laws.spelled(ps)} <> [Lex.TOpenObj{}])}, pend(V.JObj{V.JPair{Laws.spelled(ps),
+    val, V.JNil{}}}, []), Equal.cong(String, Lex.Lex, zz => Lex.Lex{Lex.Idle{}, [],
+    Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(val, V.WVal{}),
+    Lex.TColon{} <> Lex.TStr{zz} <> [Lex.TOpenObj{}])}, Lex.text(List.reverse.go(&2, Char,
+    String.to_list(Laws.spelled(ps)), [])), Laws.spelled(ps), text_k(Laws.spelled(ps))), Equal.trans(Lex.Lex,
+    Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(val, V.WVal{}),
+    Lex.TColon{} <> Lex.TStr{Laws.spelled(ps)} <> [Lex.TOpenObj{}])}, Lex.Lex{Lex.Idle{}, [],
+    Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(val, V.WVal{}),
+    Lex.TColon{} <> Lex.TStr{fixs(String.to_list(Laws.spelled(ps)))} <> [Lex.TOpenObj{}])},
+    pend(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, []), Equal.cong(String, Lex.Lex, zz => Lex.Lex{Lex.Idle{},
+    [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(val, V.WVal{}),
+    Lex.TColon{} <> Lex.TStr{zz} <> [Lex.TOpenObj{}])}, Laws.spelled(ps), fixs(String.to_list(Laws.spelled(ps))),
+    Equal.sym(String, fixs(String.to_list(Laws.spelled(ps))), Laws.spelled(ps), fixs_id(Laws.spelled(ps), h_sc))),
+    Equal.cong(List<&2, Lex.Tok>, Lex.Lex, zz => Lex.Lex{Lex.Idle{}, [], zz}, Lex.TCloseObj{} <> List.reverse.go(&2,
+    Lex.Tok, tj(val, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(Laws.spelled(ps)))} <> [Lex.TOpenObj{}]),
+    List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(val, V.WVal{}), [Lex.TCloseObj{}]),
+    Lex.TColon{} <> Lex.TStr{fixs(String.to_list(Laws.spelled(ps)))} <> [Lex.TOpenObj{}]), Equal.sym(List<&2, Lex.Tok>,
+    List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(val, V.WVal{}), [Lex.TCloseObj{}]),
+    Lex.TColon{} <> Lex.TStr{fixs(String.to_list(Laws.spelled(ps)))} <> [Lex.TOpenObj{}]),
+    Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(val, V.WVal{}),
+    Lex.TColon{} <> Lex.TStr{fixs(String.to_list(Laws.spelled(ps)))} <> [Lex.TOpenObj{}]), rev_snoc_t(tj(val,
+    V.WVal{}), Lex.TCloseObj{},
+    Lex.TColon{} <> Lex.TStr{fixs(String.to_list(Laws.spelled(ps)))} <> [Lex.TOpenObj{}]))))))))))
+
+# parse on a one-member object whose name is spelled in pieces
+law parse_obj:
+  for +ps: List<&2, Laws.Piece>
+  for +val: V.Json
+  for +h_ok: {Laws.spell_ok(ps) == True{} : Bool}
+  for +h_sc: {Laws.scalars(Laws.spelled(ps)) == True{} : Bool}
+  for +h_wf: {V.wf(val) == True{} : Bool}
+  for h_s: {Laws.short("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}") == True{} : Bool}
+  {Laws.own_m(Ezjson.parse("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}")) ==
+    Some{Laws.fixv(Laws.own(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}))} : Maybe<&2, V.Json>}
+
+def parse_obj(ps, val, h_ok, h_sc, h_wf, h_s):
+  Equal.trans(Maybe<&2, V.Json>,
+    Laws.own_m(Parse.finish(Parse.run(Lex.tokens("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"),
+    Parse.P{False{}, None{}, Nil{}}))),
+    Parse.finish(ownp(Parse.run(Lex.tokens("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"),
+    Parse.P{False{}, None{}, Nil{}}))), Some{Laws.fixv(Laws.own(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}))},
+    fin_own(Parse.run(Lex.tokens("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"), Parse.P{False{},
+    None{}, Nil{}})), Equal.trans(Maybe<&2, V.Json>,
+    Parse.finish(ownp(Parse.run(Lex.tokens("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"),
+    Parse.P{False{}, None{}, Nil{}}))),
+    Parse.finish(Parse.run(dens(Lex.tokens("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}")),
+    Parse.P{False{}, None{}, Nil{}})), Some{Laws.fixv(Laws.own(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}))},
+    Equal.cong(Parse.P, Maybe<&2, V.Json>, zz => Parse.finish(zz),
+    ownp(Parse.run(Lex.tokens("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"), Parse.P{False{}, None{},
+    Nil{}})), Parse.run(dens(Lex.tokens("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}")),
+    Parse.P{False{}, None{}, Nil{}}), run_own(Lex.tokens("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"),
+    Parse.P{False{}, None{}, Nil{}})), Equal.trans(Maybe<&2, V.Json>,
+    Parse.finish(Parse.run(dens(Lex.tokens("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}")),
+    Parse.P{False{}, None{}, Nil{}})), Parse.finish(Parse.run(tj(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}},
+    V.WVal{}), Parse.P{False{}, None{}, Nil{}})), Some{Laws.fixv(Laws.own(V.JObj{V.JPair{Laws.spelled(ps), val,
+    V.JNil{}}}))}, Equal.cong(List<&2, Lex.Tok>, Maybe<&2, V.Json>, zz => Parse.finish(Parse.run(zz, Parse.P{False{},
+    None{}, Nil{}})), dens(Lex.tokens("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}")),
+    tj(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, V.WVal{}), Equal.trans(List<&2, Lex.Tok>,
+    dens(Lex.tokens("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}")),
+    dens(Lex.finish(Lex.run(String.to_list("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"),
+    Lex.Lex{Lex.Idle{}, [], []}))), tj(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, V.WVal{}),
+    lexers_agree("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}", h_s), Equal.trans(List<&2, Lex.Tok>,
+    dens(Lex.finish(Lex.run(String.to_list("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"),
+    Lex.Lex{Lex.Idle{}, [], []}))), dens(tj(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, V.WVal{})),
+    tj(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, V.WVal{}), Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+    zz => dens(zz), Lex.finish(Lex.run(String.to_list("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"),
+    Lex.Lex{Lex.Idle{}, [], []})), tj(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, V.WVal{}), Equal.trans(List<&2,
+    Lex.Tok>, Lex.finish(Lex.run(String.to_list("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"),
+    Lex.Lex{Lex.Idle{}, [], []})), Lex.finish(pend(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, [])),
+    tj(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, V.WVal{}), Equal.cong(Lex.Lex, List<&2, Lex.Tok>,
+    zz => Lex.finish(zz), Lex.run(String.to_list("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"),
+    Lex.Lex{Lex.Idle{}, [], []}), pend(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, []), obj_lex(ps, val, h_ok,
+    h_sc, h_wf)), fin_pend(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}))),
+    dens_tj(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, V.WVal{})))), Equal.trans(Maybe<&2, V.Json>,
+    Parse.finish(Parse.run(tj(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, V.WVal{}), Parse.P{False{}, None{},
+    Nil{}})), Some{canon(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, V.WVal{})},
+    Some{Laws.fixv(Laws.own(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}))},
+    parse_tj(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, wf_one(val, h_wf)), Equal.cong(V.Json, Maybe<&2,
+    V.Json>, zz => Some{zz}, canon(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}}, V.WVal{}),
+    Laws.fixv(Laws.own(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}})), canon_fix(V.JObj{V.JPair{Laws.spelled(ps),
+    val, V.JNil{}}}, V.WVal{}, wf_one(val, h_wf)))))))
+
+# get on a parsed value, once its owned form is known
+law get_m_own:
+  for mb: Maybe<&2, V.Json>
+  for +key: String
+  for +yy: V.Json
+  for e: {Laws.own_m(mb) == Some{yy} : Maybe<&2, V.Json>}
+  {Laws.get_m(mb, key) == Some{Ezjson.get(yy, key)} : Maybe<&2, V.Json>}
+
+def get_m_own(mb, key, yy, e):
+  match mb:
+    case None{}:
+      no({Laws.get_m(None{}, key) == Some{Ezjson.get(yy, key)} : Maybe<&2, V.Json>}, Equal.cong(Maybe<&2, V.Json>,
+        Bool, zz => Laws.is_some(zz), None{}, Some{yy}, e))
+    case Some{+jj}:
+      Equal.cong(V.Json, Maybe<&2, V.Json>, zz => Some{zz}, Laws.own(Ezjson.get(jj, key)), Ezjson.get(yy, key),
+        Equal.trans(V.Json, Laws.own(Ezjson.get(jj, key)), Ezjson.get(Laws.own(jj), key), Ezjson.get(yy, key),
+        Laws.get_same(jj, key), Equal.cong(V.Json, V.Json, zz => Ezjson.get(zz, key), Laws.own(jj), yy,
+        Equal.cong(Maybe<&2, V.Json>, V.Json, zz => unsome(zz), Some{Laws.own(jj)}, Some{yy}, e))))
+
+# the lookup past a one-member object's only member
+law fat:
+  for bb: Bool
+  for +key: String
+  for +vv: V.Json
+  {V.find.at(V.JNil{}, key, bb, vv) == Bool.pick(V.Json, bb, vv, V.JNull{}) : V.Json}
+
+def fat(bb, _key, _vv):
+  match bb:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+def Laws.get_decoded(ps, val, key, h_ok, h_sc, h_wf, h_s):
+  Equal.trans(Maybe<&2, V.Json>, Laws.get_m(Ezjson.parse("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"),
+    key), Some{Ezjson.get(Laws.fixv(Laws.own(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}})), key)},
+    Some{Bool.pick(V.Json, String.eq(Laws.spelled(ps), key), Laws.fixv(Laws.own(val)), V.JNull{})},
+    get_m_own(Ezjson.parse("{\"" ++ Laws.spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"), key,
+    Laws.fixv(Laws.own(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}})), parse_obj(ps, val, h_ok, h_sc, h_wf, h_s)),
+    Equal.cong(V.Json, Maybe<&2, V.Json>, zz => Some{zz},
+    Ezjson.get(Laws.fixv(Laws.own(V.JObj{V.JPair{Laws.spelled(ps), val, V.JNil{}}})), key), Bool.pick(V.Json,
+    String.eq(Laws.spelled(ps), key), Laws.fixv(Laws.own(val)), V.JNull{}), Equal.trans(V.Json, V.find.at(V.JNil{},
+    key, V.find.eq(Laws.fix_str(Laws.spelled(ps)), key), Laws.fixv(Laws.own(val))), V.find.at(V.JNil{}, key,
+    String.eq(Laws.spelled(ps), key), Laws.fixv(Laws.own(val))), Bool.pick(V.Json, String.eq(Laws.spelled(ps), key),
+    Laws.fixv(Laws.own(val)), V.JNull{}), Equal.cong(Bool, V.Json, zz => V.find.at(V.JNil{}, key, zz,
+    Laws.fixv(Laws.own(val))), V.find.eq(Laws.fix_str(Laws.spelled(ps)), key), String.eq(Laws.spelled(ps), key),
+    Equal.trans(Bool, V.find.eq.go(Laws.fix_str(Laws.spelled(ps)), key, True{}), V.find.eq.go(Laws.spelled(ps), key,
+    True{}), String.eq(Laws.spelled(ps), key), Equal.cong(String, Bool, zz => V.find.eq.go(zz, key, True{}),
+    Laws.fix_str(Laws.spelled(ps)), Laws.spelled(ps), Equal.trans(String, Laws.fix_str(Laws.spelled(ps)),
+    fixs(String.to_list(Laws.spelled(ps))), Laws.spelled(ps), Equal.sym(String, fixs(String.to_list(Laws.spelled(ps))),
+    Laws.fix_str(Laws.spelled(ps)), fixs_eq(Laws.spelled(ps))), fixs_id(Laws.spelled(ps), h_sc))),
+    find_str_eq(Laws.spelled(ps), key))), fat(String.eq(Laws.spelled(ps), key), key, Laws.fixv(Laws.own(val))))))

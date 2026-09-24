@@ -576,6 +576,104 @@ def lo_next(cs: List<&2, Char>) -> Bool:
     case hd <> tl:
       Bool.and(is_cp(hd, 92), lo_next.u(tl))
 
+# the character a Maybe holds, or dflt
+def some_or(mb: Maybe<&2, Char>, dflt: Char) -> Char:
+  match mb:
+    case None{}:
+      dflt
+    case Some{ch}:
+      ch
+
+# whether a Maybe holds a character
+def has_char(mb: Maybe<&2, Char>) -> Bool:
+  match mb:
+    case None{}:
+      False{}
+    case Some{_}:
+      True{}
+
+# one piece of a string's spelling between its quotation marks (§7): a raw
+# character, a two-character escape, a \u escape, or a high and a low
+# surrogate's \u escapes
+type Piece is Data:
+  PRaw{ch: Char}
+  PEsc{ch: Char}
+  PU{aa: Char, bb: Char, cc: Char, dd: Char}
+  PPair{h1: Char, h2: Char, h3: Char, h4: Char, l1: Char, l2: Char, l3: Char, l4: Char}
+
+# how a piece is written
+def piece.text(pc: Piece) -> String:
+  match pc:
+    case PRaw{ch}:
+      SCon{ch, ""}
+    case PEsc{ch}:
+      SCon{'\\', SCon{ch, ""}}
+    case PU{aa, bb, cc, dd}:
+      SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, ""}}}}}}
+    case PPair{h1, h2, h3, h4, l1, l2, l3, l4}:
+      SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3,
+        SCon{l4, ""}}}}}}}}}}}}
+
+# whether a piece is well spelled: a raw character a string keeps, one of the
+# two-character escapes, four hex digits of a code point that is no
+# surrogate, or four of a high surrogate and then four of a low one
+def piece.ok(pc: Piece) -> Bool:
+  match pc:
+    case PRaw{+ch}:
+      raw_char(ch)
+    case PEsc{+ch}:
+      has_char(unesc(ch))
+    case PU{+aa, +bb, +cc, +dd}:
+      Bool.and(Bool.and(hexd(aa), Bool.and(hexd(bb), Bool.and(hexd(cc), hexd(dd)))), non_sur(hex4(aa, bb, cc, dd)))
+    case PPair{+h1, +h2, +h3, +h4, +l1, +l2, +l3, +l4}:
+      Bool.and(Bool.and(hexd(h1), Bool.and(hexd(h2), Bool.and(hexd(h3), hexd(h4)))),
+        Bool.and(Bool.and(hexd(l1), Bool.and(hexd(l2), Bool.and(hexd(l3), hexd(l4)))),
+          Bool.and(in_hi(hex4(h1, h2, h3, h4)), lo_sur(hex4(l1, l2, l3, l4)))))
+
+# the character a piece stands for
+def piece.char(pc: Piece) -> Char:
+  match pc:
+    case PRaw{ch}:
+      ch
+    case PEsc{+ch}:
+      some_or(unesc(ch), ch)
+    case PU{+aa, +bb, +cc, +dd}:
+      Char.from_u32(hex4(aa, bb, cc, dd))
+    case PPair{+h1, +h2, +h3, +h4, +l1, +l2, +l3, +l4}:
+      Char.from_u32(pair(hex4(h1, h2, h3, h4), hex4(l1, l2, l3, l4)))
+
+# how pieces are written, one after another
+def spell(ps: List<&2, Piece>) -> String:
+  match ps:
+    case Nil{}:
+      ""
+    case pc <> tl:
+      piece.text(pc) ++ spell(tl)
+
+# the characters pieces stand for
+def spelled(ps: List<&2, Piece>) -> String:
+  match ps:
+    case Nil{}:
+      ""
+    case pc <> tl:
+      SCon{piece.char(pc), spelled(tl)}
+
+# whether every piece is well spelled
+def spell_ok(ps: List<&2, Piece>) -> Bool:
+  match ps:
+    case Nil{}:
+      True{}
+    case pc <> tl:
+      Bool.and(piece.ok(pc), spell_ok(tl))
+
+# get on a parsed value, with the value found read out as owned strings
+def get_m(mb: Maybe<&2, V.Json>, +key: String) -> Maybe<&2, V.Json>:
+  match mb:
+    case None{}:
+      None{}
+    case Some{jj}:
+      Some{own(Ezjson.get(jj, key))}
+
 # where a scan for raw controls in strings is: outside strings, inside one,
 # just after a backslash inside one, or past a raw control inside one (§7)
 type Cs is Data:
@@ -1113,6 +1211,20 @@ law raw_kept:
   for h_r: {raw_ok(String.to_list(txt)) == True{} : Bool}
   for h_s: {short("\"" ++ txt ++ "\"") == True{} : Bool}
   {str_of(Ezjson.parse("\"" ++ txt ++ "\"")) == Some{txt} : Maybe<&2, String>}
+
+# LAW: get finds an object's member exactly when the key is the characters
+# the member's name decodes to, whatever escapes spell it
+# JSON-STR-4
+law get_decoded:
+  for +ps: List<&2, Piece>
+  for +val: V.Json
+  for +key: String
+  for +h_ok: {spell_ok(ps) == True{} : Bool}
+  for +h_sc: {scalars(spelled(ps)) == True{} : Bool}
+  for +h_wf: {V.wf(val) == True{} : Bool}
+  for h_s: {short("{\"" ++ spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}") == True{} : Bool}
+  {get_m(Ezjson.parse("{\"" ++ spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"), key) ==
+    Some{Bool.pick(V.Json, String.eq(spelled(ps), key), fixv(own(val)), V.JNull{})} : Maybe<&2, V.Json>}
 
 # LAW: a raw control U+0000 to U+001F inside a string makes parse None
 # JSON-STR-3
