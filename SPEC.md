@@ -30,7 +30,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 
 | ID | Requirement | Level | Status | Law |
 | :---- | :---- | :---- | :---- | :---- |
-| JSON-TEXT-1 | For texts shorter than 2^32 - 1 characters, all of them code points (at most U+10FFFF): `parse(t)` is `Some` exactly when `t` matches RFC 8259's `JSON-text` rule (§2 to §7) and holds no `\u` escape of an unpaired surrogate (§8.2) | Proved | pending |  |
+| JSON-TEXT-1 | For texts shorter than 2^32 - 1 characters, all of them code points (at most U+10FFFF): `parse(t)` is `Some` exactly when `t` matches RFC 8259's `JSON-text` rule (§2 to §7) and holds no `\u` escape of an unpaired surrogate (§8.2) | Proved | pending | ezjson/LAWS.bend text_some |
 | JSON-TEXT-2 | For texts shorter than 2^32 - 1 characters: inserting any run of U+0020, U+0009, U+000A and U+000D before or after any token of a JSON text leaves `parse`'s result the same value; inserting any other character there, except a digit or `-` (which can make or extend a number), makes it `None` (§2) | Proved | pending |  |
 | JSON-TEXT-3 | For texts shorter than 2^32 - 1 characters: for every two well-formed values `j` and `k`, `parse(print(j) ++ " " ++ print(k))` is `None`: a text holds exactly one value (§2) | Proved | proved | ezjson/LAWS.bend two_none |
 | JSON-TEXT-4 | For texts shorter than 2^32 - 1 characters: a bare word parses exactly when it is `null`, `true`, `false` or a number, and the literals are only the lowercase words (§3) | Proved | proved | ezjson/LAWS.bend bare_word |
@@ -89,7 +89,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 
 ## Left to prove
 
-Every pending row is unproved in full; the RFC's Rollout says in which phase its laws land. No pending row has partial laws.
+Every pending row but one is unproved in full; the RFC's Rollout says in which phase its laws land. JSON-TEXT-1 has its half from the grammar to `Some` (`text_some`: a text a derivation spells parses, as the value the derivation stands for). Left is the other half: a text `parse` accepts has a derivation.
 
 ## Trust boundary
 
