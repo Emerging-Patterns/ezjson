@@ -12,6 +12,7 @@ RFC is `docs/rfc/ezjson-spec.md`; its decisions stand.
 - [x] <!-- REVIEW-P2 (resolved): How to prove the cursor. `pull.bend` is its own machine: 1,594 lines, 125 defs, 19 scanner modes, and it shares only character classes with the lexer. JSON-PULL-1 (the cursor's events are the value's events) needs an invariant from every mode to a lexer and parser state, which makes it the most expensive law in the rollout. Recommend: prove the local rows first (PULL-2, 3, 5 and 6: sticky failure, sticky end, where skip fails, text), then spike PULL-1 on texts of scalars and arrays only, and decide with the measured size in hand. Moving PULL-1 to Trusted is the fallback, and it would weaken a row, so it needs your approval. Decided: accepted as recommended. Local cursor rows first, then a PULL-1 spike on scalars and arrays, deciding with its size in hand. -->
 - [x] <!-- REVIEW-P4 (resolved): The cursor's fuel cannot be checked. `next.go` runs on a Nat fuel of `U32.to_nat(4294967295)`, and the checker normalizes that term in full, four billion successors, as soon as a law reaches `next` on a live cursor: even `{next.fuel() == next.fuel()}` by reflexivity overflows its stack. Only failed and ended cursors, which never reach `next.go`, can be reasoned about today, which blocks JSON-PULL-1, 3 and 4 and half of 2 and 5. Options: (a) fuel whose normal form is small, a depth of 32 where each level runs the one below twice (2^32 steps, structural recursion on the depth), measured against master with `scale` and the bench since the walk is the tuned hot loop; (b) keep the fuel in `Cur`, which changes a public type; (c) move the live-cursor rows to Trusted, a weakening. Recommend (a), with the measurement in its PR, and (c) only if it costs speed. Decided: accepted as recommended. (a): a fuel of nested budgets, 32 deep, measured against master in its PR. -->
 - [x] <!-- REVIEW-P3 (resolved): JSON-TREE-6 (as_u32) goes last. Base's `U32.read` accepts digits by checking that dividing by ten gives back the accumulator, so the row needs U32 multiply and divide lemmas, and nothing else in the rollout does. Recommend: keep it Proved and pending, and do it after the parser. Not a behavior change. Decided: accepted as recommended. JSON-TREE-6 stays Proved and pending and goes last. -->
+- [x] <!-- REVIEW-P6 (resolved): JSON-PRINT-1 is false as worded for a string that holds a code point that is not a Unicode scalar value. REVIEW-3 made `print` write U+FFFD for such a code point and kept strings out of `wf`, so `parse(print(str("\u{D800}")))` is a string of U+FFFD, not a value `same` as the one printed. Options: (a) reword the row: "`parse(print(j))` is `Some` of a value `same` as `j` with every code point that is not a Unicode scalar value replaced by U+FFFD"; (b) restrict the row to values whose strings and keys hold only scalar values, as JSON-STR-1 is. Recommend (a): it covers every well-formed value, it says what happens to the other code points, and WP-L2 already proves the lexer half in that form (`tokens_print`, through `fix`). Not a behavior change: it corrects the row to what the code does. Decided: (a). JSON-PRINT-1 reads "`same` as `j` with every code point that is not a Unicode scalar value replaced by U+FFFD". -->
 
 ## Update
 
@@ -27,6 +28,28 @@ sketch:
   harness: `escape` and `step.hiesc` test for `u` by code point, and the span
   scanner's mode is an enum (`Span`), not a U32 matched with literals.
 - The count's no-wrap fact comes from `pos_ne`, not an ordering lemma.
+
+WP-L2 has landed as `tokens_print`: for every well-formed value `j` whose
+text is `short`, `dens(tokens(print(j)))` is `tj(j)`, the value's tokens read
+straight off it, with each string's characters fixed as `print` writes them
+(`fix`: a scalar value is itself, any other code point U+FFFD). Where the
+code differs from the sketch:
+
+- The induction runs on the character machine (`lexp`), and WP-L1 carries it
+  to `tokens`. Its invariant is `pend`: after a value's text the machine
+  holds the value's tokens, or, for a number or a literal, the open word,
+  which the next `,`, `]` or `}` closes (`close`).
+- The induction is on the value and its shape together, as `wf.go` is, so
+  one law covers values, array cells and object cells. The split on what
+  follows a cell is in a helper (`lexp_cons`, `lexp_pair`, `lexp_bind`) that
+  takes the induction hypotheses as functions.
+- A number's characters are word characters because `number` holds of them
+  (`oth_number`, one lemma per grammar def); a string's escapes read back
+  one character at a time (`lex_char`), and the 32 controls below U+0020
+  are checked one by one (`lex_ctl`).
+
+JSON-STR-1 follows (`str_back`), and so does the rest of JSON-STR-5
+(`esc_ctl`, the controls as `\u00` and two lowercase hex digits).
 
 ## What parse does
 
