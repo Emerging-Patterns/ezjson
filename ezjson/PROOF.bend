@@ -16342,3 +16342,728 @@ def Laws.ctl_none(txt, h_c, h_s):
         lmode(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [], []})), h_c, tr_run(String.to_list(txt),
           Laws.CsOut{}, Lex.Lex{Lex.Idle{}, [], []}, {==})))))))))
 
+
+# JSON-STR-2: escapes
+
+# whether a Maybe of a character is None
+def is_nonec(mb: Maybe<&2, Char>) -> Bool:
+  match mb:
+    case None{}:
+      True{}
+    case Some{_ch}:
+      False{}
+
+# the character after a backslash, when it is a two-character escape
+law esc_to:
+  for isu: Bool
+  for +uu: U32
+  for +cc: Char
+  for +bf: List<&2, Char>
+  for eu: {U32.is_eq(uu, 117) == isu : Bool}
+  for h_e: {Laws.unesc(Chr{uu}) == Some{cc} : Maybe<&2, Char>}
+  {Lex.escape.go(Chr{uu}, bf, [], isu) == Lex.Lex{Lex.Str{}, cc <> bf, []} : Lex.Lex}
+
+def esc_to(isu, uu, cc, bf, eu, h_e):
+  match isu:
+    case True{}:
+      ek = Equal.sym(U32, uu, 117, ueq(uu, 117, eu))
+      e2 = Equal.trans(Maybe<&2, Char>, Laws.unesc(Chr{117}), Laws.unesc(Chr{uu}), Some{cc},
+        Equal.cong(U32, Maybe<&2, Char>, zz => Laws.unesc(Chr{zz}), 117, uu, ek), h_e)
+      Empty.absurd({Lex.escape.go(Chr{uu}, bf, [], True{}) == Lex.Lex{Lex.Str{}, cc <> bf, []} : Lex.Lex},
+        true_false(Equal.cong(Maybe<&2, Char>, Bool, zz => is_nonec(zz), None{}, Some{cc}, e2)))
+    case False{}:
+      es = Equal.sym(Maybe<&2, Char>, Laws.unesc(Chr{uu}), Some{cc}, h_e)
+      %es : {Lex.escape.put(_, bf, []) == Lex.Lex{Lex.Str{}, cc <> bf, []} : Lex.Lex}
+      {==}
+
+# the character after a backslash, when it is no escape at all
+law esc_to_bad:
+  for +uu: U32
+  for +bf: List<&2, Char>
+  for h_u: {U32.is_eq(uu, 117) == False{} : Bool}
+  for h_e: {Laws.unesc(Chr{uu}) == None{} : Maybe<&2, Char>}
+  {Lex.feed(Chr{uu}, Lex.Lex{Lex.Esc{}, bf, []}) == Lex.Lex{Lex.Bad{}, [], []} : Lex.Lex}
+
+def esc_to_bad(uu, bf, h_u, h_e):
+  hu = Equal.sym(Bool, U32.is_eq(uu, 117), False{}, h_u)
+  %hu : {Lex.escape.go(Chr{uu}, bf, [], _) == Lex.Lex{Lex.Bad{}, [], []} : Lex.Lex}
+  es = Equal.sym(Maybe<&2, Char>, Laws.unesc(Chr{uu}), None{}, h_e)
+  %es : {Lex.escape.put(_, bf, []) == Lex.Lex{Lex.Bad{}, [], []} : Lex.Lex}
+  {==}
+
+# the decoded string, read back from the buffer
+law esc_text:
+  for +pre: String
+  for +cc: Char
+  for +post: String
+  {Lex.text(List.reverse.go(&2, Char, String.to_list(post), cc <> List.reverse.go(&2, Char, String.to_list(pre),
+    []))) == pre ++ SCon{cc, post} : String}
+
+def esc_text(pre, cc, post):
+  Equal.trans(String, Lex.text(List.reverse.go(&2, Char, String.to_list(post), cc <> List.reverse.go(&2, Char,
+    String.to_list(pre), []))), Lex.text.go(List.reverse.go(&2, Char, String.to_list(pre), []), SCon{cc,
+    String.from_list(String.to_list(post)) ++ ""}), pre ++ SCon{cc, post}, text_revgo(String.to_list(post),
+    cc <> List.reverse.go(&2, Char, String.to_list(pre), []), ""),
+    Equal.trans(String, Lex.text.go(List.reverse.go(&2, Char, String.to_list(pre), []), SCon{cc,
+      String.from_list(String.to_list(post)) ++ ""}), String.from_list(String.to_list(pre)) ++ SCon{cc,
+      String.from_list(String.to_list(post)) ++ ""}, pre ++ SCon{cc, post}, text_revgo(String.to_list(pre), [],
+      SCon{cc, String.from_list(String.to_list(post)) ++ ""}),
+    Equal.trans(String, String.from_list(String.to_list(pre)) ++ SCon{cc,
+      String.from_list(String.to_list(post)) ++ ""}, pre ++ SCon{cc, String.from_list(String.to_list(post)) ++ ""},
+      pre ++ SCon{cc, post},
+    Equal.cong(String, String, zz => zz ++ SCon{cc, String.from_list(String.to_list(post)) ++ ""},
+      String.from_list(String.to_list(pre)), pre, from_to(pre)),
+    Equal.cong(String, String, zz => pre ++ SCon{cc, zz}, String.from_list(String.to_list(post)) ++ "", post,
+      Equal.trans(String, String.from_list(String.to_list(post)) ++ "", String.from_list(String.to_list(post)), post,
+        append_nil(String.from_list(String.to_list(post))),
+        from_to(post))))))
+
+# the character lexer on a string with a two-character escape
+law esc_lex:
+  for +pre: String
+  for +uu: U32
+  for +cc: Char
+  for +post: String
+  for +h_p: {Laws.raw_ok(String.to_list(pre)) == True{} : Bool}
+  for +h_e: {Laws.unesc(Chr{uu}) == Some{cc} : Maybe<&2, Char>}
+  for +h_q: {Laws.raw_ok(String.to_list(post)) == True{} : Bool}
+  {Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, post}} ++ "\""), Lex.Lex{Lex.Idle{}, [],
+    []})) == [Lex.TStr{pre ++ SCon{cc, post}}] : List<&2, Lex.Tok>}
+
+def esc_lex(pre, uu, cc, post, h_p, h_e, h_q):
+  Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu},
+    post}} ++ "\""), Lex.Lex{Lex.Idle{}, [], []})), Lex.finish(Lex.run(String.to_list(pre ++ SCon{'\\', SCon{Chr{uu},
+    post}} ++ "\""), Lex.Lex{Lex.Str{}, [], []})), [Lex.TStr{pre ++ SCon{cc, post}}], Equal.cong(Lex.Lex, List<&2,
+    Lex.Tok>, zz => Lex.finish(zz), Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, post}} ++ "\""),
+    Lex.Lex{Lex.Idle{}, [], []}), Lex.run(String.to_list(pre ++ SCon{'\\', SCon{Chr{uu}, post}} ++ "\""),
+    Lex.Lex{Lex.Str{}, [], []}),
+    seq("\"", pre ++ SCon{'\\', SCon{Chr{uu}, post}} ++ "\"", Lex.Lex{Lex.Idle{}, [], []}, Lex.Lex{Lex.Str{}, [], []},
+      {==})),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(pre ++ SCon{'\\', SCon{Chr{uu}, post}} ++ "\""),
+      Lex.Lex{Lex.Str{}, [], []})), Lex.finish(Lex.run(String.to_list(SCon{'\\', SCon{Chr{uu}, post}} ++ "\""),
+      Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(pre), []), []})), [Lex.TStr{pre ++ SCon{cc, post}}],
+      Equal.cong(Lex.Lex, List<&2, Lex.Tok>, zz => Lex.finish(zz), Lex.run(String.to_list(pre ++ SCon{'\\',
+      SCon{Chr{uu}, post}} ++ "\""), Lex.Lex{Lex.Str{}, [], []}), Lex.run(String.to_list(SCon{'\\', SCon{Chr{uu},
+      post}} ++ "\""), Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(pre), []), []}),
+    seq(pre, SCon{'\\', SCon{Chr{uu}, post}} ++ "\"", Lex.Lex{Lex.Str{}, [], []}, Lex.Lex{Lex.Str{},
+      List.reverse.go(&2, Char, String.to_list(pre), []), []}, lex_raw(String.to_list(pre), h_p, [], []))),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(SCon{'\\', SCon{Chr{uu}, post}} ++ "\""),
+      Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(pre), []), []})),
+      Lex.finish(Lex.run(String.to_list(post ++ "\""), Lex.Lex{Lex.Str{}, cc <> List.reverse.go(&2, Char,
+      String.to_list(pre), []), []})), [Lex.TStr{pre ++ SCon{cc, post}}], Equal.cong(Lex.Lex, List<&2, Lex.Tok>,
+      zz => Lex.finish(Lex.run(String.to_list(post ++ "\""), zz)), Lex.feed(Chr{uu}, Lex.Lex{Lex.Esc{},
+      List.reverse.go(&2, Char, String.to_list(pre), []), []}),
+    Lex.Lex{Lex.Str{}, cc <> List.reverse.go(&2, Char, String.to_list(pre), []), []}, esc_to(U32.is_eq(uu, 117), uu,
+      cc, List.reverse.go(&2, Char, String.to_list(pre), []), {==}, h_e)),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(post ++ "\""), Lex.Lex{Lex.Str{},
+      cc <> List.reverse.go(&2, Char, String.to_list(pre), []), []})), Lex.finish(Lex.run(String.to_list("\""),
+      Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(post), cc <> List.reverse.go(&2, Char,
+      String.to_list(pre), [])), []})), [Lex.TStr{pre ++ SCon{cc, post}}], Equal.cong(Lex.Lex, List<&2, Lex.Tok>,
+      zz => Lex.finish(zz), Lex.run(String.to_list(post ++ "\""), Lex.Lex{Lex.Str{}, cc <> List.reverse.go(&2, Char,
+      String.to_list(pre), []), []}), Lex.run(String.to_list("\""), Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char,
+      String.to_list(post), cc <> List.reverse.go(&2, Char, String.to_list(pre), [])), []}),
+    seq(post, "\"", Lex.Lex{Lex.Str{}, cc <> List.reverse.go(&2, Char, String.to_list(pre), []), []},
+      Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(post), cc <> List.reverse.go(&2, Char,
+      String.to_list(pre), [])), []}, lex_raw(String.to_list(post), h_q, cc <> List.reverse.go(&2, Char,
+      String.to_list(pre), []), []))),
+    Equal.cong(String, List<&2, Lex.Tok>, zz => [Lex.TStr{zz}], Lex.text(List.reverse.go(&2, Char,
+      String.to_list(post), cc <> List.reverse.go(&2, Char, String.to_list(pre), []))), pre ++ SCon{cc, post},
+      esc_text(pre, cc, post))))))
+
+def Laws.esc_decodes(pre, ch, cc, post, h_p, h_e, h_q, h_s):
+  match ch:
+    case Chr{+uu}:
+      one_str(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, post}} ++ "\""), pre ++ SCon{cc, post},
+        Equal.trans(List<&2, Lex.Tok>, dens(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, post}} ++ "\"")),
+        dens(Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, post}} ++ "\""),
+        Lex.Lex{Lex.Idle{}, [], []}))),
+        [Lex.TStr{pre ++ SCon{cc, post}}], lexers_agree("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, post}} ++ "\"", h_s),
+        Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => dens(zz),
+          Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, post}} ++ "\""),
+          Lex.Lex{Lex.Idle{}, [], []})), [Lex.TStr{pre ++ SCon{cc, post}}],
+          esc_lex(pre, uu, cc, post, h_p, h_e, h_q))))
+
+# the character lexer on a string with a bad escape
+law esc_bad_lex:
+  for +pre: String
+  for +uu: U32
+  for +rest: String
+  for +h_p: {Laws.raw_ok(String.to_list(pre)) == True{} : Bool}
+  for +h_u: {U32.is_eq(uu, 117) == False{} : Bool}
+  for +h_e: {Laws.unesc(Chr{uu}) == None{} : Maybe<&2, Char>}
+  {Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}), Lex.Lex{Lex.Idle{}, [],
+    []})) == [Lex.TBad{}] : List<&2, Lex.Tok>}
+
+def esc_bad_lex(pre, uu, rest, h_p, h_u, h_e):
+  Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}),
+    Lex.Lex{Lex.Idle{}, [], []})), Lex.finish(Lex.run(String.to_list(pre ++ SCon{'\\', SCon{Chr{uu}, rest}}),
+    Lex.Lex{Lex.Str{}, [], []})), [Lex.TBad{}], Equal.cong(Lex.Lex, List<&2, Lex.Tok>, zz => Lex.finish(zz),
+    Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}), Lex.Lex{Lex.Idle{}, [], []}),
+    Lex.run(String.to_list(pre ++ SCon{'\\', SCon{Chr{uu}, rest}}), Lex.Lex{Lex.Str{}, [], []}),
+    seq("\"", pre ++ SCon{'\\', SCon{Chr{uu}, rest}}, Lex.Lex{Lex.Idle{}, [], []}, Lex.Lex{Lex.Str{}, [], []}, {==})),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(pre ++ SCon{'\\', SCon{Chr{uu}, rest}}),
+      Lex.Lex{Lex.Str{}, [], []})), Lex.finish(Lex.run(String.to_list(SCon{'\\', SCon{Chr{uu}, rest}}),
+      Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(pre), []), []})), [Lex.TBad{}], Equal.cong(Lex.Lex,
+      List<&2, Lex.Tok>, zz => Lex.finish(zz), Lex.run(String.to_list(pre ++ SCon{'\\', SCon{Chr{uu}, rest}}),
+      Lex.Lex{Lex.Str{}, [], []}), Lex.run(String.to_list(SCon{'\\', SCon{Chr{uu}, rest}}), Lex.Lex{Lex.Str{},
+      List.reverse.go(&2, Char, String.to_list(pre), []), []}),
+    seq(pre, SCon{'\\', SCon{Chr{uu}, rest}}, Lex.Lex{Lex.Str{}, [], []}, Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char,
+      String.to_list(pre), []), []}, lex_raw(String.to_list(pre), h_p, [], []))),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(SCon{'\\', SCon{Chr{uu}, rest}}),
+      Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(pre), []), []})),
+      Lex.finish(Lex.run(String.to_list(rest), Lex.Lex{Lex.Bad{}, [], []})), [Lex.TBad{}], Equal.cong(Lex.Lex, List<&2,
+      Lex.Tok>, zz => Lex.finish(Lex.run(String.to_list(rest), zz)), Lex.feed(Chr{uu}, Lex.Lex{Lex.Esc{},
+      List.reverse.go(&2, Char, String.to_list(pre), []), []}),
+    Lex.Lex{Lex.Bad{}, [], []}, esc_to_bad(uu, List.reverse.go(&2, Char, String.to_list(pre), []), h_u, h_e)),
+    Equal.cong(Lex.Lex, List<&2, Lex.Tok>, zz => Lex.finish(zz), Lex.run(String.to_list(rest), Lex.Lex{Lex.Bad{}, [],
+      []}), Lex.Lex{Lex.Bad{}, [], []}, bad_run(String.to_list(rest))))))
+
+def Laws.esc_bad(pre, ch, rest, h_p, h_e, h_u, h_s):
+  match ch:
+    case Chr{+uu}:
+      own_m_none(Ezjson.parse("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}),
+        Equal.trans(Maybe<&2, V.Json>, Laws.own_m(Parse.finish(Parse.run(Lex.tokens("\"" ++ pre ++ SCon{'\\',
+          SCon{Chr{uu}, rest}}), Parse.P{False{}, None{}, Nil{}}))),
+          Parse.finish(ownp(Parse.run(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}), Parse.P{False{},
+          None{}, Nil{}}))), None{}, fin_own(Parse.run(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}),
+          Parse.P{False{}, None{}, Nil{}})),
+          Equal.trans(Maybe<&2, V.Json>, Parse.finish(ownp(Parse.run(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu},
+            rest}}), Parse.P{False{}, None{}, Nil{}}))),
+            Parse.finish(Parse.run(dens(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}})), Parse.P{False{},
+            None{}, Nil{}})), None{}, Equal.cong(Parse.P, Maybe<&2, V.Json>, zz => Parse.finish(zz),
+            ownp(Parse.run(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}), Parse.P{False{}, None{},
+            Nil{}})), Parse.run(dens(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}})), Parse.P{False{},
+            None{}, Nil{}}),
+          run_own(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}), Parse.P{False{}, None{}, Nil{}})),
+          Equal.trans(Maybe<&2, V.Json>, Parse.finish(Parse.run(dens(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu},
+            rest}})), Parse.P{False{}, None{}, Nil{}})),
+            Parse.finish(Parse.run(dens(Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu},
+            rest}}), Lex.Lex{Lex.Idle{}, [], []}))), Parse.P{False{}, None{}, Nil{}})), None{}, Equal.cong(List<&2,
+            Lex.Tok>, Maybe<&2, V.Json>, zz => Parse.finish(Parse.run(zz, Parse.P{False{}, None{}, Nil{}})),
+            dens(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}})),
+            dens(Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}), Lex.Lex{Lex.Idle{},
+            [], []}))), lexers_agree("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}, h_s)),
+          bad_none(dens(Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}),
+            Lex.Lex{Lex.Idle{}, [], []}))), Parse.P{False{}, None{}, Nil{}}, Equal.trans(Bool,
+            has_bad(dens(Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}),
+            Lex.Lex{Lex.Idle{}, [], []})))), has_bad(Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\',
+            SCon{Chr{uu}, rest}}), Lex.Lex{Lex.Idle{}, [], []}))), True{},
+            hb_dens(Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}),
+            Lex.Lex{Lex.Idle{}, [], []}))),
+          Equal.cong(List<&2, Lex.Tok>, Bool, zz => has_bad(zz),
+            Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{Chr{uu}, rest}}), Lex.Lex{Lex.Idle{}, [],
+            []})), [Lex.TBad{}], esc_bad_lex(pre, uu, rest, h_p, h_u, h_e))))))))
+
+# JSON-STR-2: \u escapes
+
+# a hex digit of a \u escape
+law uni_step:
+  for left: Nat
+  for +acc: U32
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for h: {Laws.hexd(ch) == True{} : Bool}
+  {Lex.feed(ch, Lex.Lex{Lex.Uni{left, acc}, bf, []}) == Lex.unicode.put(left, acc, Lex.hex(ch), bf, []) : Lex.Lex}
+
+def uni_step(left, acc, ch, bf, h):
+  hs = Equal.sym(Bool, Laws.hexd(ch), True{}, h)
+  %hs : {Lex.unicode.go(left, acc, ch, bf, [], _) == Lex.unicode.put(left, acc, Lex.hex(ch), bf, []) : Lex.Lex}
+  {==}
+
+# a hex digit of a low surrogate's \u escape
+law low_step:
+  for left: Nat
+  for +acc: U32
+  for +hi: U32
+  for +ch: Char
+  for +bf: List<&2, Char>
+  for h: {Laws.hexd(ch) == True{} : Bool}
+  {Lex.feed(ch, Lex.Lex{Lex.Lo{left, acc, hi}, bf, []}) == Lex.unicode.low.put(left, acc, hi, Lex.hex(ch), bf,
+    []) : Lex.Lex}
+
+def low_step(left, acc, hi, ch, bf, h):
+  hs = Equal.sym(Bool, Laws.hexd(ch), True{}, h)
+  %hs : {Lex.unicode.low.go(left, acc, hi, ch, bf, [], _) == Lex.unicode.low.put(left, acc, hi, Lex.hex(ch), bf,
+    []) : Lex.Lex}
+  {==}
+
+# the last test of sur_ok
+law sur_ok.lo2:
+  for g2: Bool
+  for l2: Bool
+  for h: {Bool.not(Bool.and(g2, l2)) == True{} : Bool}
+  {Lex.unicode.sur.lo(g2, l2) == Lex.SOk{} : Lex.Sur}
+
+def sur_ok.lo2(g2, l2, h):
+  match g2:
+    case True{}:
+      match l2:
+        case True{}:
+          no({Lex.unicode.sur.lo(True{}, True{}) == Lex.SOk{} : Lex.Sur}, h)
+        case False{}:
+          {==}
+    case False{}:
+      {==}
+
+# the low half of sur_ok.go
+law sur_ok.lo:
+  for g2: Bool
+  for l2: Bool
+  for +cp: U32
+  for e3: {U32.is_ge(cp, 56320) == g2 : Bool}
+  for e4: {U32.is_le(cp, 57343) == l2 : Bool}
+  for h: {Bool.not(Bool.and(g2, l2)) == True{} : Bool}
+  {Lex.unicode.sur.lo(U32.is_ge(cp, 56320), U32.is_le(cp, 57343)) == Lex.SOk{} : Lex.Sur}
+
+def sur_ok.lo(g2, l2, cp, e3, e4, h):
+  s3 = Equal.sym(Bool, U32.is_ge(cp, 56320), g2, e3)
+  s4 = Equal.sym(Bool, U32.is_le(cp, 57343), l2, e4)
+  %s3 : {Lex.unicode.sur.lo(_, U32.is_le(cp, 57343)) == Lex.SOk{} : Lex.Sur}
+  %s4 : {Lex.unicode.sur.lo(g2, _) == Lex.SOk{} : Lex.Sur}
+  sur_ok.lo2(g2, l2, h)
+
+# a code point that is no surrogate, with its range tests named
+law sur_ok.go:
+  for g1: Bool
+  for l1: Bool
+  for g2: Bool
+  for l2: Bool
+  for +cp: U32
+  for e3: {U32.is_ge(cp, 56320) == g2 : Bool}
+  for e4: {U32.is_le(cp, 57343) == l2 : Bool}
+  for h: {Bool.and(Bool.not(Bool.and(g1, l1)), Bool.not(Bool.and(g2, l2))) == True{} : Bool}
+  {Lex.unicode.sur.hi(cp, g1, l1) == Lex.SOk{} : Lex.Sur}
+
+def sur_ok.go(g1, l1, g2, l2, cp, e3, e4, h):
+  match g1:
+    case True{}:
+      match l1:
+        case True{}:
+          no({Lex.unicode.sur.hi(cp, True{}, True{}) == Lex.SOk{} : Lex.Sur}, h)
+        case False{}:
+          sur_ok.lo(g2, l2, cp, e3, e4, h)
+    case False{}:
+      sur_ok.lo(g2, l2, cp, e3, e4, h)
+
+
+# a code point that is no surrogate is an ordinary \u escape
+law sur_ok:
+  for +cp: U32
+  for h: {Laws.non_sur(cp) == True{} : Bool}
+  {Lex.unicode.sur(cp) == Lex.SOk{} : Lex.Sur}
+
+def sur_ok(cp, h):
+  sur_ok.go(U32.is_ge(cp, 55296), U32.is_le(cp, 56319), U32.is_ge(cp, 56320), U32.is_le(cp, 57343), cp, {==}, {==}, h)
+
+# a high surrogate, with its range tests named
+law sur_hi.go:
+  for g1: Bool
+  for l1: Bool
+  for +cp: U32
+  for h: {Bool.and(g1, l1) == True{} : Bool}
+  {Lex.unicode.sur.hi(cp, g1, l1) == Lex.SHi{} : Lex.Sur}
+
+def sur_hi.go(g1, l1, cp, h):
+  match g1:
+    case True{}:
+      match l1:
+        case True{}:
+          {==}
+        case False{}:
+          no({Lex.unicode.sur.hi(cp, True{}, False{}) == Lex.SHi{} : Lex.Sur}, h)
+    case False{}:
+      no({Lex.unicode.sur.hi(cp, False{}, l1) == Lex.SHi{} : Lex.Sur}, h)
+
+# a high surrogate's \u escape waits for its pair
+law sur_hi:
+  for +cp: U32
+  for h: {Laws.in_hi(cp) == True{} : Bool}
+  {Lex.unicode.sur(cp) == Lex.SHi{} : Lex.Sur}
+
+def sur_hi(cp, h):
+  sur_hi.go(U32.is_ge(cp, 55296), U32.is_le(cp, 56319), cp, h)
+
+# a low surrogate, the low half
+law sur_lo.lo:
+  for g2: Bool
+  for l2: Bool
+  for h: {Bool.and(g2, l2) == True{} : Bool}
+  {Lex.unicode.sur.lo(g2, l2) == Lex.SLo{} : Lex.Sur}
+
+def sur_lo.lo(g2, l2, h):
+  match g2:
+    case True{}:
+      match l2:
+        case True{}:
+          {==}
+        case False{}:
+          no({Lex.unicode.sur.lo(True{}, False{}) == Lex.SLo{} : Lex.Sur}, h)
+    case False{}:
+      no({Lex.unicode.sur.lo(False{}, l2) == Lex.SLo{} : Lex.Sur}, h)
+
+# a low surrogate, with its range tests named
+law sur_lo.go:
+  for g1: Bool
+  for l1: Bool
+  for +cp: U32
+  for h: {Bool.and(Bool.not(Bool.and(g1, l1)), Laws.in_lo(cp)) == True{} : Bool}
+  {Lex.unicode.sur.hi(cp, g1, l1) == Lex.SLo{} : Lex.Sur}
+
+def sur_lo.go(g1, l1, cp, h):
+  match g1:
+    case True{}:
+      match l1:
+        case True{}:
+          no({Lex.unicode.sur.hi(cp, True{}, True{}) == Lex.SLo{} : Lex.Sur}, h)
+        case False{}:
+          sur_lo.lo(U32.is_ge(cp, 56320), U32.is_le(cp, 57343), and_right(True{}, Laws.in_lo(cp), h))
+    case False{}:
+      sur_lo.lo(U32.is_ge(cp, 56320), U32.is_le(cp, 57343), and_right(True{}, Laws.in_lo(cp), h))
+
+# a low surrogate's \u escape
+law sur_lo:
+  for +cp: U32
+  for h: {Laws.lo_sur(cp) == True{} : Bool}
+  {Lex.unicode.sur(cp) == Lex.SLo{} : Lex.Sur}
+
+def sur_lo(cp, h):
+  sur_lo.go(U32.is_ge(cp, 55296), U32.is_le(cp, 56319), cp, h)
+
+
+# four hex digits of a \u escape
+law u4_feed:
+  for +aa: Char
+  for +bb: Char
+  for +cc: Char
+  for +dd: Char
+  for +bf: List<&2, Char>
+  for ha: {Laws.hexd(aa) == True{} : Bool}
+  for hb: {Laws.hexd(bb) == True{} : Bool}
+  for hc: {Laws.hexd(cc) == True{} : Bool}
+  for hd: {Laws.hexd(dd) == True{} : Bool}
+  {Lex.feed(dd, Lex.feed(cc, Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Uni{3n, 0}, bf, []})))) ==
+    Lex.unicode.end(Laws.hex4(aa, bb, cc, dd), bf, []) : Lex.Lex}
+
+def u4_feed(aa, bb, cc, dd, bf, ha, hb, hc, hd):
+  Equal.trans(Lex.Lex, Lex.feed(dd, Lex.feed(cc, Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Uni{3n, 0}, bf, []})))),
+    Lex.feed(dd, Lex.Lex{Lex.Uni{0n, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc)}, bf, []}),
+    Lex.unicode.end(Laws.hex4(aa, bb, cc, dd), bf, []),
+    Equal.cong(Lex.Lex, Lex.Lex, zz => Lex.feed(dd, zz), Lex.feed(cc, Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Uni{3n, 0},
+      bf, []}))), Lex.Lex{Lex.Uni{0n, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc)}, bf, []},
+      Equal.trans(Lex.Lex, Lex.feed(cc, Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Uni{3n, 0}, bf, []}))), Lex.feed(cc,
+      Lex.Lex{Lex.Uni{1n, Laws.hex.acc(Laws.hex.acc(0, aa), bb)}, bf, []}), Lex.Lex{Lex.Uni{0n,
+      Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc)}, bf, []},
+    Equal.cong(Lex.Lex, Lex.Lex, zz => Lex.feed(cc, zz), Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Uni{3n, 0}, bf, []})),
+      Lex.Lex{Lex.Uni{1n, Laws.hex.acc(Laws.hex.acc(0, aa), bb)}, bf, []}, Equal.trans(Lex.Lex, Lex.feed(bb,
+      Lex.feed(aa, Lex.Lex{Lex.Uni{3n, 0}, bf, []})), Lex.feed(bb, Lex.Lex{Lex.Uni{2n, Laws.hex.acc(0, aa)}, bf, []}),
+      Lex.Lex{Lex.Uni{1n, Laws.hex.acc(Laws.hex.acc(0, aa), bb)}, bf, []},
+    Equal.cong(Lex.Lex, Lex.Lex, zz => Lex.feed(bb, zz), Lex.feed(aa, Lex.Lex{Lex.Uni{3n, 0}, bf, []}),
+      Lex.Lex{Lex.Uni{2n, Laws.hex.acc(0, aa)}, bf, []}, uni_step(3n, 0, aa, bf, ha)),
+    uni_step(2n, Laws.hex.acc(0, aa), bb, bf, hb))),
+    uni_step(1n, Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc, bf, hc))),
+    uni_step(0n, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc), dd, bf, hd))
+
+
+# four hex digits of a low surrogate's \u escape
+law l4_feed:
+  for +aa: Char
+  for +bb: Char
+  for +cc: Char
+  for +dd: Char
+  for +hi: U32
+  for +bf: List<&2, Char>
+  for ha: {Laws.hexd(aa) == True{} : Bool}
+  for hb: {Laws.hexd(bb) == True{} : Bool}
+  for hc: {Laws.hexd(cc) == True{} : Bool}
+  for hd: {Laws.hexd(dd) == True{} : Bool}
+  {Lex.feed(dd, Lex.feed(cc, Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Lo{3n, 0, hi}, bf, []})))) ==
+    Lex.unicode.low.end(Laws.hex4(aa, bb, cc, dd), hi, bf, []) : Lex.Lex}
+
+def l4_feed(aa, bb, cc, dd, hi, bf, ha, hb, hc, hd):
+  Equal.trans(Lex.Lex, Lex.feed(dd, Lex.feed(cc, Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Lo{3n, 0, hi}, bf, []})))),
+    Lex.feed(dd, Lex.Lex{Lex.Lo{0n, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc), hi}, bf, []}),
+    Lex.unicode.low.end(Laws.hex4(aa, bb, cc, dd), hi, bf, []),
+    Equal.cong(Lex.Lex, Lex.Lex, zz => Lex.feed(dd, zz), Lex.feed(cc, Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Lo{3n, 0,
+      hi}, bf, []}))), Lex.Lex{Lex.Lo{0n, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc), hi}, bf, []},
+      Equal.trans(Lex.Lex, Lex.feed(cc, Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Lo{3n, 0, hi}, bf, []}))), Lex.feed(cc,
+      Lex.Lex{Lex.Lo{1n, Laws.hex.acc(Laws.hex.acc(0, aa), bb), hi}, bf, []}), Lex.Lex{Lex.Lo{0n,
+      Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc), hi}, bf, []},
+    Equal.cong(Lex.Lex, Lex.Lex, zz => Lex.feed(cc, zz), Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Lo{3n, 0, hi}, bf,
+      []})), Lex.Lex{Lex.Lo{1n, Laws.hex.acc(Laws.hex.acc(0, aa), bb), hi}, bf, []}, Equal.trans(Lex.Lex, Lex.feed(bb,
+      Lex.feed(aa, Lex.Lex{Lex.Lo{3n, 0, hi}, bf, []})), Lex.feed(bb, Lex.Lex{Lex.Lo{2n, Laws.hex.acc(0, aa), hi}, bf,
+      []}), Lex.Lex{Lex.Lo{1n, Laws.hex.acc(Laws.hex.acc(0, aa), bb), hi}, bf, []},
+    Equal.cong(Lex.Lex, Lex.Lex, zz => Lex.feed(bb, zz), Lex.feed(aa, Lex.Lex{Lex.Lo{3n, 0, hi}, bf, []}),
+      Lex.Lex{Lex.Lo{2n, Laws.hex.acc(0, aa), hi}, bf, []}, low_step(3n, 0, hi, aa, bf, ha)),
+    low_step(2n, Laws.hex.acc(0, aa), hi, bb, bf, hb))),
+    low_step(1n, Laws.hex.acc(Laws.hex.acc(0, aa), bb), hi, cc, bf, hc))),
+    low_step(0n, Laws.hex.acc(Laws.hex.acc(Laws.hex.acc(0, aa), bb), cc), hi, dd, bf, hd))
+
+# four hex digits, from one proof of all four
+law and4_1:
+  for aa: Bool
+  for -bb: Bool
+  for -cc: Bool
+  for -dd: Bool
+  for h: {Bool.and(aa, Bool.and(bb, Bool.and(cc, dd))) == True{} : Bool}
+  {aa == True{} : Bool}
+
+def and4_1(aa, bb, cc, dd, h):
+  and_left(aa, Bool.and(bb, Bool.and(cc, dd)), h)
+
+law and4_2:
+  for aa: Bool
+  for bb: Bool
+  for -cc: Bool
+  for -dd: Bool
+  for h: {Bool.and(aa, Bool.and(bb, Bool.and(cc, dd))) == True{} : Bool}
+  {bb == True{} : Bool}
+
+def and4_2(aa, bb, cc, dd, h):
+  and_left(bb, Bool.and(cc, dd), and_right(aa, Bool.and(bb, Bool.and(cc, dd)), h))
+
+law and4_3:
+  for aa: Bool
+  for bb: Bool
+  for cc: Bool
+  for -dd: Bool
+  for h: {Bool.and(aa, Bool.and(bb, Bool.and(cc, dd))) == True{} : Bool}
+  {cc == True{} : Bool}
+
+def and4_3(aa, bb, cc, dd, h):
+  and_left(cc, dd, and_right(bb, Bool.and(cc, dd), and_right(aa, Bool.and(bb, Bool.and(cc, dd)), h)))
+
+law and4_4:
+  for aa: Bool
+  for bb: Bool
+  for cc: Bool
+  for dd: Bool
+  for h: {Bool.and(aa, Bool.and(bb, Bool.and(cc, dd))) == True{} : Bool}
+  {dd == True{} : Bool}
+
+def and4_4(aa, bb, cc, dd, h):
+  and_right(cc, dd, and_right(bb, Bool.and(cc, dd), and_right(aa, Bool.and(bb, Bool.and(cc, dd)), h)))
+
+
+# the character lexer on a string with a \u escape
+law esc_u_lex:
+  for +pre: String
+  for +aa: Char
+  for +bb: Char
+  for +cc: Char
+  for +dd: Char
+  for +post: String
+  for +h_p: {Laws.raw_ok(String.to_list(pre)) == True{} : Bool}
+  for +h_h: {Bool.and(Laws.hexd(aa), Bool.and(Laws.hexd(bb), Bool.and(Laws.hexd(cc), Laws.hexd(dd)))) == True{} : Bool}
+  for +h_n: {Laws.non_sur(Laws.hex4(aa, bb, cc, dd)) == True{} : Bool}
+  for +h_q: {Laws.raw_ok(String.to_list(post)) == True{} : Bool}
+  {Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd,
+    post}}}}}} ++ "\""), Lex.Lex{Lex.Idle{}, [], []})) == [Lex.TStr{pre ++ SCon{Chr{Laws.hex4(aa, bb, cc, dd)},
+    post}}] : List<&2, Lex.Tok>}
+
+def esc_u_lex(pre, aa, bb, cc, dd, post, h_p, h_h, h_n, h_q):
+  Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{aa,
+    SCon{bb, SCon{cc, SCon{dd, post}}}}}} ++ "\""), Lex.Lex{Lex.Idle{}, [], []})),
+    Lex.finish(Lex.run(String.to_list(pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd,
+    post ++ "\""}}}}}}), Lex.Lex{Lex.Str{}, [], []})), [Lex.TStr{pre ++ SCon{Chr{Laws.hex4(aa, bb, cc, dd)}, post}}],
+    Equal.cong(Lex.Lex, List<&2, Lex.Tok>, zz => Lex.finish(zz), Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\',
+    SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, post}}}}}} ++ "\""), Lex.Lex{Lex.Idle{}, [], []}),
+    Lex.run(String.to_list(pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, post ++ "\""}}}}}}),
+    Lex.Lex{Lex.Str{}, [], []}),
+    seq("\"", pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, post ++ "\""}}}}}}, Lex.Lex{Lex.Idle{},
+      [], []}, Lex.Lex{Lex.Str{}, [], []}, {==})),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb,
+      SCon{cc, SCon{dd, post ++ "\""}}}}}}), Lex.Lex{Lex.Str{}, [], []})), Lex.finish(Lex.run(String.to_list(SCon{'\\',
+      SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, post ++ "\""}}}}}}), Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char,
+      String.to_list(pre), []), []})), [Lex.TStr{pre ++ SCon{Chr{Laws.hex4(aa, bb, cc, dd)}, post}}],
+      Equal.cong(Lex.Lex, List<&2, Lex.Tok>, zz => Lex.finish(zz), Lex.run(String.to_list(pre ++ SCon{'\\', SCon{'u',
+      SCon{aa, SCon{bb, SCon{cc, SCon{dd, post ++ "\""}}}}}}), Lex.Lex{Lex.Str{}, [], []}),
+      Lex.run(String.to_list(SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, post ++ "\""}}}}}}),
+      Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(pre), []), []}),
+    seq(pre, SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, post ++ "\""}}}}}}, Lex.Lex{Lex.Str{}, [], []},
+      Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(pre), []), []}, lex_raw(String.to_list(pre), h_p, [],
+      []))),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc,
+      SCon{dd, post ++ "\""}}}}}}), Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(pre), []), []})),
+      Lex.finish(Lex.run(String.to_list(post ++ "\""), Lex.Lex{Lex.Str{}, Chr{Laws.hex4(aa, bb, cc,
+      dd)} <> List.reverse.go(&2, Char, String.to_list(pre), []), []})), [Lex.TStr{pre ++ SCon{Chr{Laws.hex4(aa, bb,
+      cc, dd)}, post}}], Equal.cong(Lex.Lex, List<&2, Lex.Tok>, zz => Lex.finish(Lex.run(String.to_list(post ++ "\""),
+      zz)), Lex.feed(dd, Lex.feed(cc, Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Uni{3n, 0}, List.reverse.go(&2, Char,
+      String.to_list(pre), []), []})))),
+    Lex.Lex{Lex.Str{}, Chr{Laws.hex4(aa, bb, cc, dd)} <> List.reverse.go(&2, Char, String.to_list(pre), []), []},
+      Equal.trans(Lex.Lex, Lex.feed(dd, Lex.feed(cc, Lex.feed(bb, Lex.feed(aa, Lex.Lex{Lex.Uni{3n, 0},
+      List.reverse.go(&2, Char, String.to_list(pre), []), []})))), Lex.unicode.end(Laws.hex4(aa, bb, cc, dd),
+      List.reverse.go(&2, Char, String.to_list(pre), []), []), Lex.Lex{Lex.Str{}, Chr{Laws.hex4(aa, bb, cc,
+      dd)} <> List.reverse.go(&2, Char, String.to_list(pre), []), []},
+    u4_feed(aa, bb, cc, dd, List.reverse.go(&2, Char, String.to_list(pre), []), and4_1(Laws.hexd(aa), Laws.hexd(bb),
+      Laws.hexd(cc), Laws.hexd(dd), h_h), and4_2(Laws.hexd(aa), Laws.hexd(bb), Laws.hexd(cc), Laws.hexd(dd), h_h),
+      and4_3(Laws.hexd(aa), Laws.hexd(bb), Laws.hexd(cc), Laws.hexd(dd), h_h), and4_4(Laws.hexd(aa), Laws.hexd(bb),
+      Laws.hexd(cc), Laws.hexd(dd), h_h)),
+    Equal.cong(Lex.Sur, Lex.Lex, zz => Lex.unicode.end.go(Laws.hex4(aa, bb, cc, dd), List.reverse.go(&2, Char,
+      String.to_list(pre), []), [], zz), Lex.unicode.sur(Laws.hex4(aa, bb, cc, dd)), Lex.SOk{},
+      sur_ok(Laws.hex4(aa, bb, cc, dd), h_n)))),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(post ++ "\""), Lex.Lex{Lex.Str{},
+      Chr{Laws.hex4(aa, bb, cc, dd)} <> List.reverse.go(&2, Char, String.to_list(pre), []), []})),
+      Lex.finish(Lex.run(String.to_list("\""), Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(post),
+      Chr{Laws.hex4(aa, bb, cc, dd)} <> List.reverse.go(&2, Char, String.to_list(pre), [])), []})),
+      [Lex.TStr{pre ++ SCon{Chr{Laws.hex4(aa, bb, cc, dd)}, post}}], Equal.cong(Lex.Lex, List<&2, Lex.Tok>,
+      zz => Lex.finish(zz), Lex.run(String.to_list(post ++ "\""), Lex.Lex{Lex.Str{}, Chr{Laws.hex4(aa, bb, cc,
+      dd)} <> List.reverse.go(&2, Char, String.to_list(pre), []), []}), Lex.run(String.to_list("\""),
+      Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(post), Chr{Laws.hex4(aa, bb, cc,
+      dd)} <> List.reverse.go(&2, Char, String.to_list(pre), [])), []}),
+    seq(post, "\"", Lex.Lex{Lex.Str{}, Chr{Laws.hex4(aa, bb, cc, dd)} <> List.reverse.go(&2, Char, String.to_list(pre),
+      []), []}, Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char, String.to_list(post), Chr{Laws.hex4(aa, bb, cc,
+      dd)} <> List.reverse.go(&2, Char, String.to_list(pre), [])), []}, lex_raw(String.to_list(post), h_q,
+      Chr{Laws.hex4(aa, bb, cc, dd)} <> List.reverse.go(&2, Char, String.to_list(pre), []), []))),
+    Equal.cong(String, List<&2, Lex.Tok>, zz => [Lex.TStr{zz}], Lex.text(List.reverse.go(&2, Char,
+      String.to_list(post), Chr{Laws.hex4(aa, bb, cc, dd)} <> List.reverse.go(&2, Char, String.to_list(pre), []))),
+      pre ++ SCon{Chr{Laws.hex4(aa, bb, cc, dd)}, post}, esc_text(pre, Chr{Laws.hex4(aa, bb, cc, dd)}, post))))))
+
+def Laws.esc_u(pre, aa, bb, cc, dd, post, h_p, h_h, h_n, h_q, h_s):
+  one_str(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, post}}}}}} ++ "\""),
+    pre ++ SCon{Chr{Laws.hex4(aa, bb, cc, dd)}, post}, Equal.trans(List<&2, Lex.Tok>,
+    dens(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd, post}}}}}} ++ "\"")),
+    dens(Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd,
+    post}}}}}} ++ "\""), Lex.Lex{Lex.Idle{}, [], []}))),
+    [Lex.TStr{pre ++ SCon{Chr{Laws.hex4(aa, bb, cc, dd)}, post}}], lexers_agree("\"" ++ pre ++ SCon{'\\', SCon{'u',
+      SCon{aa, SCon{bb, SCon{cc, SCon{dd, post}}}}}} ++ "\"", h_s),
+    Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => dens(zz),
+      Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{aa, SCon{bb, SCon{cc, SCon{dd,
+      post}}}}}} ++ "\""), Lex.Lex{Lex.Idle{}, [], []})), [Lex.TStr{pre ++ SCon{Chr{Laws.hex4(aa, bb, cc, dd)}, post}}],
+      esc_u_lex(pre, aa, bb, cc, dd, post, h_p, h_h, h_n, h_q))))
+
+
+# the character lexer on a string with a surrogate pair
+law esc_pair_lex:
+  for +pre: String
+  for +h1: Char
+  for +h2: Char
+  for +h3: Char
+  for +h4: Char
+  for +l1: Char
+  for +l2: Char
+  for +l3: Char
+  for +l4: Char
+  for +post: String
+  for +h_p: {Laws.raw_ok(String.to_list(pre)) == True{} : Bool}
+  for +h_h: {Bool.and(Laws.hexd(h1), Bool.and(Laws.hexd(h2), Bool.and(Laws.hexd(h3), Laws.hexd(h4)))) == True{} : Bool}
+  for +h_l: {Bool.and(Laws.hexd(l1), Bool.and(Laws.hexd(l2), Bool.and(Laws.hexd(l3), Laws.hexd(l4)))) == True{} : Bool}
+  for +h_hi: {Laws.in_hi(Laws.hex4(h1, h2, h3, h4)) == True{} : Bool}
+  for +h_lo: {Laws.lo_sur(Laws.hex4(l1, l2, l3, l4)) == True{} : Bool}
+  for +h_q: {Laws.raw_ok(String.to_list(post)) == True{} : Bool}
+  {Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\',
+    SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, post}}}}}}}}}}}} ++ "\""), Lex.Lex{Lex.Idle{}, [],
+    []})) == [Lex.TStr{pre ++ SCon{Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))},
+    post}}] : List<&2, Lex.Tok>}
+
+def esc_pair_lex(pre, h1, h2, h3, h4, l1, l2, l3, l4, post, h_p, h_h, h_l, h_hi, h_lo, h_q):
+  Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{h1,
+    SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, post}}}}}}}}}}}} ++ "\""),
+    Lex.Lex{Lex.Idle{}, [], []})), Lex.finish(Lex.run(String.to_list(pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2,
+    SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, post ++ "\""}}}}}}}}}}}}),
+    Lex.Lex{Lex.Str{}, [], []})), [Lex.TStr{pre ++ SCon{Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3,
+    l4))}, post}}], Equal.cong(Lex.Lex, List<&2, Lex.Tok>, zz => Lex.finish(zz),
+    Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u',
+    SCon{l1, SCon{l2, SCon{l3, SCon{l4, post}}}}}}}}}}}} ++ "\""), Lex.Lex{Lex.Idle{}, [], []}),
+    Lex.run(String.to_list(pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u',
+    SCon{l1, SCon{l2, SCon{l3, SCon{l4, post ++ "\""}}}}}}}}}}}}), Lex.Lex{Lex.Str{}, [], []}),
+    seq("\"", pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2,
+      SCon{l3, SCon{l4, post ++ "\""}}}}}}}}}}}}, Lex.Lex{Lex.Idle{}, [], []}, Lex.Lex{Lex.Str{}, [], []}, {==})),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2,
+      SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, post ++ "\""}}}}}}}}}}}}),
+      Lex.Lex{Lex.Str{}, [], []})), Lex.finish(Lex.run(String.to_list(SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3,
+      SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, post ++ "\""}}}}}}}}}}}}), Lex.Lex{Lex.Str{},
+      List.reverse.go(&2, Char, String.to_list(pre), []), []})), [Lex.TStr{pre ++ SCon{Chr{Laws.pair(Laws.hex4(h1, h2,
+      h3, h4), Laws.hex4(l1, l2, l3, l4))}, post}}], Equal.cong(Lex.Lex, List<&2, Lex.Tok>, zz => Lex.finish(zz),
+      Lex.run(String.to_list(pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u',
+      SCon{l1, SCon{l2, SCon{l3, SCon{l4, post ++ "\""}}}}}}}}}}}}), Lex.Lex{Lex.Str{}, [], []}),
+      Lex.run(String.to_list(SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1,
+      SCon{l2, SCon{l3, SCon{l4, post ++ "\""}}}}}}}}}}}}), Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char,
+      String.to_list(pre), []), []}),
+    seq(pre, SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3,
+      SCon{l4, post ++ "\""}}}}}}}}}}}}, Lex.Lex{Lex.Str{}, [], []}, Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char,
+      String.to_list(pre), []), []}, lex_raw(String.to_list(pre), h_p, [], []))),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3,
+      SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, post ++ "\""}}}}}}}}}}}}), Lex.Lex{Lex.Str{},
+      List.reverse.go(&2, Char, String.to_list(pre), []), []})), Lex.finish(Lex.run(String.to_list(post ++ "\""),
+      Lex.Lex{Lex.Str{}, Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))} <> List.reverse.go(&2,
+      Char, String.to_list(pre), []), []})), [Lex.TStr{pre ++ SCon{Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4),
+      Laws.hex4(l1, l2, l3, l4))}, post}}], Equal.cong(Lex.Lex, List<&2, Lex.Tok>,
+      zz => Lex.finish(Lex.run(String.to_list(post ++ "\""), zz)), Lex.feed(l4, Lex.feed(l3, Lex.feed(l2, Lex.feed(l1,
+      Lex.feed('u', Lex.feed('\\', Lex.feed(h4, Lex.feed(h3, Lex.feed(h2, Lex.feed(h1, Lex.Lex{Lex.Uni{3n, 0},
+      List.reverse.go(&2, Char, String.to_list(pre), []), []})))))))))),
+    Lex.Lex{Lex.Str{}, Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))} <> List.reverse.go(&2,
+      Char, String.to_list(pre), []), []}, Equal.trans(Lex.Lex, Lex.feed(l4, Lex.feed(l3, Lex.feed(l2, Lex.feed(l1,
+      Lex.feed('u', Lex.feed('\\', Lex.feed(h4, Lex.feed(h3, Lex.feed(h2, Lex.feed(h1, Lex.Lex{Lex.Uni{3n, 0},
+      List.reverse.go(&2, Char, String.to_list(pre), []), []})))))))))), Lex.feed(l4, Lex.feed(l3, Lex.feed(l2,
+      Lex.feed(l1, Lex.feed('u', Lex.feed('\\', Lex.Lex{Lex.Hi{Laws.hex4(h1, h2, h3, h4)}, List.reverse.go(&2, Char,
+      String.to_list(pre), []), []})))))), Lex.Lex{Lex.Str{}, Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1,
+      l2, l3, l4))} <> List.reverse.go(&2, Char, String.to_list(pre), []), []}, Equal.cong(Lex.Lex, Lex.Lex,
+      zz => Lex.feed(l4, Lex.feed(l3, Lex.feed(l2, Lex.feed(l1, Lex.feed('u', Lex.feed('\\', zz)))))),
+    Lex.feed(h4, Lex.feed(h3, Lex.feed(h2, Lex.feed(h1, Lex.Lex{Lex.Uni{3n, 0}, List.reverse.go(&2, Char,
+      String.to_list(pre), []), []})))), Lex.Lex{Lex.Hi{Laws.hex4(h1, h2, h3, h4)}, List.reverse.go(&2, Char,
+      String.to_list(pre), []), []},
+    Equal.trans(Lex.Lex, Lex.feed(h4, Lex.feed(h3, Lex.feed(h2, Lex.feed(h1, Lex.Lex{Lex.Uni{3n, 0},
+      List.reverse.go(&2, Char, String.to_list(pre), []), []})))), Lex.unicode.end(Laws.hex4(h1, h2, h3, h4),
+      List.reverse.go(&2, Char, String.to_list(pre), []), []), Lex.Lex{Lex.Hi{Laws.hex4(h1, h2, h3, h4)},
+      List.reverse.go(&2, Char, String.to_list(pre), []), []}, u4_feed(h1, h2, h3, h4, List.reverse.go(&2, Char,
+      String.to_list(pre), []), and4_1(Laws.hexd(h1), Laws.hexd(h2), Laws.hexd(h3), Laws.hexd(h4), h_h),
+      and4_2(Laws.hexd(h1), Laws.hexd(h2), Laws.hexd(h3), Laws.hexd(h4), h_h), and4_3(Laws.hexd(h1), Laws.hexd(h2),
+      Laws.hexd(h3), Laws.hexd(h4), h_h), and4_4(Laws.hexd(h1), Laws.hexd(h2), Laws.hexd(h3), Laws.hexd(h4), h_h)),
+      Equal.cong(Lex.Sur, Lex.Lex, zz => Lex.unicode.end.go(Laws.hex4(h1, h2, h3, h4), List.reverse.go(&2, Char,
+        String.to_list(pre), []), [], zz), Lex.unicode.sur(Laws.hex4(h1, h2, h3, h4)), Lex.SHi{}, sur_hi(Laws.hex4(h1,
+        h2, h3, h4), h_hi)))),
+    Equal.trans(Lex.Lex, Lex.feed(l4, Lex.feed(l3, Lex.feed(l2, Lex.feed(l1, Lex.feed('u', Lex.feed('\\',
+      Lex.Lex{Lex.Hi{Laws.hex4(h1, h2, h3, h4)}, List.reverse.go(&2, Char, String.to_list(pre), []), []})))))),
+      Lex.feed(l4, Lex.feed(l3, Lex.feed(l2, Lex.feed(l1, Lex.Lex{Lex.Lo{3n, 0, Laws.hex4(h1, h2, h3, h4)},
+      List.reverse.go(&2, Char, String.to_list(pre), []), []})))), Lex.Lex{Lex.Str{}, Chr{Laws.pair(Laws.hex4(h1, h2,
+      h3, h4), Laws.hex4(l1, l2, l3, l4))} <> List.reverse.go(&2, Char, String.to_list(pre), []), []}, {==},
+    Equal.trans(Lex.Lex, Lex.feed(l4, Lex.feed(l3, Lex.feed(l2, Lex.feed(l1, Lex.Lex{Lex.Lo{3n, 0, Laws.hex4(h1, h2,
+      h3, h4)}, List.reverse.go(&2, Char, String.to_list(pre), []), []})))), Lex.unicode.low.end(Laws.hex4(l1, l2, l3,
+      l4), Laws.hex4(h1, h2, h3, h4), List.reverse.go(&2, Char, String.to_list(pre), []), []), Lex.Lex{Lex.Str{},
+      Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))} <> List.reverse.go(&2, Char,
+      String.to_list(pre), []), []}, l4_feed(l1, l2, l3, l4, Laws.hex4(h1, h2, h3, h4), List.reverse.go(&2, Char,
+      String.to_list(pre), []), and4_1(Laws.hexd(l1), Laws.hexd(l2), Laws.hexd(l3), Laws.hexd(l4), h_l),
+      and4_2(Laws.hexd(l1), Laws.hexd(l2), Laws.hexd(l3), Laws.hexd(l4), h_l), and4_3(Laws.hexd(l1), Laws.hexd(l2),
+      Laws.hexd(l3), Laws.hexd(l4), h_l), and4_4(Laws.hexd(l1), Laws.hexd(l2), Laws.hexd(l3), Laws.hexd(l4), h_l)),
+    Equal.cong(Lex.Sur, Lex.Lex, zz => Lex.unicode.low.end.go(Laws.hex4(l1, l2, l3, l4), Laws.hex4(h1, h2, h3, h4),
+      List.reverse.go(&2, Char, String.to_list(pre), []), [], zz), Lex.unicode.sur(Laws.hex4(l1, l2, l3, l4)),
+      Lex.SLo{},
+    sur_lo(Laws.hex4(l1, l2, l3, l4), h_lo)))))),
+    Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(post ++ "\""), Lex.Lex{Lex.Str{},
+      Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))} <> List.reverse.go(&2, Char,
+      String.to_list(pre), []), []})), Lex.finish(Lex.run(String.to_list("\""), Lex.Lex{Lex.Str{}, List.reverse.go(&2,
+      Char, String.to_list(post), Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3,
+      l4))} <> List.reverse.go(&2, Char, String.to_list(pre), [])), []})),
+      [Lex.TStr{pre ++ SCon{Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))}, post}}],
+      Equal.cong(Lex.Lex, List<&2, Lex.Tok>, zz => Lex.finish(zz), Lex.run(String.to_list(post ++ "\""),
+      Lex.Lex{Lex.Str{}, Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))} <> List.reverse.go(&2,
+      Char, String.to_list(pre), []), []}), Lex.run(String.to_list("\""), Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char,
+      String.to_list(post), Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))} <> List.reverse.go(&2,
+      Char, String.to_list(pre), [])), []}),
+    seq(post, "\"", Lex.Lex{Lex.Str{}, Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3,
+      l4))} <> List.reverse.go(&2, Char, String.to_list(pre), []), []}, Lex.Lex{Lex.Str{}, List.reverse.go(&2, Char,
+      String.to_list(post), Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))} <> List.reverse.go(&2,
+      Char, String.to_list(pre), [])), []}, lex_raw(String.to_list(post), h_q, Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4),
+      Laws.hex4(l1, l2, l3, l4))} <> List.reverse.go(&2, Char, String.to_list(pre), []), []))),
+    Equal.cong(String, List<&2, Lex.Tok>, zz => [Lex.TStr{zz}], Lex.text(List.reverse.go(&2, Char,
+      String.to_list(post), Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))} <> List.reverse.go(&2,
+      Char, String.to_list(pre), []))), pre ++ SCon{Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3,
+      l4))}, post}, esc_text(pre, Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))}, post))))))
+
+def Laws.esc_pair(pre, h1, h2, h3, h4, l1, l2, l3, l4, post, h_p, h_h, h_l, h_hi, h_lo, h_q, h_s):
+  one_str(Lex.tokens("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u',
+    SCon{l1, SCon{l2, SCon{l3, SCon{l4, post}}}}}}}}}}}} ++ "\""), pre ++ SCon{Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4),
+    Laws.hex4(l1, l2, l3, l4))}, post}, Equal.trans(List<&2, Lex.Tok>, dens(Lex.tokens("\"" ++ pre ++ SCon{'\\',
+    SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4,
+    post}}}}}}}}}}}} ++ "\"")), dens(Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{h1,
+    SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, post}}}}}}}}}}}} ++ "\""),
+    Lex.Lex{Lex.Idle{}, [], []}))),
+    [Lex.TStr{pre ++ SCon{Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))}, post}}],
+      lexers_agree("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4, SCon{'\\', SCon{'u',
+      SCon{l1, SCon{l2, SCon{l3, SCon{l4, post}}}}}}}}}}}} ++ "\"", h_s),
+    Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => dens(zz),
+      Lex.finish(Lex.run(String.to_list("\"" ++ pre ++ SCon{'\\', SCon{'u', SCon{h1, SCon{h2, SCon{h3, SCon{h4,
+      SCon{'\\', SCon{'u', SCon{l1, SCon{l2, SCon{l3, SCon{l4, post}}}}}}}}}}}} ++ "\""), Lex.Lex{Lex.Idle{}, [],
+      []})), [Lex.TStr{pre ++ SCon{Chr{Laws.pair(Laws.hex4(h1, h2, h3, h4), Laws.hex4(l1, l2, l3, l4))}, post}}],
+      esc_pair_lex(pre, h1, h2, h3, h4, l1, l2, l3, l4, post, h_p, h_h, h_l, h_hi, h_lo, h_q))))
+
