@@ -379,10 +379,31 @@ def as_u32(val: Json) -> Maybe<&2, U32>:
     case other:
       None{}
 
+# the largest finite F32
+def f32.top() -> F32:
+  3.4028235e38
+
+# a read that stayed finite; none when it did not. A JSON number never spells
+# infinity, so an infinite read is a number too large for F32
+def f32.fit.go(xx: F32, finite: Bool) -> Maybe<&2, F32>:
+  match finite:
+    case True{}:
+      Some{xx}
+    case False{}:
+      None{}
+
+# a read that stayed finite, or none
+def f32.fit(got: Maybe<&2, F32>) -> Maybe<&2, F32>:
+  match got:
+    case Some{+xx}:
+      f32.fit.go(xx, F32.is_le(F32.abs(xx), f32.top()))
+    case None{}:
+      None{}
+
 # a number as an F32, or none when it is not one or does not fit
 def as_f32(val: Json) -> Maybe<&2, F32>:
   match val:
     case JNum{raw}:
-      F32.read(raw)
+      f32.fit(F32.read(raw))
     case other:
       None{}

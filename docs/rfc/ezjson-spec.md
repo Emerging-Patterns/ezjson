@@ -228,12 +228,13 @@ build through `main.bend` fails it.
 | JSON-TREE-4 | `get(obj(ps), k)` is the value of the first pair in `ps` whose key is `k`, and `null()` when there is none; `get(j, k)` is `null()` for every `j` that is not an object | Proved | pending | |
 | JSON-TREE-5 | For every text `t` with `parse(t) == Some{j}`, every reader (`get`, `at`, `as_*`) gives on `j` the result it gives on the owned value `same` as `j`: a span reads as its characters | Proved | pending | |
 | JSON-TREE-6 | `as_u32(num(s))` is `Some{n}` exactly when `s` is one or more ASCII digits, with no leading zero unless `s` is `0`, whose value `n` is at most 4294967295 | Proved | pending | |
-| JSON-TREE-7 | `as_f32(num(s))` is `None` when the value of `s` is finite and its magnitude exceeds the largest finite F32, and otherwise `Some` of the F32 that `F32.read(s)` gives | Proved | pending | |
+| JSON-TREE-7 | For every number value whose text is `s`: when `F32.read(s)` is `Some{x}` with `F32.abs(x)` at most 3.4028235e38 (the largest finite F32), `as_f32` is `Some{x}`; when that read is infinite or `None`, `as_f32` is `None` | Proved | pending | |
 | JSON-TREE-8 | `has(obj(ps), k)` is true exactly when some pair in `ps` has key `k`, and `has(j, k)` is false for every `j` that is not an object (REVIEW-5) | Proved | pending | |
 | JSON-TREE-9 | `len(arr(xs))` is the length of `xs`, `len(obj(ps))` the length of `ps`, and `len(j)` is 0 for every scalar (REVIEW-5) | Proved | pending | |
 
-JSON-TREE-7 depends on a decided behavior change (REVIEW-6); today it
-fails. JSON-TREE-8 and 9 depend on new defs. JSON-TREE-4 depends on
+JSON-TREE-7 depended on a decided behavior change (REVIEW-6), which has
+landed: an overflow reads as none. The row is stated over `F32.read`, which
+JSON-TRUST-2 trusts. JSON-TREE-8 and 9 depend on new defs. JSON-TREE-4 depends on
 REVIEW-4, JSON-TREE-6 on REVIEW-7.
 
 ### Requirements: the pull cursor
@@ -296,7 +297,7 @@ master's results against the branch's in the description.
 
 | Change | Needed by | REVIEW |
 | :---- | :---- | :---- |
-| `as_f32` returns none on overflow | JSON-TREE-7 | REVIEW-6 |
+| `as_f32` returns none on overflow (landed) | JSON-TREE-7 | REVIEW-6 |
 | `print` writes U+FFFD for a code point that is not a scalar value | JSON-STR-1, JSON-PRINT-1 | REVIEW-3 |
 | add `wf` | JSON-PRINT-1, JSON-PRINT-3 | REVIEW-3 |
 | add `has` and `len` | JSON-TREE-8, JSON-TREE-9 | REVIEW-5 |

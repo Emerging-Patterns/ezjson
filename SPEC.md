@@ -70,7 +70,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | JSON-TREE-4 | `get(obj(ps), k)` is the value of the first pair in `ps` whose key is `k`, and `null()` when there is none; `get(j, k)` is `null()` for every `j` that is not an object | Proved | pending | ezjson/LAWS.bend get_not_obj |
 | JSON-TREE-5 | For every text `t` with `parse(t) == Some{j}`, every reader (`get`, `at`, `as_*`) gives on `j` the result it gives on the owned value `same` as `j`: a span reads as its characters | Proved | pending |  |
 | JSON-TREE-6 | `as_u32(num(s))` is `Some{n}` exactly when `s` is one or more ASCII digits, with no leading zero unless `s` is `0`, whose value `n` is at most 4294967295 | Proved | pending |  |
-| JSON-TREE-7 | `as_f32(num(s))` is `None` when the value of `s` is finite and its magnitude exceeds the largest finite F32, and otherwise `Some` of the F32 that `F32.read(s)` gives | Proved | pending |  |
+| JSON-TREE-7 | For every number value whose text is `s`: when `F32.read(s)` is `Some{x}` with `F32.abs(x)` at most 3.4028235e38 (the largest finite F32), `as_f32` is `Some{x}`; when that read is infinite or `None`, `as_f32` is `None` | Proved | proved | ezjson/LAWS.bend as_f32_fits; ezjson/LAWS.bend as_f32_overflow; ezjson/LAWS.bend as_f32_unread |
 | JSON-TREE-8 | `has(obj(ps), k)` is true exactly when some pair in `ps` has key `k`, and `has(j, k)` is false for every `j` that is not an object | Proved | pending |  |
 | JSON-TREE-9 | `len(arr(xs))` is the length of `xs`, `len(obj(ps))` the length of `ps`, and `len(j)` is 0 for every scalar | Proved | pending |  |
 
