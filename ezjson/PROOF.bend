@@ -13783,3 +13783,1080 @@ def Laws.print_compact(txt, jj, e_p):
   Equal.cong(Laws.Tx, Bool, zz => Laws.tx.ok(zz), Laws.tx.run(String.to_list(Print.print(jj)), Laws.TxOut{}),
     Laws.TxOut{}, tx_print(jj, V.WVal{}, hw))
 
+
+# WP-G: rows that follow from the round trip
+
+# the value of a Some; null for None
+def unsome(mb: Maybe<&2, V.Json>) -> V.Json:
+  match mb:
+    case None{}:
+      V.JNull{}
+    case Some{jj}:
+      jj
+
+# whether a Maybe is None
+def is_none(mb: Maybe<&2, V.Json>) -> Bool:
+  match mb:
+    case None{}:
+      True{}
+    case Some{_jj}:
+      False{}
+
+# a value whose owned form is a number is that number
+law own_num:
+  for +val: V.Json
+  for +raw: String
+  for e: {Laws.own(val) == V.JNum{raw} : V.Json}
+  {val == V.JNum{raw} : V.Json}
+
+def own_num(val, raw, e):
+  match val:
+    case V.JNull{}:
+      Empty.absurd({V.JNull{} == V.JNum{raw} : V.Json}, false_true(Equal.cong(V.Json, Bool, zz => Laws.is_num(zz),
+        Laws.own(V.JNull{}), V.JNum{raw}, e)))
+    case V.JBool{+x1}:
+      Empty.absurd({V.JBool{x1} == V.JNum{raw} : V.Json}, false_true(Equal.cong(V.Json, Bool, zz => Laws.is_num(zz),
+        Laws.own(V.JBool{x1}), V.JNum{raw}, e)))
+    case V.JNum{+x1}:
+      e
+    case V.JStr{+x1}:
+      Empty.absurd({V.JStr{x1} == V.JNum{raw} : V.Json}, false_true(Equal.cong(V.Json, Bool, zz => Laws.is_num(zz),
+        Laws.own(V.JStr{x1}), V.JNum{raw}, e)))
+    case V.JArr{+x1}:
+      Empty.absurd({V.JArr{x1} == V.JNum{raw} : V.Json}, false_true(Equal.cong(V.Json, Bool, zz => Laws.is_num(zz),
+        Laws.own(V.JArr{x1}), V.JNum{raw}, e)))
+    case V.JObj{+x1}:
+      Empty.absurd({V.JObj{x1} == V.JNum{raw} : V.Json}, false_true(Equal.cong(V.Json, Bool, zz => Laws.is_num(zz),
+        Laws.own(V.JObj{x1}), V.JNum{raw}, e)))
+    case V.JNil{}:
+      Empty.absurd({V.JNil{} == V.JNum{raw} : V.Json}, false_true(Equal.cong(V.Json, Bool, zz => Laws.is_num(zz),
+        Laws.own(V.JNil{}), V.JNum{raw}, e)))
+    case V.JCons{+x1, +x2}:
+      Empty.absurd({V.JCons{x1, x2} == V.JNum{raw} : V.Json}, false_true(Equal.cong(V.Json, Bool, zz => Laws.is_num(zz),
+        Laws.own(V.JCons{x1, x2}), V.JNum{raw}, e)))
+    case V.JPair{+x1, +x2, +x3}:
+      Empty.absurd({V.JPair{x1, x2, x3} == V.JNum{raw} : V.Json}, false_true(Equal.cong(V.Json, Bool,
+        zz => Laws.is_num(zz),
+        Laws.own(V.JPair{x1, x2, x3}), V.JNum{raw}, e)))
+    case V.JSpan{+x1, +x2}:
+      Empty.absurd({V.JSpan{x1, x2} == V.JNum{raw} : V.Json}, false_true(Equal.cong(V.Json, Bool, zz => Laws.is_num(zz),
+        Laws.own(V.JSpan{x1, x2}), V.JNum{raw}, e)))
+    case V.JBind{+x1, +x2, +x3, +x4}:
+      Empty.absurd({V.JBind{x1, x2, x3, x4} == V.JNum{raw} : V.Json}, false_true(Equal.cong(V.Json, Bool,
+        zz => Laws.is_num(zz),
+        Laws.own(V.JBind{x1, x2, x3, x4}), V.JNum{raw}, e)))
+
+# a parse result whose owned form is a number is that number
+law own_m_num:
+  for +mb: Maybe<&2, V.Json>
+  for +raw: String
+  for e: {Laws.own_m(mb) == Some{V.JNum{raw}} : Maybe<&2, V.Json>}
+  {mb == Some{V.JNum{raw}} : Maybe<&2, V.Json>}
+
+def own_m_num(mb, raw, e):
+  match mb:
+    case None{}:
+      Empty.absurd({None{} == Some{V.JNum{raw}} : Maybe<&2, V.Json>}, true_false(Equal.cong(Maybe<&2, V.Json>, Bool,
+        zz => is_none(zz), None{},
+        Some{V.JNum{raw}}, e)))
+    case Some{+jj}:
+      Equal.cong(V.Json, Maybe<&2, V.Json>, zz => Some{zz}, jj, V.JNum{raw}, own_num(jj, raw,
+        Equal.cong(Maybe<&2, V.Json>, V.Json, zz => unsome(zz), Some{Laws.own(jj)}, Some{V.JNum{raw}}, e)))
+
+def Laws.parse_num(raw, h_ok, h_s):
+  own_m_num(Ezjson.parse(raw), raw, Laws.print_parse(V.JNum{raw}, h_ok, h_s))
+
+def Laws.print_num(_raw):
+  {==}
+
+
+# JSON-TEXT-4: a bare word
+
+# a word character is a word character to the lexer
+law oth_wc:
+  for +ch: Char
+  for h: {Laws.word_char(ch) == True{} : Bool}
+  {Lex.classify(ch) == Lex.COther{} : Lex.Class}
+
+def oth_wc(ch, h):
+  match ch:
+    case Chr{+uu}:
+      cls_by(Chr{uu}, xx => Laws.word_char(Chr{xx}), h, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==},
+        {==}, {==})
+
+# word characters are word characters to the lexer
+law oth_words:
+  for +cs: List<&2, Char>
+  for +h: {Laws.word_chars(cs) == True{} : Bool}
+  others(cs)
+
+def oth_words(cs, h):
+  match cs:
+    case Nil{}:
+      Unit{}
+    case +hd <> +tl:
+      (oth_wc(hd, and_left(Laws.word_char(hd), Laws.word_chars(tl), h)),
+        oth_words(tl, and_right(Laws.word_char(hd), Laws.word_chars(tl), h)))
+
+# the character lexer reads a bare word as one word token
+law bare_lex:
+  for +txt: String
+  for h_b: {Laws.bare(txt) == True{} : Bool}
+  {Lex.finish(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [], []})) == [Lex.TWord{txt}] : List<&2, Lex.Tok>}
+
+def bare_lex(txt, h_b):
+  match txt:
+    case SNil{}:
+      no({Lex.finish(Lex.run(String.to_list(""), Lex.Lex{Lex.Idle{}, [], []})) == [Lex.TWord{""}] : List<&2, Lex.Tok>},
+        h_b)
+    case SCon{+hd, +tl}:
+      +cs = String.to_list(SCon{hd, tl})
+      Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(cs, Lex.Lex{Lex.Idle{}, [], []})),
+        Lex.finish(Lex.Lex{Lex.Word{}, List.reverse.go(&2, Char, cs, []), []}), [Lex.TWord{SCon{hd, tl}}],
+        Equal.cong(Lex.Lex, List<&2, Lex.Tok>, zz => Lex.finish(zz), Lex.run(cs, Lex.Lex{Lex.Idle{}, [], []}),
+          Lex.Lex{Lex.Word{}, List.reverse.go(&2, Char, cs, []), []}, lex_word(hd, String.to_list(tl), oth_words(cs,
+            h_b), [])),
+        Equal.cong(String, List<&2, Lex.Tok>, zz => [Lex.TWord{zz}], Lex.text(List.reverse.go(&2, Char, cs, [])),
+          SCon{hd, tl},
+          word_text(SCon{hd, tl})))
+
+# parse's lexer reads a bare word as one word token, up to spans
+law bare_toks:
+  for +txt: String
+  for h_b: {Laws.bare(txt) == True{} : Bool}
+  for h_s: {Laws.short(txt) == True{} : Bool}
+  {dens(Lex.tokens(txt)) == [Lex.TWord{txt}] : List<&2, Lex.Tok>}
+
+def bare_toks(txt, h_b, h_s):
+  Equal.trans(List<&2, Lex.Tok>, dens(Lex.tokens(txt)), dens(Lex.finish(Lex.run(String.to_list(txt),
+    Lex.Lex{Lex.Idle{}, [], []}))), [Lex.TWord{txt}], lexers_agree(txt, h_s),
+    Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => dens(zz), Lex.finish(Lex.run(String.to_list(txt),
+      Lex.Lex{Lex.Idle{}, [], []})), [Lex.TWord{txt}], bare_lex(txt, h_b)))
+
+# a parse result succeeded exactly when its owned form did
+law some_own:
+  for mb: Maybe<&2, V.Json>
+  {Laws.is_some(Laws.own_m(mb)) == Laws.is_some(mb) : Bool}
+
+def some_own(mb):
+  match mb:
+    case None{}:
+      {==}
+    case Some{_jj}:
+      {==}
+
+# a lone word parses exactly when the parser accepts it
+law wok:
+  for ok: Bool
+  for +txt: String
+  {Laws.is_some(Parse.finish(Parse.step.word.go(txt, Parse.P{False{}, None{}, Nil{}}, ok))) == ok : Bool}
+
+def wok(ok, _txt):
+  match ok:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+def Laws.bare_word(txt, h_b, h_s):
+  Equal.trans(Bool, Laws.is_some(Ezjson.parse(txt)), Laws.is_some(Laws.own_m(Parse.finish(Parse.run(Lex.tokens(txt),
+    Parse.P{False{}, None{}, Nil{}})))), Laws.lit_or_num(txt), Equal.sym(Bool,
+    Laws.is_some(Laws.own_m(Parse.finish(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}})))),
+    Laws.is_some(Ezjson.parse(txt)),
+    some_own(Parse.finish(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}})))),
+    Equal.trans(Bool, Laws.is_some(Laws.own_m(Parse.finish(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{},
+      Nil{}})))), Laws.is_some(Parse.finish(ownp(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}})))),
+      Laws.lit_or_num(txt), Equal.cong(Maybe<&2, V.Json>, Bool, zz => Laws.is_some(zz),
+      Laws.own_m(Parse.finish(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}}))),
+    Parse.finish(ownp(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}}))), fin_own(Parse.run(Lex.tokens(txt),
+      Parse.P{False{}, None{}, Nil{}}))),
+    Equal.trans(Bool, Laws.is_some(Parse.finish(ownp(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}})))),
+      Laws.is_some(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}}))),
+      Laws.lit_or_num(txt), Equal.cong(Parse.P, Bool, zz => Laws.is_some(Parse.finish(zz)),
+      ownp(Parse.run(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}})), Parse.run(dens(Lex.tokens(txt)),
+      Parse.P{False{}, None{}, Nil{}}),
+    run_own(Lex.tokens(txt), Parse.P{False{}, None{}, Nil{}})),
+    Equal.trans(Bool, Laws.is_some(Parse.finish(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}}))),
+      Laws.is_some(Parse.finish(Parse.run([Lex.TWord{txt}], Parse.P{False{}, None{}, Nil{}}))), Laws.lit_or_num(txt),
+      Equal.cong(List<&2, Lex.Tok>, Bool, zz => Laws.is_some(Parse.finish(Parse.run(zz, Parse.P{False{}, None{},
+      Nil{}}))), dens(Lex.tokens(txt)), [Lex.TWord{txt}],
+    bare_toks(txt, h_b, h_s)),
+    Equal.trans(Bool, Laws.is_some(Parse.finish(Parse.run([Lex.TWord{txt}], Parse.P{False{}, None{}, Nil{}}))),
+      Parse.word.ok(txt), Laws.lit_or_num(txt), wok(Parse.word.ok(txt), txt),
+    Equal.cong(Bool, Bool, zz => Bool.or(String.eq(txt, "null"), Bool.or(String.eq(txt, "true"), Bool.or(String.eq(txt,
+    "false"), zz))), V.num.ok(txt), Laws.number(String.to_list(txt)), Laws.num_grammar(txt)))))))
+
+# JSON-TEXT-5: a byte order mark
+
+# appending lists is associative
+law lapp_assoc:
+  for +kk: List<&2, Lex.Tok>
+  for +aa: List<&2, Lex.Tok>
+  for +bb: List<&2, Lex.Tok>
+  {List.append(&2, Lex.Tok, List.append(&2, Lex.Tok, kk, aa), bb) == List.append(&2, Lex.Tok, kk, List.append(&2,
+    Lex.Tok, aa, bb)) : List<&2, Lex.Tok>}
+
+def lapp_assoc(kk, aa, bb):
+  match kk:
+    case Nil{}:
+      {==}
+    case hd <> +tl:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, zz => hd <> zz, List.append(&2, Lex.Tok, List.append(&2,
+        Lex.Tok, tl, aa), bb), List.append(&2, Lex.Tok, tl, List.append(&2, Lex.Tok, aa, bb)), lapp_assoc(tl, aa, bb))
+
+# tokens added below, twice, are added once
+law lex_app2:
+  for lx: Lex.Lex
+  for +aa: List<&2, Lex.Tok>
+  for +bb: List<&2, Lex.Tok>
+  {lex.app(lex.app(lx, aa), bb) == lex.app(lx, List.append(&2, Lex.Tok, aa, bb)) : Lex.Lex}
+
+def lex_app2(lx, aa, bb):
+  match lx:
+    case Lex.Lex{+md, +bf, +tk}:
+      Equal.cong(List<&2, Lex.Tok>, Lex.Lex, zz => Lex.Lex{md, bf, zz}, List.append(&2, Lex.Tok, List.append(&2,
+        Lex.Tok, tk, aa), bb), List.append(&2, Lex.Tok, tk, List.append(&2, Lex.Tok, aa, bb)),
+        lapp_assoc(tk, aa, bb))
+
+# feeding a character does not look at the tokens below
+law feed_app:
+  for +ch: Char
+  for lx: Lex.Lex
+  for +tt: List<&2, Lex.Tok>
+  {Lex.feed(ch, lex.app(lx, tt)) == lex.app(Lex.feed(ch, lx), tt) : Lex.Lex}
+
+def feed_app(ch, lx, tt):
+  match lx:
+    case Lex.Lex{+md, +bf, +tk}:
+      +f0 = Lex.feed(ch, Lex.Lex{md, bf, []})
+      Equal.trans(Lex.Lex, Lex.feed(ch, Lex.Lex{md, bf, List.append(&2, Lex.Tok, tk, tt)}), lex.app(f0, List.append(&2,
+        Lex.Tok, tk, tt)),
+        lex.app(Lex.feed(ch, Lex.Lex{md, bf, tk}), tt), pass.feed(ch, md, bf, List.append(&2, Lex.Tok, tk, tt)),
+        Equal.sym(Lex.Lex, lex.app(Lex.feed(ch, Lex.Lex{md, bf, tk}), tt), lex.app(f0, List.append(&2, Lex.Tok, tk,
+          tt)),
+          Equal.trans(Lex.Lex, lex.app(Lex.feed(ch, Lex.Lex{md, bf, tk}), tt), lex.app(lex.app(f0, tk), tt),
+            lex.app(f0, List.append(&2, Lex.Tok, tk, tt)),
+            Equal.cong(Lex.Lex, Lex.Lex, zz => lex.app(zz, tt), Lex.feed(ch, Lex.Lex{md, bf, tk}), lex.app(f0, tk),
+              pass.feed(ch, md, bf, tk)),
+            lex_app2(f0, tk, tt))))
+
+# running the character lexer does not look at the tokens below
+law run_pass:
+  for +cs: List<&2, Char>
+  for +lx: Lex.Lex
+  for +tt: List<&2, Lex.Tok>
+  {Lex.run(cs, lex.app(lx, tt)) == lex.app(Lex.run(cs, lx), tt) : Lex.Lex}
+
+def run_pass(cs, lx, tt):
+  match cs:
+    case Nil{}:
+      {==}
+    case +hd <> +tl:
+      Equal.trans(Lex.Lex, Lex.run(tl, Lex.feed(hd, lex.app(lx, tt))), Lex.run(tl, lex.app(Lex.feed(hd, lx), tt)),
+        lex.app(Lex.run(tl, Lex.feed(hd, lx)), tt),
+        Equal.cong(Lex.Lex, Lex.Lex, zz => Lex.run(tl, zz), Lex.feed(hd, lex.app(lx, tt)), lex.app(Lex.feed(hd, lx),
+          tt),
+          feed_app(hd, lx, tt)),
+        run_pass(tl, Lex.feed(hd, lx), tt))
+
+# a token put at the bottom comes out first
+law fin_head:
+  for lx: Lex.Lex
+  for +t0: Lex.Tok
+  {thead(Lex.finish(lex.app(lx, [t0]))) == t0 : Lex.Tok}
+
+def fin_head(lx, t0):
+  match lx:
+    case Lex.Lex{md, +bf, +tk}:
+      match md:
+        case Lex.Idle{}:
+          Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz), List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+            tk, [t0]), Nil{}), List.reverse.go(&2, Lex.Tok, [t0], List.reverse.go(&2, Lex.Tok, tk, Nil{})),
+            rev_app(tk, [t0], Nil{}))
+        case Lex.Word{}:
+          Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz), List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+            tk, [t0]), [Lex.TWord{Lex.text(bf)}]), List.reverse.go(&2, Lex.Tok, [t0], List.reverse.go(&2, Lex.Tok, tk,
+            [Lex.TWord{Lex.text(bf)}])),
+            rev_app(tk, [t0], [Lex.TWord{Lex.text(bf)}]))
+        case Lex.Str{}:
+          Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz), List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+            tk, [t0]), [Lex.TBad{}]), List.reverse.go(&2, Lex.Tok, [t0], List.reverse.go(&2, Lex.Tok, tk,
+            [Lex.TBad{}])),
+            rev_app(tk, [t0], [Lex.TBad{}]))
+        case Lex.Esc{}:
+          Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz), List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+            tk, [t0]), [Lex.TBad{}]), List.reverse.go(&2, Lex.Tok, [t0], List.reverse.go(&2, Lex.Tok, tk,
+            [Lex.TBad{}])),
+            rev_app(tk, [t0], [Lex.TBad{}]))
+        case Lex.Uni{+l1, +a1}:
+          Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz), List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+            tk, [t0]), [Lex.TBad{}]), List.reverse.go(&2, Lex.Tok, [t0], List.reverse.go(&2, Lex.Tok, tk,
+            [Lex.TBad{}])),
+            rev_app(tk, [t0], [Lex.TBad{}]))
+        case Lex.Hi{+h1}:
+          Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz), List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+            tk, [t0]), [Lex.TBad{}]), List.reverse.go(&2, Lex.Tok, [t0], List.reverse.go(&2, Lex.Tok, tk,
+            [Lex.TBad{}])),
+            rev_app(tk, [t0], [Lex.TBad{}]))
+        case Lex.HiEsc{+h1}:
+          Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz), List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+            tk, [t0]), [Lex.TBad{}]), List.reverse.go(&2, Lex.Tok, [t0], List.reverse.go(&2, Lex.Tok, tk,
+            [Lex.TBad{}])),
+            rev_app(tk, [t0], [Lex.TBad{}]))
+        case Lex.Lo{+l1, +a1, +h1}:
+          Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz), List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+            tk, [t0]), [Lex.TBad{}]), List.reverse.go(&2, Lex.Tok, [t0], List.reverse.go(&2, Lex.Tok, tk,
+            [Lex.TBad{}])),
+            rev_app(tk, [t0], [Lex.TBad{}]))
+        case Lex.Bad{}:
+          Equal.cong(List<&2, Lex.Tok>, Lex.Tok, zz => thead(zz), List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+            tk, [t0]), [Lex.TBad{}]), List.reverse.go(&2, Lex.Tok, [t0], List.reverse.go(&2, Lex.Tok, tk,
+            [Lex.TBad{}])),
+            rev_app(tk, [t0], [Lex.TBad{}]))
+
+# a character on top of a reversed prefix
+law rev_snoc:
+  for +pre: List<&2, Char>
+  for +ch: Char
+  for +acc: List<&2, Char>
+  {List.reverse.go(&2, Char, List.append(&2, Char, pre, [ch]), acc) == ch <> List.reverse.go(&2, Char, pre,
+    acc) : List<&2, Char>}
+
+def rev_snoc(pre, ch, acc):
+  match pre:
+    case Nil{}:
+      {==}
+    case +hd <> +tl:
+      rev_snoc(tl, ch, hd <> acc)
+
+# the character lexer, once it has rejected a text, stays rejected
+law bad_run:
+  for +cs: List<&2, Char>
+  {Lex.run(cs, Lex.Lex{Lex.Bad{}, [], []}) == Lex.Lex{Lex.Bad{}, [], []} : Lex.Lex}
+
+def bad_run(cs):
+  match cs:
+    case Nil{}:
+      {==}
+    case _hd <> +tl:
+      bad_run(tl)
+
+
+# the parser's error flag
+def pbad(st: Parse.P) -> Bool:
+  match st:
+    case Parse.P{bad, _root, _stk}:
+      bad
+
+# put keeps a raised error flag
+law put_bad:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +vv: V.Json
+  {pbad(Parse.put(stk, root, vv, True{})) == True{} : Bool}
+
+def put_bad(stk, root, _vv):
+  match stk:
+    case Nil{}:
+      match root:
+        case None{}:
+          {==}
+        case Some{_rr}:
+          {==}
+    case fr <> _rest:
+      match fr:
+        case Parse.FArr{_items, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+        case Parse.FObj{_pairs, _key, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+
+# a closing bracket keeps a raised error flag, for one frame
+law cab:
+  for slot: Parse.Slot
+  for items: V.Json
+  for +rest: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  {pbad(Parse.close_arr(Parse.FArr{items, slot} <> rest, root, True{})) == True{} : Bool}
+
+def cab(slot, items, rest, root):
+  match slot:
+    case Parse.SValue{}:
+      match items:
+        case V.JNull{}:
+          {==}
+        case V.JBool{+x1}:
+          {==}
+        case V.JNum{+x1}:
+          {==}
+        case V.JStr{+x1}:
+          {==}
+        case V.JArr{+x1}:
+          {==}
+        case V.JObj{+x1}:
+          {==}
+        case V.JNil{}:
+          put_bad(rest, root, V.JArr{V.JNil{}})
+        case V.JCons{+x1, +x2}:
+          {==}
+        case V.JPair{+x1, +x2, +x3}:
+          {==}
+        case V.JSpan{+x1, +x2}:
+          {==}
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          {==}
+    case Parse.SComma{}:
+      +it = items
+      ec = Equal.sym(Parse.P, Parse.close_arr(Parse.FArr{it, Parse.SComma{}} <> rest, root, True{}),
+        Parse.put(rest, root, V.JArr{V.reverse(it, V.JNil{})}, True{}), close_arr_comma(it, rest, root, True{}))
+      %ec : {pbad(_) == True{} : Bool}
+      put_bad(rest, root, V.JArr{V.reverse(it, V.JNil{})})
+    case Parse.SKey{}:
+      match items:
+        case V.JNull{}:
+          {==}
+        case V.JBool{+x1}:
+          {==}
+        case V.JNum{+x1}:
+          {==}
+        case V.JStr{+x1}:
+          {==}
+        case V.JArr{+x1}:
+          {==}
+        case V.JObj{+x1}:
+          {==}
+        case V.JNil{}:
+          {==}
+        case V.JCons{+x1, +x2}:
+          {==}
+        case V.JPair{+x1, +x2, +x3}:
+          {==}
+        case V.JSpan{+x1, +x2}:
+          {==}
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          {==}
+    case Parse.SColon{}:
+      match items:
+        case V.JNull{}:
+          {==}
+        case V.JBool{+x1}:
+          {==}
+        case V.JNum{+x1}:
+          {==}
+        case V.JStr{+x1}:
+          {==}
+        case V.JArr{+x1}:
+          {==}
+        case V.JObj{+x1}:
+          {==}
+        case V.JNil{}:
+          {==}
+        case V.JCons{+x1, +x2}:
+          {==}
+        case V.JPair{+x1, +x2, +x3}:
+          {==}
+        case V.JSpan{+x1, +x2}:
+          {==}
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          {==}
+
+# a closing brace keeps a raised error flag, for one frame
+law cob:
+  for slot: Parse.Slot
+  for pairs: V.Json
+  for +key: Parse.Key
+  for +rest: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  {pbad(Parse.close_obj(Parse.FObj{pairs, key, slot} <> rest, root, True{})) == True{} : Bool}
+
+def cob(slot, pairs, key, rest, root):
+  match slot:
+    case Parse.SKey{}:
+      match pairs:
+        case V.JNull{}:
+          {==}
+        case V.JBool{+x1}:
+          {==}
+        case V.JNum{+x1}:
+          {==}
+        case V.JStr{+x1}:
+          {==}
+        case V.JArr{+x1}:
+          {==}
+        case V.JObj{+x1}:
+          {==}
+        case V.JNil{}:
+          put_bad(rest, root, V.JObj{V.JNil{}})
+        case V.JCons{+x1, +x2}:
+          {==}
+        case V.JPair{+x1, +x2, +x3}:
+          {==}
+        case V.JSpan{+x1, +x2}:
+          {==}
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          {==}
+    case Parse.SComma{}:
+      +ps = pairs
+      ec = Equal.sym(Parse.P, Parse.close_obj(Parse.FObj{ps, key, Parse.SComma{}} <> rest, root, True{}),
+        Parse.put(rest, root, V.JObj{V.reverse(ps, V.JNil{})}, True{}), close_obj_comma(ps, key, rest, root, True{}))
+      %ec : {pbad(_) == True{} : Bool}
+      put_bad(rest, root, V.JObj{V.reverse(ps, V.JNil{})})
+    case Parse.SValue{}:
+      match pairs:
+        case V.JNull{}:
+          {==}
+        case V.JBool{+x1}:
+          {==}
+        case V.JNum{+x1}:
+          {==}
+        case V.JStr{+x1}:
+          {==}
+        case V.JArr{+x1}:
+          {==}
+        case V.JObj{+x1}:
+          {==}
+        case V.JNil{}:
+          {==}
+        case V.JCons{+x1, +x2}:
+          {==}
+        case V.JPair{+x1, +x2, +x3}:
+          {==}
+        case V.JSpan{+x1, +x2}:
+          {==}
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          {==}
+    case Parse.SColon{}:
+      match pairs:
+        case V.JNull{}:
+          {==}
+        case V.JBool{+x1}:
+          {==}
+        case V.JNum{+x1}:
+          {==}
+        case V.JStr{+x1}:
+          {==}
+        case V.JArr{+x1}:
+          {==}
+        case V.JObj{+x1}:
+          {==}
+        case V.JNil{}:
+          {==}
+        case V.JCons{+x1, +x2}:
+          {==}
+        case V.JPair{+x1, +x2, +x3}:
+          {==}
+        case V.JSpan{+x1, +x2}:
+          {==}
+        case V.JBind{+x1, +x2, +x3, +x4}:
+          {==}
+
+# a closing bracket keeps a raised error flag
+law ca_bad:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  {pbad(Parse.close_arr(stk, root, True{})) == True{} : Bool}
+
+def ca_bad(stk, root):
+  match stk:
+    case Nil{}:
+      {==}
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{items, slot}:
+          cab(slot, items, rest, root)
+        case Parse.FObj{_pairs, _key, _slot}:
+          {==}
+
+# a closing brace keeps a raised error flag
+law co_bad:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  {pbad(Parse.close_obj(stk, root, True{})) == True{} : Bool}
+
+def co_bad(stk, root):
+  match stk:
+    case Nil{}:
+      {==}
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{_items, _slot}:
+          {==}
+        case Parse.FObj{pairs, +key, slot}:
+          cob(slot, pairs, key, rest, root)
+
+# a colon keeps a raised error flag
+law colon_bad:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  {pbad(Parse.step.colon(stk, root, True{})) == True{} : Bool}
+
+def colon_bad(stk, _root):
+  match stk:
+    case Nil{}:
+      {==}
+    case fr <> _rest:
+      match fr:
+        case Parse.FArr{_items, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+        case Parse.FObj{_pairs, _key, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+
+# a comma keeps a raised error flag
+law comma_bad:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  {pbad(Parse.step.comma(stk, root, True{})) == True{} : Bool}
+
+def comma_bad(stk, _root):
+  match stk:
+    case Nil{}:
+      {==}
+    case fr <> _rest:
+      match fr:
+        case Parse.FArr{_items, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+        case Parse.FObj{_pairs, _key, slot}:
+          match slot:
+            case Parse.SValue{}:
+              {==}
+            case Parse.SComma{}:
+              {==}
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              {==}
+
+# a string keeps a raised error flag
+law str_bad:
+  for +stk: List<&2, Parse.Frame>
+  for +root: Maybe<&2, V.Json>
+  for +key: Parse.Key
+  {pbad(Parse.put.str(stk, root, key, True{})) == True{} : Bool}
+
+def str_bad(stk, root, key):
+  match stk:
+    case Nil{}:
+      put_bad([], root, Parse.put.text(key))
+    case fr <> +rest:
+      match fr:
+        case Parse.FArr{+items, +slot}:
+          put_bad(Parse.FArr{items, slot} <> rest, root, Parse.put.text(key))
+        case Parse.FObj{+pairs, +k2, slot}:
+          match slot:
+            case Parse.SValue{}:
+              put_bad(Parse.FObj{pairs, k2, Parse.SValue{}} <> rest, root, Parse.put.text(key))
+            case Parse.SComma{}:
+              put_bad(Parse.FObj{pairs, k2, Parse.SComma{}} <> rest, root, Parse.put.text(key))
+            case Parse.SKey{}:
+              {==}
+            case Parse.SColon{}:
+              put_bad(Parse.FObj{pairs, k2, Parse.SColon{}} <> rest, root, Parse.put.text(key))
+
+# opening an array keeps a raised error flag
+law oa_bad:
+  for ok: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  {pbad(Parse.step.open_arr.go(True{}, root, stk, ok)) == True{} : Bool}
+
+def oa_bad(ok, _root, _stk):
+  match ok:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# opening an object keeps a raised error flag
+law oo_bad:
+  for ok: Bool
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  {pbad(Parse.step.open_obj.go(True{}, root, stk, ok)) == True{} : Bool}
+
+def oo_bad(ok, _root, _stk):
+  match ok:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# a word keeps a raised error flag
+law sw_bad:
+  for ok: Bool
+  for +raw: String
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  {pbad(Parse.step.word.go(raw, Parse.P{True{}, root, stk}, ok)) == True{} : Bool}
+
+def sw_bad(ok, raw, root, stk):
+  match ok:
+    case True{}:
+      put_bad(stk, root, Parse.word(raw))
+    case False{}:
+      {==}
+
+# a number span keeps a raised error flag
+law sk_bad:
+  for ok: Bool
+  for +raw: String
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  {pbad(Parse.step.span.open(Parse.P{True{}, root, stk}, Parse.step.span.ok(raw, ok))) == True{} : Bool}
+
+def sk_bad(ok, raw, root, stk):
+  match ok:
+    case True{}:
+      put_bad(stk, root, V.JNum{raw})
+    case False{}:
+      {==}
+
+# a word span keeps a raised error flag
+law sg_bad:
+  for aa: Bool
+  for bb: Bool
+  for cc: Bool
+  for +src: String
+  for +nn: U32
+  for +root: Maybe<&2, V.Json>
+  for +stk: List<&2, Parse.Frame>
+  {pbad(Parse.step.span.open(Parse.P{True{}, root, stk}, Parse.step.span.go(src, nn, aa, bb, cc))) == True{} : Bool}
+
+def sg_bad(aa, bb, cc, src, nn, root, stk):
+  match aa:
+    case True{}:
+      put_bad(stk, root, V.JNull{})
+    case False{}:
+      match bb:
+        case True{}:
+          put_bad(stk, root, V.JBool{True{}})
+        case False{}:
+          match cc:
+            case True{}:
+              put_bad(stk, root, V.JBool{False{}})
+            case False{}:
+              sk_bad(V.num.ok(V.span.str(src, nn, U32.is_zero(nn))), V.span.str(src, nn, U32.is_zero(nn)), root, stk)
+
+# one token keeps a raised error flag
+law step_bad:
+  for tok: Lex.Tok
+  for st: Parse.P
+  for h: {pbad(st) == True{} : Bool}
+  {pbad(Parse.step(tok, st)) == True{} : Bool}
+
+def step_bad(tok, st, h):
+  match tok:
+    case Lex.TOpenArr{}:
+      match st:
+        case Parse.P{bad, +root, +stk}:
+          hs = Equal.sym(Bool, bad, True{}, h)
+          %hs : {pbad(Parse.step(Lex.TOpenArr{}, Parse.P{_, root, stk})) == True{} : Bool}
+          oa_bad(Parse.step.ready(stk, root), root, stk)
+    case Lex.TOpenObj{}:
+      match st:
+        case Parse.P{bad, +root, +stk}:
+          hs = Equal.sym(Bool, bad, True{}, h)
+          %hs : {pbad(Parse.step(Lex.TOpenObj{}, Parse.P{_, root, stk})) == True{} : Bool}
+          oo_bad(Parse.step.ready(stk, root), root, stk)
+    case Lex.TCloseArr{}:
+      match st:
+        case Parse.P{bad, +root, +stk}:
+          hs = Equal.sym(Bool, bad, True{}, h)
+          %hs : {pbad(Parse.step(Lex.TCloseArr{}, Parse.P{_, root, stk})) == True{} : Bool}
+          ca_bad(stk, root)
+    case Lex.TCloseObj{}:
+      match st:
+        case Parse.P{bad, +root, +stk}:
+          hs = Equal.sym(Bool, bad, True{}, h)
+          %hs : {pbad(Parse.step(Lex.TCloseObj{}, Parse.P{_, root, stk})) == True{} : Bool}
+          co_bad(stk, root)
+    case Lex.TColon{}:
+      match st:
+        case Parse.P{bad, +root, +stk}:
+          hs = Equal.sym(Bool, bad, True{}, h)
+          %hs : {pbad(Parse.step(Lex.TColon{}, Parse.P{_, root, stk})) == True{} : Bool}
+          colon_bad(stk, root)
+    case Lex.TComma{}:
+      match st:
+        case Parse.P{bad, +root, +stk}:
+          hs = Equal.sym(Bool, bad, True{}, h)
+          %hs : {pbad(Parse.step(Lex.TComma{}, Parse.P{_, root, stk})) == True{} : Bool}
+          comma_bad(stk, root)
+    case Lex.TStr{+txt}:
+      match st:
+        case Parse.P{bad, +root, +stk}:
+          hs = Equal.sym(Bool, bad, True{}, h)
+          %hs : {pbad(Parse.step(Lex.TStr{txt}, Parse.P{_, root, stk})) == True{} : Bool}
+          str_bad(stk, root, Parse.KOwn{txt})
+    case Lex.TWord{+raw}:
+      match st:
+        case Parse.P{bad, +root, +stk}:
+          hs = Equal.sym(Bool, bad, True{}, h)
+          %hs : {pbad(Parse.step(Lex.TWord{raw}, Parse.P{_, root, stk})) == True{} : Bool}
+          sw_bad(Parse.word.ok(raw), raw, root, stk)
+    case Lex.TStrS{+src, +nn}:
+      match st:
+        case Parse.P{bad, +root, +stk}:
+          hs = Equal.sym(Bool, bad, True{}, h)
+          %hs : {pbad(Parse.step(Lex.TStrS{src, nn}, Parse.P{_, root, stk})) == True{} : Bool}
+          str_bad(stk, root, Parse.KCut{src, nn})
+    case Lex.TWordS{+src, +nn}:
+      match st:
+        case Parse.P{bad, +root, +stk}:
+          hs = Equal.sym(Bool, bad, True{}, h)
+          %hs : {pbad(Parse.step(Lex.TWordS{src, nn}, Parse.P{_, root, stk})) == True{} : Bool}
+          sg_bad(V.span.eq(src, nn, "null"), V.span.eq(src, nn, "true"), V.span.eq(src, nn, "false"), src, nn, root,
+            stk)
+    case Lex.TBad{}:
+      match st:
+        case Parse.P{bad, +root, +stk}:
+          hs = Equal.sym(Bool, bad, True{}, h)
+          %hs : {pbad(Parse.step(Lex.TBad{}, Parse.P{_, root, stk})) == True{} : Bool}
+          {==}
+
+# every token keeps a raised error flag
+law run_bad:
+  for xs: List<&2, Lex.Tok>
+  for +st: Parse.P
+  for h: {pbad(st) == True{} : Bool}
+  {pbad(Parse.run(xs, st)) == True{} : Bool}
+
+def run_bad(xs, st, h):
+  match xs:
+    case Nil{}:
+      h
+    case +tok <> rest:
+      run_bad(rest, Parse.step(tok, st), step_bad(tok, st, h))
+
+# a state with its error flag raised finishes as None
+law fin_bad:
+  for st: Parse.P
+  for h: {pbad(st) == True{} : Bool}
+  {Parse.finish(st) == None{} : Maybe<&2, V.Json>}
+
+def fin_bad(st, h):
+  match st:
+    case Parse.P{bad, +root, +stk}:
+      hs = Equal.sym(Bool, bad, True{}, h)
+      %hs : {Parse.result(_, stk, root) == None{} : Maybe<&2, V.Json>}
+      {==}
+
+# whether the parser, from the start, raises its error flag on a token
+def wrej(tok: Lex.Tok) -> Bool:
+  pbad(Parse.step(tok, Parse.P{False{}, None{}, Nil{}}))
+
+# tokens whose first one raises the error flag do not parse
+law rej_none:
+  for xs: List<&2, Lex.Tok>
+  for h: {wrej(thead(xs)) == True{} : Bool}
+  {Parse.finish(Parse.run(xs, Parse.P{False{}, None{}, Nil{}})) == None{} : Maybe<&2, V.Json>}
+
+def rej_none(xs, h):
+  match xs:
+    case Nil{}:
+      {==}
+    case +tok <> +rest:
+      fin_bad(Parse.run(rest, Parse.step(tok, Parse.P{False{}, None{}, Nil{}})), run_bad(rest, Parse.step(tok,
+        Parse.P{False{}, None{}, Nil{}}), h))
+
+# the first token, with spans read out
+law dens_head:
+  for xs: List<&2, Lex.Tok>
+  {thead(dens(xs)) == den(thead(xs)) : Lex.Tok}
+
+def dens_head(xs):
+  match xs:
+    case Nil{}:
+      {==}
+    case _hd <> _tl:
+      {==}
+
+# a word that starts with U+FEFF is rejected
+law feff_word:
+  for +txt: String
+  {wrej(Lex.TWord{SCon{Chr{65279}, txt}}) == True{} : Bool}
+
+def feff_word(txt):
+  sb = Equal.sym(Bool, V.num.ok.go(String.to_list(txt), V.NBad{}), False{}, st_bad(String.to_list(txt)))
+  %sb : {pbad(Parse.step.word.go(SCon{Chr{65279}, txt}, Parse.P{False{}, None{}, Nil{}}, _)) == True{} : Bool}
+  {==}
+
+# what bom_go says: after U+FEFF and more word characters, the first token is rejected
+def bomg(cs: List<&2, Char>, pre: List<&2, Char>) -> Type:
+  {wrej(den(thead(Lex.finish(Lex.run(cs, Lex.Lex{Lex.Word{}, List.reverse.go(&2, Char, pre, [Chr{65279}]), []}))))) ==
+    True{} : Bool}
+
+# the word that starts with U+FEFF is rejected
+law tw_rej:
+  for +pre: List<&2, Char>
+  {wrej(Lex.TWord{Lex.text(List.reverse.go(&2, Char, pre, [Chr{65279}]))}) == True{} : Bool}
+
+def tw_rej(pre):
+  Equal.trans(Bool, wrej(Lex.TWord{Lex.text(List.reverse.go(&2, Char, pre, [Chr{65279}]))}),
+    wrej(Lex.TWord{SCon{Chr{65279}, String.from_list(pre) ++ ""}}), True{},
+    Equal.cong(String, Bool, zz => wrej(Lex.TWord{zz}), Lex.text(List.reverse.go(&2, Char, pre, [Chr{65279}])),
+      SCon{Chr{65279}, String.from_list(pre) ++ ""}, text_revgo(pre, [Chr{65279}], "")),
+    feff_word(String.from_list(pre) ++ ""))
+
+# the word that starts with U+FEFF, as a token
+def feff_tw(pre: List<&2, Char>) -> Lex.Tok:
+  Lex.TWord{Lex.text(List.reverse.go(&2, Char, pre, [Chr{65279}]))}
+
+# once the word is closed, it stays the first token
+law rej_from:
+  for +cs: List<&2, Char>
+  for +l1: Lex.Lex
+  for +pre: List<&2, Char>
+  {wrej(den(thead(Lex.finish(Lex.run(cs, lex.app(l1, [Lex.TWord{Lex.text(List.reverse.go(&2, Char, pre,
+    [Chr{65279}]))}])))))) == True{} : Bool}
+
+def rej_from(cs, l1, pre):
+  +tw = feff_tw(pre)
+  Equal.trans(Bool, wrej(den(thead(Lex.finish(Lex.run(cs, lex.app(l1, [tw])))))), wrej(den(tw)), True{},
+    Equal.cong(Lex.Tok, Bool, zz => wrej(den(zz)), thead(Lex.finish(Lex.run(cs, lex.app(l1, [tw])))), tw,
+      Equal.trans(Lex.Tok, thead(Lex.finish(Lex.run(cs, lex.app(l1, [tw])))), thead(Lex.finish(lex.app(Lex.run(cs, l1),
+        [tw]))), tw,
+        Equal.cong(Lex.Lex, Lex.Tok, zz => thead(Lex.finish(zz)), Lex.run(cs, lex.app(l1, [tw])), lex.app(Lex.run(cs,
+          l1), [tw]), run_pass(cs, l1, [tw])),
+        fin_head(Lex.run(cs, l1), tw))),
+    tw_rej(pre))
+
+# bom_step, by the character's class
+law bom_cls:
+  for cls: Lex.Class
+  for +ch: Char
+  for +cs: List<&2, Char>
+  for +pre: List<&2, Char>
+  for ih: bomg(cs, List.append(&2, Char, pre, [ch]))
+  {wrej(den(thead(Lex.finish(Lex.run(cs, Lex.step(Lex.Word{}, cls, ch, List.reverse.go(&2, Char, pre, [Chr{65279}]),
+    [])))))) == True{} : Bool}
+
+def bom_cls(cls, ch, cs, pre, ih):
+  match cls:
+    case Lex.COther{}:
+      rs = rev_snoc(pre, ch, [Chr{65279}])
+      %rs : {wrej(den(thead(Lex.finish(Lex.run(cs, Lex.Lex{Lex.Word{}, _, []}))))) == True{} : Bool}
+      ih
+    case Lex.CPunct{+pp}:
+      rej_from(cs, Lex.Lex{Lex.Idle{}, [], [pp]}, pre)
+    case Lex.CQuote{}:
+      rej_from(cs, Lex.Lex{Lex.Str{}, [], []}, pre)
+    case Lex.CSpace{}:
+      rej_from(cs, Lex.Lex{Lex.Idle{}, [], []}, pre)
+    case Lex.CBack{}:
+      Equal.cong(Lex.Lex, Bool, zz => wrej(den(thead(Lex.finish(zz)))), Lex.run(cs, Lex.Lex{Lex.Bad{}, [], []}),
+        Lex.Lex{Lex.Bad{}, [], []}, bad_run(cs))
+
+# bom_go, one character on, with its class named
+law bom_step:
+  for +cls: Lex.Class
+  for +ch: Char
+  for +cs: List<&2, Char>
+  for +pre: List<&2, Char>
+  for ecls: {Lex.classify(ch) == cls : Lex.Class}
+  for ih: bomg(cs, List.append(&2, Char, pre, [ch]))
+  bomg(ch <> cs, pre)
+
+def bom_step(cls, ch, cs, pre, ecls, ih):
+  +bf = List.reverse.go(&2, Char, pre, [Chr{65279}])
+  fa = Equal.sym(Lex.Lex, Lex.feed(ch, Lex.Lex{Lex.Word{}, bf, []}), Lex.step(Lex.Word{}, cls, ch, bf, []),
+    feed_as(ch, Lex.Word{}, bf, [], cls, ecls))
+  %fa : {wrej(den(thead(Lex.finish(Lex.run(cs, _))))) == True{} : Bool}
+  bom_cls(cls, ch, cs, pre, ih)
+
+# after U+FEFF, the first token is rejected
+law bom_go:
+  for +cs: List<&2, Char>
+  for +pre: List<&2, Char>
+  bomg(cs, pre)
+
+def bom_go(cs, pre):
+  match cs:
+    case Nil{}:
+      tw_rej(pre)
+    case +hd <> +tl:
+      bom_step(Lex.classify(hd), hd, tl, pre, {==}, bom_go(tl, List.append(&2, Char, pre, [hd])))
+
+# a parse result whose owned form is None is None
+law own_m_none:
+  for +mb: Maybe<&2, V.Json>
+  for e: {Laws.own_m(mb) == None{} : Maybe<&2, V.Json>}
+  {mb == None{} : Maybe<&2, V.Json>}
+
+def own_m_none(mb, e):
+  match mb:
+    case None{}:
+      {==}
+    case Some{+jj}:
+      Empty.absurd({Some{jj} == None{} : Maybe<&2, V.Json>}, false_true(Equal.cong(Maybe<&2, V.Json>, Bool,
+        zz => is_none(zz), Some{Laws.own(jj)},
+        None{}, e)))
+
+def Laws.bom_none(txt, h_s):
+  own_m_none(Ezjson.parse(SCon{Char.from_u32(65279), txt}),
+    Equal.trans(Maybe<&2, V.Json>, Laws.own_m(Parse.finish(Parse.run(Lex.tokens(SCon{Char.from_u32(65279), txt}),
+      Parse.P{False{}, None{}, Nil{}}))), Parse.finish(ownp(Parse.run(Lex.tokens(SCon{Char.from_u32(65279), txt}),
+      Parse.P{False{}, None{}, Nil{}}))), None{}, fin_own(Parse.run(Lex.tokens(SCon{Char.from_u32(65279), txt}),
+      Parse.P{False{}, None{}, Nil{}})),
+      Equal.trans(Maybe<&2, V.Json>, Parse.finish(ownp(Parse.run(Lex.tokens(SCon{Char.from_u32(65279), txt}),
+        Parse.P{False{}, None{}, Nil{}}))), Parse.finish(Parse.run(dens(Lex.tokens(SCon{Char.from_u32(65279), txt})),
+        Parse.P{False{}, None{}, Nil{}})), None{}, Equal.cong(Parse.P, Maybe<&2, V.Json>, zz => Parse.finish(zz),
+        ownp(Parse.run(Lex.tokens(SCon{Char.from_u32(65279), txt}), Parse.P{False{}, None{}, Nil{}})),
+        Parse.run(dens(Lex.tokens(SCon{Char.from_u32(65279), txt})), Parse.P{False{}, None{}, Nil{}}),
+      run_own(Lex.tokens(SCon{Char.from_u32(65279), txt}), Parse.P{False{}, None{}, Nil{}})),
+      Equal.trans(Maybe<&2, V.Json>, Parse.finish(Parse.run(dens(Lex.tokens(SCon{Char.from_u32(65279), txt})),
+        Parse.P{False{}, None{}, Nil{}})),
+        Parse.finish(Parse.run(dens(Lex.finish(Lex.run(String.to_list(SCon{Char.from_u32(65279), txt}),
+        Lex.Lex{Lex.Idle{}, [], []}))), Parse.P{False{}, None{}, Nil{}})), None{}, Equal.cong(List<&2, Lex.Tok>,
+        Maybe<&2, V.Json>, zz => Parse.finish(Parse.run(zz, Parse.P{False{}, None{}, Nil{}})),
+        dens(Lex.tokens(SCon{Char.from_u32(65279), txt})),
+        dens(Lex.finish(Lex.run(String.to_list(SCon{Char.from_u32(65279), txt}), Lex.Lex{Lex.Idle{}, [], []}))),
+        lexers_agree(SCon{Char.from_u32(65279), txt}, h_s)),
+      rej_none(dens(Lex.finish(Lex.run(String.to_list(SCon{Char.from_u32(65279), txt}), Lex.Lex{Lex.Idle{}, [], []}))),
+        Equal.trans(Bool, wrej(thead(dens(Lex.finish(Lex.run(String.to_list(SCon{Char.from_u32(65279), txt}),
+        Lex.Lex{Lex.Idle{}, [], []}))))), wrej(den(thead(Lex.finish(Lex.run(String.to_list(SCon{Char.from_u32(65279),
+        txt}), Lex.Lex{Lex.Idle{}, [], []}))))), True{},
+      Equal.cong(Lex.Tok, Bool, zz => wrej(zz), thead(dens(Lex.finish(Lex.run(String.to_list(SCon{Char.from_u32(65279),
+        txt}), Lex.Lex{Lex.Idle{}, [], []})))), den(thead(Lex.finish(Lex.run(String.to_list(SCon{Char.from_u32(65279),
+        txt}), Lex.Lex{Lex.Idle{}, [], []})))), dens_head(Lex.finish(Lex.run(String.to_list(SCon{Char.from_u32(65279),
+        txt}), Lex.Lex{Lex.Idle{}, [], []})))),
+      bom_go(String.to_list(txt), [])))))))
+
