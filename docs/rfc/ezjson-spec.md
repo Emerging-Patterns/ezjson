@@ -200,7 +200,7 @@ value. JSON-STR-1 and JSON-STR-5 are stated over scalar values either way.
 
 | ID | Requirement | Level | Status | Law |
 | :---- | :---- | :---- | :---- | :---- |
-| JSON-PRINT-1 | For texts shorter than 2^32 - 1 characters: for every well-formed value `j`, `parse(print(j))` is `Some` of a value `same` as `j` | Proved | pending | |
+| JSON-PRINT-1 | For texts shorter than 2^32 - 1 characters: for every well-formed value `j`, `parse(print(j))` is `Some` of a value `same` as `j` with every code point that is not a Unicode scalar value replaced by U+FFFD | Proved | pending | |
 | JSON-PRINT-2 | For texts shorter than 2^32 - 1 characters: for every text `t` with `parse(t) == Some{j}`, `print(j)` holds no whitespace outside strings, and `print(j) == print(j2)` where `parse(print(j)) == Some{j2}` | Proved | pending | |
 | JSON-PRINT-3 | For every value built only from `null`, `bool`, `str`, `num`, `arr` and `obj`, or returned by `parse`, `wf` holds | Proved | pending | |
 
