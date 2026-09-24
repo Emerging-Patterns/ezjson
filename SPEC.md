@@ -52,7 +52,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | JSON-STR-2 | Inside a string, `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t` decode to their characters; `\uXXXX` of a non-surrogate decodes to that code point; a high then low surrogate escape decodes to one code point; any other escape, and an unpaired surrogate escape, make `parse` `None` (§7, §8.2) | Proved | pending |  |
 | JSON-STR-3 | Inside a string, a raw U+0000 to U+001F makes `parse` `None`, and every other raw code point except `"` and `\` is kept as itself (§7) | Proved | pending |  |
 | JSON-STR-4 | Two object names compare equal in `get` exactly when their decoded characters are equal, whatever escapes spelled them (§8.3) | Proved | pending |  |
-| JSON-STR-5 | `quote(s)` escapes exactly `"`, `\` and U+0000 to U+001F, using the two-character form where one exists and `\u00xx` otherwise, and writes every other scalar value as itself, and writes U+FFFD for every code point that is not a Unicode scalar value (a surrogate, or past U+10FFFF) (§7, §8.1) | Proved | pending | ezjson/LAWS.bend print_non_scalar |
+| JSON-STR-5 | `quote(s)` escapes exactly `"`, `\` and U+0000 to U+001F, using the two-character form where one exists and `\u00xx` otherwise, and writes every other scalar value as itself, and writes U+FFFD for every code point that is not a Unicode scalar value (a surrogate, or past U+10FFFF) (§7, §8.1) | Proved | pending | ezjson/LAWS.bend print_non_scalar; ezjson/LAWS.bend esc_quote; ezjson/LAWS.bend esc_backslash; ezjson/LAWS.bend esc_b; ezjson/LAWS.bend esc_f; ezjson/LAWS.bend esc_n; ezjson/LAWS.bend esc_r; ezjson/LAWS.bend esc_t; ezjson/LAWS.bend esc_plain |
 
 ### Print and round trip (JSON-PRINT)
 
@@ -93,7 +93,7 @@ Every pending row with no Law entry is unproved in full; the RFC's Rollout says 
 
 | ID | Proved so far | Missing |
 | :---- | :---- | :---- |
-| JSON-STR-5 | a code point that is not a scalar value is written as U+FFFD (`print_non_scalar`) | what is written for each scalar value: `"`, `\` and U+0000 to U+001F escaped, everything else as itself |
+| JSON-STR-5 | a non-scalar code point is written as U+FFFD (`print_non_scalar`); `"` and `\` are escaped (`esc_quote`, `esc_backslash`); backspace, form feed, line feed, carriage return and tab get their two-character escapes (`esc_b` to `esc_t`); every other scalar value at or above U+0020 is written as itself (`esc_plain`) | the other controls below U+0020 as `\u00` and two lowercase hex digits |
 | JSON-PRINT-3 | `null`, `bool`, `str` and `num` build well-formed values, and `arr` and `obj` do from well-formed values (`wf_scalars`, `wf_num`, `wf_arr`, `wf_obj`) | every value `parse` returns is well-formed |
 
 ## Trust boundary
