@@ -4,6 +4,7 @@ import ./value.bend as V
 import ./main.bend as Ezjson
 import ./lazy.bend as Lazy
 import ./lex.bend as Lex
+import ./parse.bend as Parse
 import ./print.bend as Print
 import ./pull.bend as Pull
 import ./LAWS.bend as Laws
@@ -3934,3 +3935,4165 @@ law lexers_agree:
 
 def lexers_agree(ss, h_s):
   lex_agree_go(ss, Lex.Go{"", 0, Lex.GIdle{}, []}, Lex.Lex{Lex.Idle{}, [], []}, {==}, h_s)
+
+# WP-L2: the character lexer reads back what print writes
+
+# a word of n zero bits
+def zw(n: Nat) -> Word(n):
+  match n:
+    case 0n:
+      WNil{}
+    case 1n+pp:
+      WCon{False{}, zw(pp)}
+
+# against a 0 bit, a word is below exactly when the bits above are
+law lt_fin_f:
+  for cc: Cmp
+  for aa: Bool
+  {Cmp.is_lt(Word.cmp.fin(aa, False{}, cc)) == Cmp.is_lt(cc) : Bool}
+
+def lt_fin_f(cc, aa):
+  match cc:
+    case LT{}:
+      {==}
+    case GT{}:
+      {==}
+    case EQ{}:
+      match aa:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+
+# a word is never below zero
+law zw_nlt:
+  for n: Nat
+  for ww: Word(n)
+  {Cmp.is_lt(Word.cmp(n, ww, zw(n))) == False{} : Bool}
+
+def zw_nlt(n, ww):
+  match n:
+    case 0n:
+      match ww:
+        case WNil{}:
+          {==}
+    case 1n+(+pp):
+      match ww:
+        case WCon{bb, +tt}:
+          Equal.trans(Bool, Cmp.is_lt(Word.cmp.fin(bb, False{}, Word.cmp(pp, tt, zw(pp)))),
+            Cmp.is_lt(Word.cmp(pp, tt, zw(pp))), False{}, lt_fin_f(Word.cmp(pp, tt, zw(pp)), bb), zw_nlt(pp, tt))
+
+# below a word whose low bit is 0, the bits above are below
+law lt_up:
+  for aa: Bool
+  for cc: Cmp
+  for h_lt: {Cmp.is_lt(Word.cmp.fin(aa, False{}, cc)) == True{} : Bool}
+  {Cmp.is_lt(cc) == True{} : Bool}
+
+def lt_up(aa, cc, h_lt):
+  Equal.trans(Bool, Cmp.is_lt(cc), Cmp.is_lt(Word.cmp.fin(aa, False{}, cc)), True{},
+    Equal.sym(Bool, Cmp.is_lt(Word.cmp.fin(aa, False{}, cc)), Cmp.is_lt(cc), lt_fin_f(cc, aa)), h_lt)
+
+# what lex_ctl says of a code point: its \u00XX escape reads back as itself
+def ctl_goal(uu: U32, buf: List<&2, Char>, toks: List<&2, Lex.Tok>) -> Type:
+  {Lex.run(String.to_list(Print.escape.u(uu)), Lex.Lex{Lex.Str{}, buf, toks}) ==
+    Lex.Lex{Lex.Str{}, Chr{uu} <> buf, toks} : Lex.Lex}
+
+# a control's \u00XX escape, one control at a time
+law lex_ctl5:
+  for b0: Bool
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for b4: Bool
+  for buf: List<&2, Char>
+  for toks: List<&2, Lex.Tok>
+  {Lex.run(String.to_list(Print.escape.u(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{False{},
+    zw(26n)}}}}}}})),
+    Lex.Lex{Lex.Str{}, buf, toks}) ==
+    Lex.Lex{Lex.Str{}, Chr{U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{False{}, zw(26n)}}}}}}}} <> buf,
+      toks} : Lex.Lex}
+
+def lex_ctl5(b0, b1, b2, b3, b4, _buf, _toks):
+  match b0 b1 b2 b3 b4:
+    case False{} False{} False{} False{} False{}:
+      {==}
+    case False{} False{} False{} False{} True{}:
+      {==}
+    case False{} False{} False{} True{} False{}:
+      {==}
+    case False{} False{} False{} True{} True{}:
+      {==}
+    case False{} False{} True{} False{} False{}:
+      {==}
+    case False{} False{} True{} False{} True{}:
+      {==}
+    case False{} False{} True{} True{} False{}:
+      {==}
+    case False{} False{} True{} True{} True{}:
+      {==}
+    case False{} True{} False{} False{} False{}:
+      {==}
+    case False{} True{} False{} False{} True{}:
+      {==}
+    case False{} True{} False{} True{} False{}:
+      {==}
+    case False{} True{} False{} True{} True{}:
+      {==}
+    case False{} True{} True{} False{} False{}:
+      {==}
+    case False{} True{} True{} False{} True{}:
+      {==}
+    case False{} True{} True{} True{} False{}:
+      {==}
+    case False{} True{} True{} True{} True{}:
+      {==}
+    case True{} False{} False{} False{} False{}:
+      {==}
+    case True{} False{} False{} False{} True{}:
+      {==}
+    case True{} False{} False{} True{} False{}:
+      {==}
+    case True{} False{} False{} True{} True{}:
+      {==}
+    case True{} False{} True{} False{} False{}:
+      {==}
+    case True{} False{} True{} False{} True{}:
+      {==}
+    case True{} False{} True{} True{} False{}:
+      {==}
+    case True{} False{} True{} True{} True{}:
+      {==}
+    case True{} True{} False{} False{} False{}:
+      {==}
+    case True{} True{} False{} False{} True{}:
+      {==}
+    case True{} True{} False{} True{} False{}:
+      {==}
+    case True{} True{} False{} True{} True{}:
+      {==}
+    case True{} True{} True{} False{} False{}:
+      {==}
+    case True{} True{} True{} False{} True{}:
+      {==}
+    case True{} True{} True{} True{} False{}:
+      {==}
+    case True{} True{} True{} True{} True{}:
+      {==}
+
+# the control case, once bit 5 and the bits above are known
+law lex_ctl.at:
+  for cc: Cmp
+  for b5: Bool
+  for b0: Bool
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for b4: Bool
+  for +rest: Word(26n)
+  for ec: {Word.cmp(26n, rest, zw(26n)) == cc : Cmp}
+  for h_lt: {Cmp.is_lt(Word.cmp.fin(b5, True{}, cc)) == True{} : Bool}
+  for buf: List<&2, Char>
+  for toks: List<&2, Lex.Tok>
+  {Lex.run(String.to_list(Print.escape.u(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{b5, rest}}}}}}})),
+    Lex.Lex{Lex.Str{}, buf, toks}) ==
+    Lex.Lex{Lex.Str{}, Chr{U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{b5, rest}}}}}}}} <> buf,
+      toks} : Lex.Lex}
+
+def lex_ctl.at(cc, b5, b0, b1, b2, b3, b4, rest, ec, h_lt, buf, toks):
+  match cc:
+    case LT{}:
+      ez = Equal.cong(Cmp, Bool, xx => Cmp.is_lt(xx), Word.cmp(26n, rest, zw(26n)), LT{}, ec)
+      Empty.absurd(ctl_goal(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{b5, rest}}}}}}}, buf, toks),
+        true_false(Equal.trans(Bool, True{}, Cmp.is_lt(Word.cmp(26n, rest, zw(26n))), False{},
+        Equal.sym(Bool, Cmp.is_lt(Word.cmp(26n, rest, zw(26n))), True{}, ez), zw_nlt(26n, rest))))
+    case GT{}:
+      match b5:
+        case False{}:
+          Empty.absurd(ctl_goal(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{b5, rest}}}}}}}, buf, toks),
+            false_true(h_lt))
+        case True{}:
+          Empty.absurd(ctl_goal(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{b5, rest}}}}}}}, buf, toks),
+            false_true(h_lt))
+    case EQ{}:
+      match b5:
+        case True{}:
+          Empty.absurd(ctl_goal(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{b5, rest}}}}}}}, buf, toks),
+            false_true(h_lt))
+        case False{}:
+          er = Equal.sym(Word(26n), rest, zw(26n),
+            weq(26n, rest, zw(26n), Equal.cong(Cmp, Bool, xx => Cmp.is_eq(xx), Word.cmp(26n, rest, zw(26n)), EQ{}, ec)))
+          %er : {Lex.run(String.to_list(Print.escape.u(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{False{},
+            _}}}}}}})), Lex.Lex{Lex.Str{}, buf, toks}) ==
+            Lex.Lex{Lex.Str{}, Chr{U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{False{}, _}}}}}}}} <> buf,
+              toks} : Lex.Lex}
+          lex_ctl5(b0, b1, b2, b3, b4, buf, toks)
+
+# a code point below U+0020, written as \u00XX, reads back as itself
+law lex_ctl:
+  for +uu: U32
+  for h_lt: {U32.is_lt(uu, 32) == True{} : Bool}
+  for buf: List<&2, Char>
+  for toks: List<&2, Lex.Tok>
+  {Lex.run(String.to_list(Print.escape.u(uu)), Lex.Lex{Lex.Str{}, buf, toks}) ==
+    Lex.Lex{Lex.Str{}, Chr{uu} <> buf, toks} : Lex.Lex}
+
+def lex_ctl(uu, h_lt, buf, toks):
+  match uu:
+    case U32{WCon{+b0, WCon{+b1, WCon{+b2, WCon{+b3, WCon{+b4, WCon{+b5, +rest}}}}}}}:
+      +c5 = Word.cmp.fin(b5, True{}, Word.cmp(26n, rest, zw(26n)))
+      +c4 = Word.cmp.fin(b4, False{}, c5)
+      +c3 = Word.cmp.fin(b3, False{}, c4)
+      +c2 = Word.cmp.fin(b2, False{}, c3)
+      +c1 = Word.cmp.fin(b1, False{}, c2)
+      h5 = lt_up(b4, c5, lt_up(b3, c4, lt_up(b2, c3, lt_up(b1, c2, lt_up(b0, c1, h_lt)))))
+      lex_ctl.at(Word.cmp(26n, rest, zw(26n)), b5, b0, b1, b2, b3, b4, rest, {==}, h5, buf, toks)
+
+# a string character that is none of `"`, `\` and the controls stays itself
+law str_other:
+  for cls: Lex.Class
+  for +uu: U32
+  for ecls: {Lex.classify(Chr{uu}) == cls : Lex.Class}
+  for e34: {U32.is_eq(uu, 34) == False{} : Bool}
+  for e92: {U32.is_eq(uu, 92) == False{} : Bool}
+  for ect: {U32.is_lt(uu, 32) == False{} : Bool}
+  for buf: List<&2, Char>
+  for toks: List<&2, Lex.Tok>
+  {Lex.step(Lex.Str{}, cls, Chr{uu}, buf, toks) == Lex.Lex{Lex.Str{}, Chr{uu} <> buf, toks} : Lex.Lex}
+
+def str_other(cls, uu, ecls, e34, e92, ect, buf, toks):
+  match cls:
+    case Lex.CQuote{}:
+      Empty.absurd({Lex.step(Lex.Str{}, Lex.CQuote{}, Chr{uu}, buf, toks) == Lex.Lex{Lex.Str{}, Chr{uu} <> buf,
+        toks} : Lex.Lex},
+        false_true(Equal.trans(Bool, False{}, U32.is_eq(uu, 34), True{}, Equal.sym(Bool, U32.is_eq(uu, 34), False{},
+          e34),
+          Equal.cong(U32, Bool, xx => U32.is_eq(xx, 34), uu, 34, cls_quote(Chr{uu}, ecls)))))
+    case Lex.CBack{}:
+      Empty.absurd({Lex.step(Lex.Str{}, Lex.CBack{}, Chr{uu}, buf, toks) == Lex.Lex{Lex.Str{}, Chr{uu} <> buf,
+        toks} : Lex.Lex},
+        false_true(Equal.trans(Bool, False{}, U32.is_eq(uu, 92), True{}, Equal.sym(Bool, U32.is_eq(uu, 92), False{},
+          e92),
+          Equal.cong(U32, Bool, xx => U32.is_eq(xx, 92), uu, 92, cls_back(Chr{uu}, ecls)))))
+    case Lex.CPunct{tt}:
+      ec = Equal.sym(Bool, U32.is_lt(uu, 32), False{}, ect)
+      %ec : {Lex.step.str.go(Chr{uu}, buf, toks, _) == Lex.Lex{Lex.Str{}, Chr{uu} <> buf, toks} : Lex.Lex}
+      {==}
+    case Lex.CSpace{}:
+      ec = Equal.sym(Bool, U32.is_lt(uu, 32), False{}, ect)
+      %ec : {Lex.step.str.go(Chr{uu}, buf, toks, _) == Lex.Lex{Lex.Str{}, Chr{uu} <> buf, toks} : Lex.Lex}
+      {==}
+    case Lex.COther{}:
+      ec = Equal.sym(Bool, U32.is_lt(uu, 32), False{}, ect)
+      %ec : {Lex.step.str.go(Chr{uu}, buf, toks, _) == Lex.Lex{Lex.Str{}, Chr{uu} <> buf, toks} : Lex.Lex}
+      {==}
+
+# escape.plain's answer, with each of its tests named, read back
+law lex_plain:
+  for b34: Bool
+  for b92: Bool
+  for b8: Bool
+  for b12: Bool
+  for b10: Bool
+  for b13: Bool
+  for b9: Bool
+  for ct: Bool
+  for +uu: U32
+  for e34: {U32.is_eq(uu, 34) == b34 : Bool}
+  for e92: {U32.is_eq(uu, 92) == b92 : Bool}
+  for e8: {U32.is_eq(uu, 8) == b8 : Bool}
+  for e12: {U32.is_eq(uu, 12) == b12 : Bool}
+  for e10: {U32.is_eq(uu, 10) == b10 : Bool}
+  for e13: {U32.is_eq(uu, 13) == b13 : Bool}
+  for e9: {U32.is_eq(uu, 9) == b9 : Bool}
+  for ect: {U32.is_lt(uu, 32) == ct : Bool}
+  for +buf: List<&2, Char>
+  for +toks: List<&2, Lex.Tok>
+  {Lex.run(String.to_list(Bool.pick(String, b34, "\\\"", Bool.pick(String, b92, "\\\\", Bool.pick(String, b8, "\\b",
+    Bool.pick(String, b12, "\\f", Bool.pick(String, b10, "\\n", Bool.pick(String, b13, "\\r", Bool.pick(String, b9,
+    "\\t", Print.escape.rest.go(uu, Chr{uu}, ct))))))))), Lex.Lex{Lex.Str{}, buf, toks}) ==
+    Lex.Lex{Lex.Str{}, Chr{uu} <> buf, toks} : Lex.Lex}
+
+def lex_plain(b34, b92, b8, b12, b10, b13, b9, ct, uu, e34, e92, e8, e12, e10, e13, e9, ect, buf, toks):
+  match b34:
+    case True{}:
+      eu = Equal.sym(U32, uu, 34, ueq(uu, 34, e34))
+      %eu : {Lex.run(String.to_list("\\\""), Lex.Lex{Lex.Str{}, buf, toks}) == Lex.Lex{Lex.Str{}, Chr{_} <> buf,
+        toks} : Lex.Lex}
+      {==}
+    case False{}:
+      match b92:
+        case True{}:
+          eu = Equal.sym(U32, uu, 92, ueq(uu, 92, e92))
+          %eu : {Lex.run(String.to_list("\\\\"), Lex.Lex{Lex.Str{}, buf, toks}) == Lex.Lex{Lex.Str{}, Chr{_} <> buf,
+            toks} : Lex.Lex}
+          {==}
+        case False{}:
+          match b8:
+            case True{}:
+              eu = Equal.sym(U32, uu, 8, ueq(uu, 8, e8))
+              %eu : {Lex.run(String.to_list("\\b"), Lex.Lex{Lex.Str{}, buf, toks}) == Lex.Lex{Lex.Str{}, Chr{_} <> buf,
+                toks} : Lex.Lex}
+              {==}
+            case False{}:
+              match b12:
+                case True{}:
+                  eu = Equal.sym(U32, uu, 12, ueq(uu, 12, e12))
+                  %eu : {Lex.run(String.to_list("\\f"), Lex.Lex{Lex.Str{}, buf, toks}) == Lex.Lex{Lex.Str{},
+                    Chr{_} <> buf, toks} : Lex.Lex}
+                  {==}
+                case False{}:
+                  match b10:
+                    case True{}:
+                      eu = Equal.sym(U32, uu, 10, ueq(uu, 10, e10))
+                      %eu : {Lex.run(String.to_list("\\n"), Lex.Lex{Lex.Str{}, buf, toks}) == Lex.Lex{Lex.Str{},
+                        Chr{_} <> buf, toks} : Lex.Lex}
+                      {==}
+                    case False{}:
+                      match b13:
+                        case True{}:
+                          eu = Equal.sym(U32, uu, 13, ueq(uu, 13, e13))
+                          %eu : {Lex.run(String.to_list("\\r"), Lex.Lex{Lex.Str{}, buf, toks}) == Lex.Lex{Lex.Str{},
+                            Chr{_} <> buf, toks} : Lex.Lex}
+                          {==}
+                        case False{}:
+                          match b9:
+                            case True{}:
+                              eu = Equal.sym(U32, uu, 9, ueq(uu, 9, e9))
+                              %eu : {Lex.run(String.to_list("\\t"), Lex.Lex{Lex.Str{}, buf,
+                                toks}) == Lex.Lex{Lex.Str{}, Chr{_} <> buf, toks} : Lex.Lex}
+                              {==}
+                            case False{}:
+                              match ct:
+                                case True{}:
+                                  lex_ctl(uu, ect, buf, toks)
+                                case False{}:
+                                  Equal.trans(Lex.Lex, Lex.feed(Chr{uu}, Lex.Lex{Lex.Str{}, buf, toks}),
+                                      Lex.step(Lex.Str{}, Lex.classify(Chr{uu}), Chr{uu}, buf,
+                                        toks), Lex.Lex{Lex.Str{}, Chr{uu} <> buf, toks},
+                                      feed_as(Chr{uu}, Lex.Str{}, buf, toks, Lex.classify(Chr{uu}), {==}),
+                                      str_other(Lex.classify(Chr{uu}), uu, {==}, e34, e92, ect, buf, toks))
+
+# a character as print writes it back: itself when a scalar value, else U+FFFD
+def fix(ch: Char) -> Char:
+  match ch:
+    case Chr{+uu}:
+      Bool.pick(Char, Print.scalar(uu), Chr{uu}, Chr{65533})
+
+# the characters, fixed, reversed onto buf
+def fix_rev(cs: List<&2, Char>, buf: List<&2, Char>) -> List<&2, Char>:
+  match cs:
+    case Nil{}:
+      buf
+    case Con{hd, tl}:
+      fix_rev(tl, fix(hd) <> buf)
+
+# the characters, fixed, as a string
+def fixs(cs: List<&2, Char>) -> String:
+  match cs:
+    case Nil{}:
+      ""
+    case Con{hd, tl}:
+      SCon{fix(hd), fixs(tl)}
+
+# one character's escape, once it is known whether it is a scalar value
+law lex_sc:
+  for sc: Bool
+  for +uu: U32
+  for +buf: List<&2, Char>
+  for +toks: List<&2, Lex.Tok>
+  {Lex.run(String.to_list(Print.escape.scalar(uu, Chr{uu}, sc)), Lex.Lex{Lex.Str{}, buf, toks}) ==
+    Lex.Lex{Lex.Str{}, Bool.pick(Char, sc, Chr{uu}, Chr{65533}) <> buf, toks} : Lex.Lex}
+
+def lex_sc(sc, uu, buf, toks):
+  match sc:
+    case True{}:
+      lex_plain(U32.is_eq(uu, 34), U32.is_eq(uu, 92), U32.is_eq(uu, 8), U32.is_eq(uu, 12), U32.is_eq(uu, 10),
+        U32.is_eq(uu, 13), U32.is_eq(uu, 9), U32.is_lt(uu, 32), uu, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==},
+        buf, toks)
+    case False{}:
+      {==}
+
+# inside a string, a character print escapes reads back fixed
+law lex_char:
+  for +ch: Char
+  for buf: List<&2, Char>
+  for toks: List<&2, Lex.Tok>
+  {Lex.run(String.to_list(Print.escape.char(ch)), Lex.Lex{Lex.Str{}, buf, toks}) ==
+    Lex.Lex{Lex.Str{}, fix(ch) <> buf, toks} : Lex.Lex}
+
+def lex_char(ch, buf, toks):
+  match ch:
+    case Chr{+uu}:
+      lex_sc(Print.scalar(uu), uu, buf, toks)
+
+# the character lexer on two strings is the lexer on the first, then the second
+law run_app:
+  for +aa: String
+  for +bb: String
+  for st: Lex.Lex
+  {Lex.run(String.to_list(aa ++ bb), st) == Lex.run(String.to_list(bb), Lex.run(String.to_list(aa), st)) : Lex.Lex}
+
+def run_app(aa, bb, st):
+  match aa:
+    case SNil{}:
+      {==}
+    case SCon{+hd, +tl}:
+      run_app(tl, bb, Lex.feed(hd, st))
+
+# inside a string, print's escape of the characters reads back fixed
+law lex_esc:
+  for +cs: List<&2, Char>
+  for +buf: List<&2, Char>
+  for +toks: List<&2, Lex.Tok>
+  {Lex.run(String.to_list(Print.escape(cs)), Lex.Lex{Lex.Str{}, buf, toks}) ==
+    Lex.Lex{Lex.Str{}, fix_rev(cs, buf), toks} : Lex.Lex}
+
+def lex_esc(cs, buf, toks):
+  match cs:
+    case Nil{}:
+      {==}
+    case Con{+hd, +tl}:
+      Equal.trans(Lex.Lex,
+        Lex.run(String.to_list(Print.escape.char(hd) ++ Print.escape(tl)), Lex.Lex{Lex.Str{}, buf, toks}),
+        Lex.run(String.to_list(Print.escape(tl)), Lex.Lex{Lex.Str{}, fix(hd) <> buf, toks}),
+        Lex.Lex{Lex.Str{}, fix_rev(tl, fix(hd) <> buf), toks},
+        Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.escape.char(hd) ++ Print.escape(tl)), Lex.Lex{Lex.Str{}, buf, toks}),
+          Lex.run(String.to_list(Print.escape(tl)), Lex.run(String.to_list(Print.escape.char(hd)),
+            Lex.Lex{Lex.Str{}, buf, toks})),
+          Lex.run(String.to_list(Print.escape(tl)), Lex.Lex{Lex.Str{}, fix(hd) <> buf, toks}),
+          run_app(Print.escape.char(hd), Print.escape(tl), Lex.Lex{Lex.Str{}, buf, toks}),
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list(Print.escape(tl)), xx),
+            Lex.run(String.to_list(Print.escape.char(hd)), Lex.Lex{Lex.Str{}, buf, toks}),
+            Lex.Lex{Lex.Str{}, fix(hd) <> buf, toks}, lex_char(hd, buf, toks))),
+        lex_esc(tl, fix(hd) <> buf, toks))
+
+# a buffer of fixed characters, read back
+law text_fix:
+  for +cs: List<&2, Char>
+  for +buf: List<&2, Char>
+  for +acc: String
+  {Lex.text.go(fix_rev(cs, buf), acc) == Lex.text.go(buf, fixs(cs) ++ acc) : String}
+
+def text_fix(cs, buf, acc):
+  match cs:
+    case Nil{}:
+      {==}
+    case Con{+hd, +tl}:
+      text_fix(tl, fix(hd) <> buf, acc)
+
+# a quoted string, from between tokens, reads back as one string token of its
+# characters, fixed
+law lex_quote:
+  for +txt: String
+  for +toks: List<&2, Lex.Tok>
+  {Lex.run(String.to_list(Print.quote(txt)), Lex.Lex{Lex.Idle{}, [], toks}) ==
+    Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(txt))} <> toks} : Lex.Lex}
+
+def lex_quote(txt, toks):
+  +cs = String.to_list(txt)
+  +ee = Print.escape(cs)
+  +fr = fix_rev(cs, [])
+  Equal.trans(Lex.Lex,
+    Lex.run(String.to_list("\"" ++ ee ++ "\""), Lex.Lex{Lex.Idle{}, [], toks}),
+    Lex.run(String.to_list("\""), Lex.Lex{Lex.Str{}, fr, toks}),
+    Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(cs)} <> toks},
+    Equal.trans(Lex.Lex,
+      Lex.run(String.to_list("\"" ++ ee ++ "\""), Lex.Lex{Lex.Idle{}, [], toks}),
+      Lex.run(String.to_list(ee ++ "\""), Lex.Lex{Lex.Str{}, [], toks}),
+      Lex.run(String.to_list("\""), Lex.Lex{Lex.Str{}, fr, toks}),
+      run_app("\"", ee ++ "\"", Lex.Lex{Lex.Idle{}, [], toks}),
+      Equal.trans(Lex.Lex,
+        Lex.run(String.to_list(ee ++ "\""), Lex.Lex{Lex.Str{}, [], toks}),
+        Lex.run(String.to_list("\""), Lex.run(String.to_list(ee), Lex.Lex{Lex.Str{}, [], toks})),
+        Lex.run(String.to_list("\""), Lex.Lex{Lex.Str{}, fr, toks}),
+        run_app(ee, "\"", Lex.Lex{Lex.Str{}, [], toks}),
+        Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("\""), xx), Lex.run(String.to_list(ee),
+          Lex.Lex{Lex.Str{}, [], toks}),
+          Lex.Lex{Lex.Str{}, fr, toks}, lex_esc(cs, [], toks)))),
+    Equal.cong(String, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TStr{xx} <> toks}, Lex.text(fr), fixs(cs),
+      Equal.trans(String, Lex.text.go(fr, ""), fixs(cs) ++ "", fixs(cs), text_fix(cs, [], ""),
+        append_nil(fixs(cs)))))
+
+# WP-L2, words: every character of a JSON number is a word character
+
+# a character past all of classify's tests, with each test named: when a
+# predicate holds of it and of none of the tested code points
+law cls_other:
+  for b91: Bool
+  for b93: Bool
+  for b123: Bool
+  for b125: Bool
+  for b58: Bool
+  for b44: Bool
+  for b34: Bool
+  for b92: Bool
+  for b32: Bool
+  for b10: Bool
+  for b13: Bool
+  for b9: Bool
+  for +cp: U32
+  for pp: U32 -> Bool
+  for e91: {U32.is_eq(cp, 91) == b91 : Bool}
+  for e93: {U32.is_eq(cp, 93) == b93 : Bool}
+  for e123: {U32.is_eq(cp, 123) == b123 : Bool}
+  for e125: {U32.is_eq(cp, 125) == b125 : Bool}
+  for e58: {U32.is_eq(cp, 58) == b58 : Bool}
+  for e44: {U32.is_eq(cp, 44) == b44 : Bool}
+  for e34: {U32.is_eq(cp, 34) == b34 : Bool}
+  for e92: {U32.is_eq(cp, 92) == b92 : Bool}
+  for e32: {U32.is_eq(cp, 32) == b32 : Bool}
+  for e10: {U32.is_eq(cp, 10) == b10 : Bool}
+  for e13: {U32.is_eq(cp, 13) == b13 : Bool}
+  for e9: {U32.is_eq(cp, 9) == b9 : Bool}
+  for h: {pp(cp) == True{} : Bool}
+  for n91: {pp(91) == False{} : Bool}
+  for n93: {pp(93) == False{} : Bool}
+  for n123: {pp(123) == False{} : Bool}
+  for n125: {pp(125) == False{} : Bool}
+  for n58: {pp(58) == False{} : Bool}
+  for n44: {pp(44) == False{} : Bool}
+  for n34: {pp(34) == False{} : Bool}
+  for n92: {pp(92) == False{} : Bool}
+  for n32: {pp(32) == False{} : Bool}
+  for n10: {pp(10) == False{} : Bool}
+  for n13: {pp(13) == False{} : Bool}
+  for n9: {pp(9) == False{} : Bool}
+  {Bool.pick(Lex.Class, b91, Lex.CPunct{Lex.TOpenArr{}}, Bool.pick(Lex.Class, b93, Lex.CPunct{Lex.TCloseArr{}},
+    Bool.pick(Lex.Class, b123, Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, b125, Lex.CPunct{Lex.TCloseObj{}},
+    Bool.pick(Lex.Class, b58, Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, b44, Lex.CPunct{Lex.TComma{}},
+    Bool.pick(Lex.Class, b34, Lex.CQuote{}, Bool.pick(Lex.Class, b92, Lex.CBack{}, Bool.pick(Lex.Class, b32,
+    Lex.CSpace{}, Bool.pick(Lex.Class, b10, Lex.CSpace{}, Bool.pick(Lex.Class, b13, Lex.CSpace{}, Bool.pick(Lex.Class,
+    b9, Lex.CSpace{}, Lex.COther{})))))))))))) == Lex.COther{} : Lex.Class}
+
+def cls_other(
+  b91,
+  b93,
+  b123,
+  b125,
+  b58,
+  b44,
+  b34,
+  b92,
+  b32,
+  b10,
+  b13,
+  b9,
+  cp,
+  pp,
+  e91,
+  e93,
+  e123,
+  e125,
+  e58,
+  e44,
+  e34,
+  e92,
+  e32,
+  e10,
+  e13,
+  e9,
+  h,
+  n91,
+  n93,
+  n123,
+  n125,
+  n58,
+  n44,
+  n34,
+  n92,
+  n32,
+  n10,
+  n13,
+  n9
+):
+  match b91:
+    case True{}:
+      Empty.absurd({Lex.CPunct{Lex.TOpenArr{}} == Lex.COther{} : Lex.Class}, true_false(Equal.trans(Bool, True{},
+        pp(cp), False{},
+        Equal.sym(Bool, pp(cp), True{}, h), Equal.trans(Bool, pp(cp), pp(91), False{},
+          Equal.cong(U32, Bool, pp, cp, 91, ueq(cp, 91, e91)), n91))))
+    case False{}:
+      match b93:
+        case True{}:
+          Empty.absurd({Lex.CPunct{Lex.TCloseArr{}} == Lex.COther{} : Lex.Class}, true_false(Equal.trans(Bool, True{},
+            pp(cp), False{},
+            Equal.sym(Bool, pp(cp), True{}, h), Equal.trans(Bool, pp(cp), pp(93), False{},
+              Equal.cong(U32, Bool, pp, cp, 93, ueq(cp, 93, e93)), n93))))
+        case False{}:
+          match b123:
+            case True{}:
+              Empty.absurd({Lex.CPunct{Lex.TOpenObj{}} == Lex.COther{} : Lex.Class}, true_false(Equal.trans(Bool,
+                True{}, pp(cp), False{},
+                Equal.sym(Bool, pp(cp), True{}, h), Equal.trans(Bool, pp(cp), pp(123), False{},
+                  Equal.cong(U32, Bool, pp, cp, 123, ueq(cp, 123, e123)), n123))))
+            case False{}:
+              match b125:
+                case True{}:
+                  Empty.absurd({Lex.CPunct{Lex.TCloseObj{}} == Lex.COther{} : Lex.Class}, true_false(Equal.trans(Bool,
+                    True{}, pp(cp), False{},
+                    Equal.sym(Bool, pp(cp), True{}, h), Equal.trans(Bool, pp(cp), pp(125), False{},
+                      Equal.cong(U32, Bool, pp, cp, 125, ueq(cp, 125, e125)), n125))))
+                case False{}:
+                  match b58:
+                    case True{}:
+                      Empty.absurd({Lex.CPunct{Lex.TColon{}} == Lex.COther{} : Lex.Class}, true_false(Equal.trans(Bool,
+                        True{}, pp(cp), False{},
+                        Equal.sym(Bool, pp(cp), True{}, h), Equal.trans(Bool, pp(cp), pp(58), False{},
+                          Equal.cong(U32, Bool, pp, cp, 58, ueq(cp, 58, e58)), n58))))
+                    case False{}:
+                      match b44:
+                        case True{}:
+                          Empty.absurd({Lex.CPunct{Lex.TComma{}} == Lex.COther{} : Lex.Class},
+                            true_false(Equal.trans(Bool, True{}, pp(cp), False{},
+                            Equal.sym(Bool, pp(cp), True{}, h), Equal.trans(Bool, pp(cp), pp(44), False{},
+                              Equal.cong(U32, Bool, pp, cp, 44, ueq(cp, 44, e44)), n44))))
+                        case False{}:
+                          match b34:
+                            case True{}:
+                              Empty.absurd({Lex.CQuote{} == Lex.COther{} : Lex.Class}, true_false(Equal.trans(Bool,
+                                True{}, pp(cp), False{},
+                                Equal.sym(Bool, pp(cp), True{}, h), Equal.trans(Bool, pp(cp), pp(34), False{},
+                                  Equal.cong(U32, Bool, pp, cp, 34, ueq(cp, 34, e34)), n34))))
+                            case False{}:
+                              match b92:
+                                case True{}:
+                                  Empty.absurd({Lex.CBack{} == Lex.COther{} : Lex.Class}, true_false(Equal.trans(Bool,
+                                    True{}, pp(cp), False{},
+                                    Equal.sym(Bool, pp(cp), True{}, h), Equal.trans(Bool, pp(cp), pp(92), False{},
+                                      Equal.cong(U32, Bool, pp, cp, 92, ueq(cp, 92, e92)), n92))))
+                                case False{}:
+                                  match b32:
+                                    case True{}:
+                                      Empty.absurd({Lex.CSpace{} == Lex.COther{} : Lex.Class},
+                                        true_false(Equal.trans(Bool, True{}, pp(cp), False{},
+                                        Equal.sym(Bool, pp(cp), True{}, h), Equal.trans(Bool, pp(cp), pp(32), False{},
+                                          Equal.cong(U32, Bool, pp, cp, 32, ueq(cp, 32, e32)), n32))))
+                                    case False{}:
+                                      match b10:
+                                        case True{}:
+                                          Empty.absurd({Lex.CSpace{} == Lex.COther{} : Lex.Class},
+                                            true_false(Equal.trans(Bool, True{}, pp(cp), False{},
+                                            Equal.sym(Bool, pp(cp), True{}, h), Equal.trans(Bool, pp(cp), pp(10),
+                                              False{},
+                                              Equal.cong(U32, Bool, pp, cp, 10, ueq(cp, 10, e10)), n10))))
+                                        case False{}:
+                                          match b13:
+                                            case True{}:
+                                              Empty.absurd({Lex.CSpace{} == Lex.COther{} : Lex.Class},
+                                                true_false(Equal.trans(Bool, True{}, pp(cp), False{},
+                                                Equal.sym(Bool, pp(cp), True{}, h), Equal.trans(Bool, pp(cp), pp(13),
+                                                  False{},
+                                                  Equal.cong(U32, Bool, pp, cp, 13, ueq(cp, 13, e13)), n13))))
+                                            case False{}:
+                                              match b9:
+                                                case True{}:
+                                                  Empty.absurd({Lex.CSpace{} == Lex.COther{} : Lex.Class},
+                                                    true_false(Equal.trans(Bool, True{}, pp(cp), False{},
+                                                    Equal.sym(Bool, pp(cp), True{}, h), Equal.trans(Bool, pp(cp),
+                                                      pp(9), False{},
+                                                      Equal.cong(U32, Bool, pp, cp, 9, ueq(cp, 9, e9)), n9))))
+                                                case False{}:
+                                                  {==}
+
+# a character a predicate holds of, where it holds of none of classify's code
+# points, is a word character
+law cls_by:
+  for +ch: Char
+  for pp: U32 -> Bool
+  for h: {pp(Char.to_u32(ch)) == True{} : Bool}
+  for n91: {pp(91) == False{} : Bool}
+  for n93: {pp(93) == False{} : Bool}
+  for n123: {pp(123) == False{} : Bool}
+  for n125: {pp(125) == False{} : Bool}
+  for n58: {pp(58) == False{} : Bool}
+  for n44: {pp(44) == False{} : Bool}
+  for n34: {pp(34) == False{} : Bool}
+  for n92: {pp(92) == False{} : Bool}
+  for n32: {pp(32) == False{} : Bool}
+  for n10: {pp(10) == False{} : Bool}
+  for n13: {pp(13) == False{} : Bool}
+  for n9: {pp(9) == False{} : Bool}
+  {Lex.classify(ch) == Lex.COther{} : Lex.Class}
+
+def cls_by(ch, pp, h, n91, n93, n123, n125, n58, n44, n34, n92, n32, n10, n13, n9):
+  +cp = Char.to_u32(ch)
+  cls_other(U32.is_eq(cp, 91), U32.is_eq(cp, 93), U32.is_eq(cp, 123), U32.is_eq(cp, 125), U32.is_eq(cp, 58),
+    U32.is_eq(cp, 44), U32.is_eq(cp, 34), U32.is_eq(cp, 92), U32.is_eq(cp, 32), U32.is_eq(cp, 10), U32.is_eq(cp,
+    13), U32.is_eq(cp, 9),
+    cp, pp, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, h, n91, n93, n123, n125, n58, n44,
+      n34, n92, n32, n10, n13, n9)
+
+# every character is a word character
+def others(cs: List<&2, Char>) -> Type:
+  match cs:
+    case Nil{}:
+      Unit
+    case Con{hd, tl}:
+      ({Lex.classify(hd) == Lex.COther{} : Lex.Class} & others(tl))
+
+# a digit is a word character
+law oth_digit:
+  for +ch: Char
+  for h: {Laws.digit(ch) == True{} : Bool}
+  {Lex.classify(ch) == Lex.COther{} : Lex.Class}
+
+def oth_digit(ch, h):
+  cls_by(ch, xx => V.num.ok.digit(xx), h, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==})
+
+# digit1-9 is a word character
+law oth_digit19:
+  for +ch: Char
+  for h: {Laws.digit19(ch) == True{} : Bool}
+  {Lex.classify(ch) == Lex.COther{} : Lex.Class}
+
+def oth_digit19(ch, h):
+  cls_by(ch, xx => V.num.ok.lead(xx), h, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==})
+
+# a character that is one given word code point is a word character
+law oth_cp:
+  for +ch: Char
+  for kk: U32
+  for h: {Laws.is_cp(ch, kk) == True{} : Bool}
+  for hk: {Lex.classify.go(kk) == Lex.COther{} : Lex.Class}
+  {Lex.classify(ch) == Lex.COther{} : Lex.Class}
+
+def oth_cp(ch, kk, h, hk):
+  match ch:
+    case Chr{+uu}:
+      eu = Equal.sym(U32, uu, kk, ueq(uu, kk, h))
+      %eu : {Lex.classify.go(_) == Lex.COther{} : Lex.Class}
+      hk
+
+# an e or E is a word character
+law oth_e:
+  for +ch: Char
+  for h: {Laws.is_e(ch) == True{} : Bool}
+  {Lex.classify(ch) == Lex.COther{} : Lex.Class}
+
+def oth_e(ch, h):
+  cls_by(ch, xx => V.num.ok.expmark(xx), h, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==}, {==})
+
+# a true `when`, by its condition
+law when_el:
+  for cc: Bool
+  for +yy: Bool
+  for +nn: Bool
+  for pp: Type
+  for h: {Laws.when(cc, yy, nn) == True{} : Bool}
+  for kt: {cc == True{} : Bool} -> {yy == True{} : Bool} -> pp
+  for kf: {nn == True{} : Bool} -> pp
+  pp
+
+def when_el(cc, _yy, _nn, _pp, h, kt, kf):
+  match cc:
+    case True{}:
+      kt({==}, h)
+    case False{}:
+      kf(h)
+
+# False is never True, at any type
+law no:
+  for pp: Type
+  for h: {False{} == True{} : Bool}
+  pp
+
+def no(pp, h):
+  Empty.absurd(pp, false_true(h))
+
+# *DIGIT: word characters
+law oth_digits_end:
+  for +cs: List<&2, Char>
+  for h: {Laws.digits_end(cs) == True{} : Bool}
+  others(cs)
+
+def oth_digits_end(cs, h):
+  match cs:
+    case Nil{}:
+      Unit{}
+    case Con{+hd, +tl}:
+      when_el(Laws.digit(hd), Laws.digits_end(tl), False{}, others(hd <> tl), h,
+        ed => et => (oth_digit(hd, ed), oth_digits_end(tl, et)), ef => no(others(hd <> tl), ef))
+
+# 1*DIGIT: word characters
+law oth_digits1_end:
+  for +cs: List<&2, Char>
+  for h: {Laws.digits1_end(cs) == True{} : Bool}
+  others(cs)
+
+def oth_digits1_end(cs, h):
+  match cs:
+    case Nil{}:
+      no(others([]), h)
+    case Con{+hd, +tl}:
+      when_el(Laws.digit(hd), Laws.digits_end(tl), False{}, others(hd <> tl), h,
+        ed => et => (oth_digit(hd, ed), oth_digits_end(tl, et)), ef => no(others(hd <> tl), ef))
+
+# an exponent's body: word characters
+law oth_exp_body:
+  for +cs: List<&2, Char>
+  for h: {Laws.exp_body(cs) == True{} : Bool}
+  others(cs)
+
+def oth_exp_body(cs, h):
+  match cs:
+    case Nil{}:
+      no(others([]), h)
+    case Con{+hd, +tl}:
+      when_el(Laws.is_cp(hd, 43), Laws.digits1_end(tl), Laws.when(Laws.is_cp(hd, 45), Laws.digits1_end(tl),
+        Laws.when(Laws.digit(hd), Laws.digits_end(tl), False{})), others(hd <> tl), h,
+        ec => et => (oth_cp(hd, 43, ec, {==}), oth_digits1_end(tl, et)),
+        h2 => when_el(Laws.is_cp(hd, 45), Laws.digits1_end(tl), Laws.when(Laws.digit(hd), Laws.digits_end(tl),
+          False{}), others(hd <> tl), h2,
+          ec => et => (oth_cp(hd, 45, ec, {==}), oth_digits1_end(tl, et)),
+          h3 => when_el(Laws.digit(hd), Laws.digits_end(tl), False{}, others(hd <> tl), h3,
+            ed => et => (oth_digit(hd, ed), oth_digits_end(tl, et)), ef => no(others(hd <> tl), ef))))
+
+# frac's other digits, then an exponent: word characters
+law oth_digits_exp_end:
+  for +cs: List<&2, Char>
+  for h: {Laws.digits_exp_end(cs) == True{} : Bool}
+  others(cs)
+
+def oth_digits_exp_end(cs, h):
+  match cs:
+    case Nil{}:
+      Unit{}
+    case Con{+hd, +tl}:
+      when_el(Laws.digit(hd), Laws.digits_exp_end(tl), Laws.when(Laws.is_e(hd), Laws.exp_body(tl), False{}),
+        others(hd <> tl), h,
+        ed => et => (oth_digit(hd, ed), oth_digits_exp_end(tl, et)),
+        h2 => when_el(Laws.is_e(hd), Laws.exp_body(tl), False{}, others(hd <> tl), h2,
+          ee => et => (oth_e(hd, ee), oth_exp_body(tl, et)), ef => no(others(hd <> tl), ef)))
+
+# frac's body: word characters
+law oth_frac_body:
+  for +cs: List<&2, Char>
+  for h: {Laws.frac_body(cs) == True{} : Bool}
+  others(cs)
+
+def oth_frac_body(cs, h):
+  match cs:
+    case Nil{}:
+      no(others([]), h)
+    case Con{+hd, +tl}:
+      when_el(Laws.digit(hd), Laws.digits_exp_end(tl), False{}, others(hd <> tl), h,
+        ed => et => (oth_digit(hd, ed), oth_digits_exp_end(tl, et)), ef => no(others(hd <> tl), ef))
+
+# after an int of 0: word characters
+law oth_zero_rest:
+  for +cs: List<&2, Char>
+  for h: {Laws.zero_rest(cs) == True{} : Bool}
+  others(cs)
+
+def oth_zero_rest(cs, h):
+  match cs:
+    case Nil{}:
+      Unit{}
+    case Con{+hd, +tl}:
+      when_el(Laws.digit(hd), False{}, Laws.when(Laws.is_cp(hd, 46), Laws.frac_body(tl), Laws.when(Laws.is_e(hd),
+        Laws.exp_body(tl), False{})), others(hd <> tl), h,
+        _ed => ef => no(others(hd <> tl), ef),
+        h2 => when_el(Laws.is_cp(hd, 46), Laws.frac_body(tl), Laws.when(Laws.is_e(hd), Laws.exp_body(tl), False{}),
+          others(hd <> tl), h2,
+          ec => et => (oth_cp(hd, 46, ec, {==}), oth_frac_body(tl, et)),
+          h3 => when_el(Laws.is_e(hd), Laws.exp_body(tl), False{}, others(hd <> tl), h3,
+            ee => et => (oth_e(hd, ee), oth_exp_body(tl, et)), ef => no(others(hd <> tl), ef))))
+
+# after digit1-9: word characters
+law oth_digits_rest:
+  for +cs: List<&2, Char>
+  for h: {Laws.digits_rest(cs) == True{} : Bool}
+  others(cs)
+
+def oth_digits_rest(cs, h):
+  match cs:
+    case Nil{}:
+      Unit{}
+    case Con{+hd, +tl}:
+      when_el(Laws.digit(hd), Laws.digits_rest(tl), Laws.when(Laws.is_cp(hd, 46), Laws.frac_body(tl),
+        Laws.when(Laws.is_e(hd), Laws.exp_body(tl), False{})), others(hd <> tl), h,
+        ed => et => (oth_digit(hd, ed), oth_digits_rest(tl, et)),
+        h2 => when_el(Laws.is_cp(hd, 46), Laws.frac_body(tl), Laws.when(Laws.is_e(hd), Laws.exp_body(tl), False{}),
+          others(hd <> tl), h2,
+          ec => et => (oth_cp(hd, 46, ec, {==}), oth_frac_body(tl, et)),
+          h3 => when_el(Laws.is_e(hd), Laws.exp_body(tl), False{}, others(hd <> tl), h3,
+            ee => et => (oth_e(hd, ee), oth_exp_body(tl, et)), ef => no(others(hd <> tl), ef))))
+
+# int, then frac and exp: word characters
+law oth_int_end:
+  for +cs: List<&2, Char>
+  for h: {Laws.int_end(cs) == True{} : Bool}
+  others(cs)
+
+def oth_int_end(cs, h):
+  match cs:
+    case Nil{}:
+      no(others([]), h)
+    case Con{+hd, +tl}:
+      when_el(Laws.is_cp(hd, 48), Laws.zero_rest(tl), Laws.when(Laws.digit19(hd), Laws.digits_rest(tl), False{}),
+        others(hd <> tl),
+        h,
+        ec => et => (oth_cp(hd, 48, ec, {==}), oth_zero_rest(tl, et)),
+        h2 => when_el(Laws.digit19(hd), Laws.digits_rest(tl), False{}, others(hd <> tl), h2,
+          ed => et => (oth_digit19(hd, ed), oth_digits_rest(tl, et)), ef => no(others(hd <> tl), ef)))
+
+# a JSON number: word characters
+law oth_number:
+  for +cs: List<&2, Char>
+  for h: {Laws.number(cs) == True{} : Bool}
+  others(cs)
+
+def oth_number(cs, h):
+  match cs:
+    case Nil{}:
+      no(others([]), h)
+    case Con{+hd, +tl}:
+      when_el(Laws.is_cp(hd, 45), Laws.int_end(tl), Laws.int_end(hd <> tl), others(hd <> tl), h,
+        ec => et => (oth_cp(hd, 45, ec, {==}), oth_int_end(tl, et)),
+        ei => oth_int_end(hd <> tl, ei))
+
+# a word's characters, fed in Word mode, are pushed onto the buffer
+law run_word:
+  for +cs: List<&2, Char>
+  for hw: others(cs)
+  for +buf: List<&2, Char>
+  for +toks: List<&2, Lex.Tok>
+  {Lex.run(cs, Lex.Lex{Lex.Word{}, buf, toks}) ==
+    Lex.Lex{Lex.Word{}, List.reverse.go(&2, Char, cs, buf), toks} : Lex.Lex}
+
+def run_word(cs, hw, buf, toks):
+  match cs:
+    case Nil{}:
+      {==}
+    case Con{+hd, +tl}:
+      (hc, ht) = hw
+      Equal.trans(Lex.Lex, Lex.run(tl, Lex.feed(hd, Lex.Lex{Lex.Word{}, buf, toks})),
+        Lex.run(tl, Lex.Lex{Lex.Word{}, hd <> buf, toks}), Lex.Lex{Lex.Word{}, List.reverse.go(&2, Char, tl,
+          hd <> buf), toks},
+        Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(tl, xx), Lex.feed(hd, Lex.Lex{Lex.Word{}, buf, toks}),
+          Lex.Lex{Lex.Word{}, hd <> buf, toks}, feed_as(hd, Lex.Word{}, buf, toks, Lex.COther{}, hc)),
+        run_word(tl, ht, hd <> buf, toks))
+
+# a string's characters, listed then gathered, are the string
+law from_to:
+  for +txt: String
+  {String.from_list(String.to_list(txt)) == txt : String}
+
+def from_to(txt):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{hd, tl}:
+      Equal.cong(String, String, xx => SCon{hd, xx}, String.from_list(String.to_list(tl)), tl, from_to(tl))
+
+# a buffer of reversed characters, read back
+law text_revgo:
+  for +cs: List<&2, Char>
+  for +buf: List<&2, Char>
+  for +acc: String
+  {Lex.text.go(List.reverse.go(&2, Char, cs, buf), acc) == Lex.text.go(buf, String.from_list(cs) ++ acc) : String}
+
+def text_revgo(cs, buf, acc):
+  match cs:
+    case Nil{}:
+      {==}
+    case Con{+hd, +tl}:
+      text_revgo(tl, hd <> buf, acc)
+
+# a word's buffer reads back as the word
+law word_text:
+  for +raw: String
+  {Lex.text(List.reverse.go(&2, Char, String.to_list(raw), [])) == raw : String}
+
+def word_text(raw):
+  +fl = String.from_list(String.to_list(raw))
+  Equal.trans(String, Lex.text.go(List.reverse.go(&2, Char, String.to_list(raw), []), ""), fl ++ "", raw,
+    text_revgo(String.to_list(raw), [], ""),
+    Equal.trans(String, fl ++ "", fl, raw, append_nil(fl), from_to(raw)))
+
+# word characters, from between tokens, make a word
+law lex_word:
+  for +hd: Char
+  for +tl: List<&2, Char>
+  for hw: others(hd <> tl)
+  for +toks: List<&2, Lex.Tok>
+  {Lex.run(hd <> tl, Lex.Lex{Lex.Idle{}, [], toks}) ==
+    Lex.Lex{Lex.Word{}, List.reverse.go(&2, Char, hd <> tl, []), toks} : Lex.Lex}
+
+def lex_word(hd, tl, hw, toks):
+  (hc, ht) = hw
+  Equal.trans(Lex.Lex, Lex.run(tl, Lex.feed(hd, Lex.Lex{Lex.Idle{}, [], toks})),
+    Lex.run(tl, Lex.Lex{Lex.Word{}, [hd], toks}), Lex.Lex{Lex.Word{}, List.reverse.go(&2, Char, tl, [hd]), toks},
+    Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(tl, xx), Lex.feed(hd, Lex.Lex{Lex.Idle{}, [], toks}),
+      Lex.Lex{Lex.Word{}, [hd], toks}, feed_as(hd, Lex.Idle{}, [], toks, Lex.COther{}, hc)),
+    run_word(tl, ht, [hd], toks))
+
+# a JSON number's characters, from between tokens, make a word
+law lex_numl:
+  for +cs: List<&2, Char>
+  for hn: {Laws.number(cs) == True{} : Bool}
+  for +toks: List<&2, Lex.Tok>
+  {Lex.run(cs, Lex.Lex{Lex.Idle{}, [], toks}) == Lex.Lex{Lex.Word{}, List.reverse.go(&2, Char, cs, []), toks} : Lex.Lex}
+
+def lex_numl(cs, hn, toks):
+  match cs:
+    case Nil{}:
+      no({Lex.run([], Lex.Lex{Lex.Idle{}, [], toks}) == Lex.Lex{Lex.Word{}, [], toks} : Lex.Lex}, hn)
+    case Con{+hd, +tl}:
+      lex_word(hd, tl, oth_number(hd <> tl, hn), toks)
+
+# reversing onto an accumulator goes through an append
+law rev_app:
+  for +aa: List<&2, Lex.Tok>
+  for +bb: List<&2, Lex.Tok>
+  for +acc: List<&2, Lex.Tok>
+  {List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, aa, bb), acc) ==
+    List.reverse.go(&2, Lex.Tok, bb, List.reverse.go(&2, Lex.Tok, aa, acc)) : List<&2, Lex.Tok>}
+
+def rev_app(aa, bb, acc):
+  match aa:
+    case Nil{}:
+      {==}
+    case Con{+hd, +tl}:
+      rev_app(tl, bb, hd <> acc)
+
+# reversing twice gives back the list
+law rev_rev:
+  for +xs: List<&2, Lex.Tok>
+  for +acc: List<&2, Lex.Tok>
+  for +ys: List<&2, Lex.Tok>
+  {List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, xs, acc), ys) ==
+    List.reverse.go(&2, Lex.Tok, acc, List.append(&2, Lex.Tok, xs, ys)) : List<&2, Lex.Tok>}
+
+def rev_rev(xs, acc, ys):
+  match xs:
+    case Nil{}:
+      {==}
+    case Con{+hd, +tl}:
+      rev_rev(tl, hd <> acc, ys)
+
+# the lexer on two strings, where the first leads to a known state
+law seq:
+  for +aa: String
+  for +bb: String
+  for +st: Lex.Lex
+  for +mid: Lex.Lex
+  for e1: {Lex.run(String.to_list(aa), st) == mid : Lex.Lex}
+  {Lex.run(String.to_list(aa ++ bb), st) == Lex.run(String.to_list(bb), mid) : Lex.Lex}
+
+def seq(aa, bb, st, mid, e1):
+  Equal.trans(Lex.Lex, Lex.run(String.to_list(aa ++ bb), st), Lex.run(String.to_list(bb), Lex.run(String.to_list(aa),
+    st)),
+    Lex.run(String.to_list(bb), mid), run_app(aa, bb, st),
+    Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list(bb), xx), Lex.run(String.to_list(aa), st), mid, e1))
+
+# the tokens a value is, read straight off it: by shape, a value, an array's
+# cells, or an object's cells. Strings are fixed as print writes them
+def tj(val: V.Json, sh: V.Shape) -> List<&2, Lex.Tok>:
+  match val sh:
+    case V.JNull{} V.WVal{}:
+      [Lex.TWord{"null"}]
+    case V.JBool{True{}} V.WVal{}:
+      [Lex.TWord{"true"}]
+    case V.JBool{False{}} V.WVal{}:
+      [Lex.TWord{"false"}]
+    case V.JNum{raw} V.WVal{}:
+      [Lex.TWord{raw}]
+    case V.JStr{txt} V.WVal{}:
+      [Lex.TStr{fixs(String.to_list(txt))}]
+    case V.JSpan{src, +nn} V.WVal{}:
+      [Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))}]
+    case V.JArr{items} V.WVal{}:
+      Lex.TOpenArr{} <> List.append(&2, Lex.Tok, tj(items, V.WArr{}), [Lex.TCloseArr{}])
+    case V.JObj{pairs} V.WVal{}:
+      Lex.TOpenObj{} <> List.append(&2, Lex.Tok, tj(pairs, V.WObj{}), [Lex.TCloseObj{}])
+    case V.JNil{} V.WArr{}:
+      []
+    case V.JCons{hd, V.JNil{}} V.WArr{}:
+      tj(hd, V.WVal{})
+    case V.JCons{hd, tl} V.WArr{}:
+      List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(tl, V.WArr{}))
+    case V.JNil{} V.WObj{}:
+      []
+    case V.JPair{kk, vv, V.JNil{}} V.WObj{}:
+      Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <> tj(vv, V.WVal{})
+    case V.JPair{kk, vv, rr} V.WObj{}:
+      Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <>
+        List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(rr, V.WObj{}))
+    case V.JBind{src, +nn, vv, V.JNil{}} V.WObj{}:
+      Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> Lex.TColon{} <> tj(vv, V.WVal{})
+    case V.JBind{src, +nn, vv, rr} V.WObj{}:
+      Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> Lex.TColon{} <>
+        List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(rr, V.WObj{}))
+    case _ _:
+      []
+
+# the character lexer's state after a value's text, from between tokens: a
+# word still open, or the value's tokens pushed
+def pend(val: V.Json, acc: List<&2, Lex.Tok>) -> Lex.Lex:
+  match val:
+    case V.JNull{}:
+      Lex.Lex{Lex.Word{}, List.reverse.go(&2, Char, String.to_list("null"), []), acc}
+    case V.JBool{bb}:
+      match bb:
+        case True{}:
+          Lex.Lex{Lex.Word{}, List.reverse.go(&2, Char, String.to_list("true"), []), acc}
+        case False{}:
+          Lex.Lex{Lex.Word{}, List.reverse.go(&2, Char, String.to_list("false"), []), acc}
+    case V.JNum{raw}:
+      Lex.Lex{Lex.Word{}, List.reverse.go(&2, Char, String.to_list(raw), []), acc}
+    case V.JStr{a1}:
+      Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JStr{a1}, V.WVal{}), acc)}
+    case V.JArr{a1}:
+      Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JArr{a1}, V.WVal{}), acc)}
+    case V.JObj{a1}:
+      Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JObj{a1}, V.WVal{}), acc)}
+    case V.JNil{}:
+      Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JNil{}, V.WVal{}), acc)}
+    case V.JCons{a1, a2}:
+      Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JCons{a1, a2}, V.WVal{}), acc)}
+    case V.JPair{a1, a2, a3}:
+      Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JPair{a1, a2, a3}, V.WVal{}), acc)}
+    case V.JSpan{a1, a2}:
+      Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JSpan{a1, a2}, V.WVal{}), acc)}
+    case V.JBind{a1, a2, a3, a4}:
+      Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JBind{a1, a2, a3, a4}, V.WVal{}), acc)}
+
+# a punctuation character after a value's text pushes its tokens, then its own
+law close:
+  for +val: V.Json
+  for +ch: Char
+  for +tt: Lex.Tok
+  for ec: {Lex.classify(ch) == Lex.CPunct{tt} : Lex.Class}
+  for +acc: List<&2, Lex.Tok>
+  {Lex.feed(ch, pend(val, acc)) ==
+    Lex.Lex{Lex.Idle{}, [], tt <> List.reverse.go(&2, Lex.Tok, tj(val, V.WVal{}), acc)} : Lex.Lex}
+
+def close(val, ch, tt, ec, acc):
+  match val:
+    case V.JNull{}:
+      feed_as(ch, Lex.Word{}, List.reverse.go(&2, Char, String.to_list("null"), []), acc, Lex.CPunct{tt}, ec)
+    case V.JBool{bb}:
+      match bb:
+        case True{}:
+          feed_as(ch, Lex.Word{}, List.reverse.go(&2, Char, String.to_list("true"), []), acc, Lex.CPunct{tt}, ec)
+        case False{}:
+          feed_as(ch, Lex.Word{}, List.reverse.go(&2, Char, String.to_list("false"), []), acc, Lex.CPunct{tt}, ec)
+    case V.JNum{+raw}:
+      +bf = List.reverse.go(&2, Char, String.to_list(raw), [])
+      Equal.trans(Lex.Lex, Lex.feed(ch, Lex.Lex{Lex.Word{}, bf, acc}),
+        Lex.Lex{Lex.Idle{}, [], tt <> Lex.TWord{Lex.text(bf)} <> acc},
+        Lex.Lex{Lex.Idle{}, [], tt <> Lex.TWord{raw} <> acc},
+        feed_as(ch, Lex.Word{}, bf, acc, Lex.CPunct{tt}, ec),
+        Equal.cong(String, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], tt <> Lex.TWord{xx} <> acc}, Lex.text(bf), raw,
+          word_text(raw)))
+    case V.JStr{a1}:
+      feed_as(ch, Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JStr{a1}, V.WVal{}), acc), Lex.CPunct{tt}, ec)
+    case V.JArr{a1}:
+      feed_as(ch, Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JArr{a1}, V.WVal{}), acc), Lex.CPunct{tt}, ec)
+    case V.JObj{a1}:
+      feed_as(ch, Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JObj{a1}, V.WVal{}), acc), Lex.CPunct{tt}, ec)
+    case V.JNil{}:
+      feed_as(ch, Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JNil{}, V.WVal{}), acc), Lex.CPunct{tt}, ec)
+    case V.JCons{a1, a2}:
+      feed_as(ch, Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JCons{a1, a2}, V.WVal{}), acc), Lex.CPunct{tt}, ec)
+    case V.JPair{a1, a2, a3}:
+      feed_as(ch, Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JPair{a1, a2, a3}, V.WVal{}), acc), Lex.CPunct{tt},
+        ec)
+    case V.JSpan{a1, a2}:
+      feed_as(ch, Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JSpan{a1, a2}, V.WVal{}), acc), Lex.CPunct{tt}, ec)
+    case V.JBind{a1, a2, a3, a4}:
+      feed_as(ch, Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, tj(V.JBind{a1, a2, a3, a4}, V.WVal{}), acc),
+        Lex.CPunct{tt}, ec)
+
+# a true early exit: its test held
+law stop_l:
+  for aa: Bool
+  for -bb: Bool
+  for h: {Lazy.stop(Bool, Bool.not(aa), False{}, _u => bb) == True{} : Bool}
+  {aa == True{} : Bool}
+
+def stop_l(aa, _bb, h):
+  match aa:
+    case True{}:
+      {==}
+    case False{}:
+      Empty.absurd({False{} == True{} : Bool}, false_true(h))
+
+# a true early exit: the rest held
+law stop_r:
+  for aa: Bool
+  for -bb: Bool
+  for h: {Lazy.stop(Bool, Bool.not(aa), False{}, _u => bb) == True{} : Bool}
+  {bb == True{} : Bool}
+
+def stop_r(aa, bb, h):
+  match aa:
+    case True{}:
+      h
+    case False{}:
+      Empty.absurd({bb == True{} : Bool}, false_true(h))
+
+
+
+
+
+
+# what lexp says of a value by its shape: a value's text leads to pend; an
+# array's or object's cells, then the closing bracket, push their tokens
+def lg(+val: V.Json, sh: V.Shape, +acc: List<&2, Lex.Tok>) -> Type:
+  match sh:
+    case V.WVal{}:
+      {Lex.run(String.to_list(Print.print(val)), Lex.Lex{Lex.Idle{}, [], acc}) == pend(val, acc) : Lex.Lex}
+    case V.WArr{}:
+      {Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(val)), Lex.Lex{Lex.Idle{}, [], acc})) ==
+        Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(val, V.WArr{}), acc)} : Lex.Lex}
+    case V.WObj{}:
+      {Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(val)), Lex.Lex{Lex.Idle{}, [], acc})) ==
+        Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(val, V.WObj{}), acc)} : Lex.Lex}
+
+# lexp for a boolean
+law lexp_bool:
+  for bb: Bool
+  for +acc: List<&2, Lex.Tok>
+  lg(V.JBool{bb}, V.WVal{}, acc)
+
+def lexp_bool(bb, _acc):
+  match bb:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# lexp for an array cell, by what follows it
+law lexp_cons:
+  for tl: V.Json
+  for +hd: V.Json
+  for +h: {V.wf.go(V.JCons{hd, tl}, V.WArr{}) == True{} : Bool}
+  for +acc: List<&2, Lex.Tok>
+  for ih_hd: {V.wf.go(hd, V.WVal{}) == True{} : Bool} -> lg(hd, V.WVal{}, acc)
+  for ih_tl: {V.wf.go(tl, V.WArr{}) == True{} : Bool} -> lg(tl, V.WArr{}, Lex.TComma{} <> List.reverse.go(&2, Lex.Tok,
+    tj(hd, V.WVal{}), acc))
+  lg(V.JCons{hd, tl}, V.WArr{}, acc)
+
+def lexp_cons(tl, hd, h, acc, ih_hd, ih_tl):
+  match tl:
+    case V.JNil{}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JNil{}, V.WArr{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(hd)), Lex.Lex{Lex.Idle{},
+        [], acc})), Lex.run(String.to_list("]"), pend(hd, acc)), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}, Equal.cong(Lex.Lex, Lex.Lex,
+          xx => Lex.run(String.to_list("]"), xx), Lex.run(String.to_list(Print.print(hd)), Lex.Lex{Lex.Idle{}, [],
+          acc}), pend(hd, acc), ih_hd(hd_ok)), close(hd, ']', Lex.TCloseArr{}, {==}, acc))
+    case V.JNull{}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JNull{}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JNull{}, V.WArr{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("]"),
+        Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JNull{}))), Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JNull{}}, V.WArr{}), acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("]"), xx),
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JNull{}))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JNull{}))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JNull{})), pend(hd, acc)),
+          Lex.run(String.to_list(Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}), seq(Print.print(hd), "," ++ Print.print(V.JNull{}), Lex.Lex{Lex.Idle{},
+          [], acc}, pend(hd, acc), ih_hd(hd_ok)), seq(",", Print.print(V.JNull{}), pend(hd, acc), Lex.Lex{Lex.Idle{},
+          [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}, close(hd, ',', Lex.TComma{}, {==},
+          acc)))), Equal.trans(Lex.Lex, Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JNull{})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JNull{}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JNull{}}, V.WArr{}), acc)}, ih_tl(tl_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd,
+          V.JNull{}}, V.WArr{}), acc)}, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JNull{}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JNull{},
+          V.WArr{})), acc), List.reverse.go(&2, Lex.Tok, tj(V.JNull{}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)), rev_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JNull{}, V.WArr{}), acc)))))
+    case V.JBool{+t1}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JBool{t1}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JBool{t1}, V.WArr{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("]"),
+        Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JBool{t1}))), Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JBool{t1}}, V.WArr{}), acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("]"), xx),
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JBool{t1}))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JBool{t1}))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JBool{t1})), pend(hd, acc)),
+          Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}), seq(Print.print(hd), "," ++ Print.print(V.JBool{t1}), Lex.Lex{Lex.Idle{},
+          [], acc}, pend(hd, acc), ih_hd(hd_ok)), seq(",", Print.print(V.JBool{t1}), pend(hd, acc), Lex.Lex{Lex.Idle{},
+          [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}, close(hd, ',', Lex.TComma{}, {==},
+          acc)))), Equal.trans(Lex.Lex, Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JBool{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JBool{t1}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JBool{t1}}, V.WArr{}), acc)}, ih_tl(tl_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd,
+          V.JBool{t1}}, V.WArr{}), acc)}, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JBool{t1}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JBool{t1},
+          V.WArr{})), acc), List.reverse.go(&2, Lex.Tok, tj(V.JBool{t1}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)), rev_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JBool{t1}, V.WArr{}),
+          acc)))))
+    case V.JNum{+t1}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JNum{t1}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JNum{t1}, V.WArr{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("]"),
+        Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JNum{t1}))), Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JNum{t1}}, V.WArr{}), acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("]"), xx),
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JNum{t1}))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JNum{t1}))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JNum{t1})), pend(hd, acc)),
+          Lex.run(String.to_list(Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}), seq(Print.print(hd), "," ++ Print.print(V.JNum{t1}), Lex.Lex{Lex.Idle{},
+          [], acc}, pend(hd, acc), ih_hd(hd_ok)), seq(",", Print.print(V.JNum{t1}), pend(hd, acc), Lex.Lex{Lex.Idle{},
+          [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}, close(hd, ',', Lex.TComma{}, {==},
+          acc)))), Equal.trans(Lex.Lex, Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JNum{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JNum{t1}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JNum{t1}}, V.WArr{}), acc)}, ih_tl(tl_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd,
+          V.JNum{t1}}, V.WArr{}), acc)}, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JNum{t1}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JNum{t1},
+          V.WArr{})), acc), List.reverse.go(&2, Lex.Tok, tj(V.JNum{t1}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)), rev_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JNum{t1}, V.WArr{}), acc)))))
+    case V.JStr{+t1}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JStr{t1}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JStr{t1}, V.WArr{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("]"),
+        Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JStr{t1}))), Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JStr{t1}}, V.WArr{}), acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("]"), xx),
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JStr{t1}))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JStr{t1}))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JStr{t1})), pend(hd, acc)),
+          Lex.run(String.to_list(Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}), seq(Print.print(hd), "," ++ Print.print(V.JStr{t1}), Lex.Lex{Lex.Idle{},
+          [], acc}, pend(hd, acc), ih_hd(hd_ok)), seq(",", Print.print(V.JStr{t1}), pend(hd, acc), Lex.Lex{Lex.Idle{},
+          [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}, close(hd, ',', Lex.TComma{}, {==},
+          acc)))), Equal.trans(Lex.Lex, Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JStr{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JStr{t1}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JStr{t1}}, V.WArr{}), acc)}, ih_tl(tl_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd,
+          V.JStr{t1}}, V.WArr{}), acc)}, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JStr{t1}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JStr{t1},
+          V.WArr{})), acc), List.reverse.go(&2, Lex.Tok, tj(V.JStr{t1}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)), rev_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JStr{t1}, V.WArr{}), acc)))))
+    case V.JArr{+t1}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JArr{t1}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JArr{t1}, V.WArr{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("]"),
+        Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JArr{t1}))), Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JArr{t1}}, V.WArr{}), acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("]"), xx),
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JArr{t1}))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JArr{t1}))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JArr{t1})), pend(hd, acc)),
+          Lex.run(String.to_list(Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}), seq(Print.print(hd), "," ++ Print.print(V.JArr{t1}), Lex.Lex{Lex.Idle{},
+          [], acc}, pend(hd, acc), ih_hd(hd_ok)), seq(",", Print.print(V.JArr{t1}), pend(hd, acc), Lex.Lex{Lex.Idle{},
+          [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}, close(hd, ',', Lex.TComma{}, {==},
+          acc)))), Equal.trans(Lex.Lex, Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JArr{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JArr{t1}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JArr{t1}}, V.WArr{}), acc)}, ih_tl(tl_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd,
+          V.JArr{t1}}, V.WArr{}), acc)}, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JArr{t1}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JArr{t1},
+          V.WArr{})), acc), List.reverse.go(&2, Lex.Tok, tj(V.JArr{t1}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)), rev_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JArr{t1}, V.WArr{}), acc)))))
+    case V.JObj{+t1}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JObj{t1}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JObj{t1}, V.WArr{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("]"),
+        Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JObj{t1}))), Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JObj{t1}}, V.WArr{}), acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("]"), xx),
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JObj{t1}))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JObj{t1}))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JObj{t1})), pend(hd, acc)),
+          Lex.run(String.to_list(Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}), seq(Print.print(hd), "," ++ Print.print(V.JObj{t1}), Lex.Lex{Lex.Idle{},
+          [], acc}, pend(hd, acc), ih_hd(hd_ok)), seq(",", Print.print(V.JObj{t1}), pend(hd, acc), Lex.Lex{Lex.Idle{},
+          [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}, close(hd, ',', Lex.TComma{}, {==},
+          acc)))), Equal.trans(Lex.Lex, Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JObj{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JObj{t1}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JObj{t1}}, V.WArr{}), acc)}, ih_tl(tl_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd,
+          V.JObj{t1}}, V.WArr{}), acc)}, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JObj{t1}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JObj{t1},
+          V.WArr{})), acc), List.reverse.go(&2, Lex.Tok, tj(V.JObj{t1}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)), rev_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JObj{t1}, V.WArr{}), acc)))))
+    case V.JCons{+t1, +t2}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JCons{t1, t2}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JCons{t1, t2}, V.WArr{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("]"),
+        Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JCons{t1, t2}))), Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JCons{t1,
+        t2})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JCons{t1, t2}},
+          V.WArr{}), acc)}, Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("]"), xx),
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JCons{t1, t2}))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JCons{t1, t2}))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list("," ++ Print.print(V.JCons{t1, t2})), pend(hd, acc)),
+          Lex.run(String.to_list(Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}), seq(Print.print(hd),
+          "," ++ Print.print(V.JCons{t1, t2}), Lex.Lex{Lex.Idle{}, [], acc}, pend(hd, acc), ih_hd(hd_ok)), seq(",",
+          Print.print(V.JCons{t1, t2}), pend(hd, acc), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}, close(hd, ',', Lex.TComma{}, {==}, acc)))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{t1, t2}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JCons{t1, t2}}, V.WArr{}), acc)},
+          ih_tl(tl_ok), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JCons{hd, V.JCons{t1, t2}}, V.WArr{}), acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{t1, t2}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Equal.cong(List<&2, Lex.Tok>, Lex.Lex,
+          xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> xx}, List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+          tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WArr{})), acc), List.reverse.go(&2, Lex.Tok,
+          tj(V.JCons{t1, t2}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)),
+          rev_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WArr{}), acc)))))
+    case V.JPair{+t1, +t2, +t3}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JPair{t1, t2, t3}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JPair{t1, t2, t3}, V.WArr{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("]"),
+        Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JPair{t1, t2, t3}))), Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JPair{t1, t2,
+        t3})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JPair{t1, t2, t3}},
+          V.WArr{}), acc)}, Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("]"), xx),
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JPair{t1, t2, t3}))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JPair{t1, t2, t3}))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list("," ++ Print.print(V.JPair{t1, t2, t3})), pend(hd, acc)),
+          Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}), seq(Print.print(hd),
+          "," ++ Print.print(V.JPair{t1, t2, t3}), Lex.Lex{Lex.Idle{}, [], acc}, pend(hd, acc), ih_hd(hd_ok)), seq(",",
+          Print.print(V.JPair{t1, t2, t3}), pend(hd, acc), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}, close(hd, ',', Lex.TComma{}, {==}, acc)))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{},
+          [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JPair{t1, t2, t3}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JPair{t1, t2, t3}}, V.WArr{}), acc)},
+          ih_tl(tl_ok), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JCons{hd, V.JPair{t1, t2, t3}}, V.WArr{}), acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JPair{t1, t2, t3}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Equal.cong(List<&2, Lex.Tok>, Lex.Lex,
+          xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> xx}, List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+          tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WArr{})), acc), List.reverse.go(&2, Lex.Tok,
+          tj(V.JPair{t1, t2, t3}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)),
+          rev_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WArr{}), acc)))))
+    case V.JSpan{+t1, +t2}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JSpan{t1, t2}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JSpan{t1, t2}, V.WArr{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("]"),
+        Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JSpan{t1, t2}))), Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JSpan{t1,
+        t2})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JSpan{t1, t2}},
+          V.WArr{}), acc)}, Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("]"), xx),
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JSpan{t1, t2}))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JSpan{t1, t2}))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list("," ++ Print.print(V.JSpan{t1, t2})), pend(hd, acc)),
+          Lex.run(String.to_list(Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}), seq(Print.print(hd),
+          "," ++ Print.print(V.JSpan{t1, t2}), Lex.Lex{Lex.Idle{}, [], acc}, pend(hd, acc), ih_hd(hd_ok)), seq(",",
+          Print.print(V.JSpan{t1, t2}), pend(hd, acc), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(hd, V.WVal{}), acc)}, close(hd, ',', Lex.TComma{}, {==}, acc)))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JSpan{t1, t2}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JSpan{t1, t2}}, V.WArr{}), acc)},
+          ih_tl(tl_ok), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JCons{hd, V.JSpan{t1, t2}}, V.WArr{}), acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JSpan{t1, t2}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Equal.cong(List<&2, Lex.Tok>, Lex.Lex,
+          xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> xx}, List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+          tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WArr{})), acc), List.reverse.go(&2, Lex.Tok,
+          tj(V.JSpan{t1, t2}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)),
+          rev_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WArr{}), acc)))))
+    case V.JBind{+t1, +t2, +t3, +t4}:
+      hd_ok = stop_l(V.wf.go(hd, V.WVal{}), V.wf.go(V.JBind{t1, t2, t3, t4}, V.WArr{}), h)
+      tl_ok = stop_r(V.wf.go(hd, V.WVal{}), V.wf.go(V.JBind{t1, t2, t3, t4}, V.WArr{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("]"),
+        Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4}))), Lex.Lex{Lex.Idle{},
+        [], acc})), Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3,
+        t4})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JBind{t1, t2, t3,
+          t4}}, V.WArr{}), acc)}, Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("]"), xx),
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4}))), Lex.Lex{Lex.Idle{},
+          [], acc}), Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(hd) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4}))), Lex.Lex{Lex.Idle{},
+          [], acc}), Lex.run(String.to_list("," ++ Print.print(V.JBind{t1, t2, t3, t4})), pend(hd, acc)),
+          Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}), seq(Print.print(hd),
+          "," ++ Print.print(V.JBind{t1, t2, t3, t4}), Lex.Lex{Lex.Idle{}, [], acc}, pend(hd, acc), ih_hd(hd_ok)),
+          seq(",", Print.print(V.JBind{t1, t2, t3, t4}), pend(hd, acc), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)}, close(hd, ',', Lex.TComma{}, {==},
+          acc)))), Equal.trans(Lex.Lex, Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(V.JBind{t1, t2,
+          t3, t4})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JBind{t1, t2, t3, t4},
+          V.WArr{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{hd, V.JBind{t1, t2, t3, t4}}, V.WArr{}), acc)},
+          ih_tl(tl_ok), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JCons{hd, V.JBind{t1, t2, t3, t4}}, V.WArr{}), acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(V.JBind{t1, t2, t3, t4}, V.WArr{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc))}, Equal.cong(List<&2, Lex.Tok>, Lex.Lex,
+          xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> xx}, List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+          tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WArr{})), acc), List.reverse.go(&2, Lex.Tok,
+          tj(V.JBind{t1, t2, t3, t4}, V.WArr{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)),
+          rev_app(tj(hd, V.WVal{}), Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WArr{}), acc)))))
+
+# lexp for an object cell, by what follows it
+law lexp_pair:
+  for rr: V.Json
+  for +kk: String
+  for +vv: V.Json
+  for +h: {V.wf.go(V.JPair{kk, vv, rr}, V.WObj{}) == True{} : Bool}
+  for +acc: List<&2, Lex.Tok>
+  for ih_v: {V.wf.go(vv, V.WVal{}) == True{} : Bool} -> lg(vv, V.WVal{},
+    Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)
+  for ih_r: {V.wf.go(rr, V.WObj{}) == True{} : Bool} -> lg(rr, V.WObj{}, Lex.TComma{} <> List.reverse.go(&2, Lex.Tok,
+    tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))
+  lg(V.JPair{kk, vv, rr}, V.WObj{}, acc)
+
+def lexp_pair(rr, kk, vv, h, acc, ih_v, ih_r):
+  match rr:
+    case V.JNil{}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNil{}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+        Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ Print.print(vv))), Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("}"), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Equal.cong(Lex.Lex, Lex.Lex,
+          xx => Lex.run(String.to_list("}"), xx), Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ Print.print(vv))),
+          Lex.Lex{Lex.Idle{}, [], acc}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ Print.print(vv))), Lex.Lex{Lex.Idle{},
+          [], acc}), Lex.run(String.to_list(":" ++ Print.print(vv)), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), seq(Print.quote(kk), ":" ++ Print.print(vv),
+          Lex.Lex{Lex.Idle{}, [], acc}, Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc},
+          lex_quote(kk, acc)), Equal.trans(Lex.Lex, Lex.run(String.to_list(":" ++ Print.print(vv)), Lex.Lex{Lex.Idle{},
+          [], Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(vv)), Lex.Lex{Lex.Idle{},
+          [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), seq(":", Print.print(vv), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, {==}), ih_v(v_ok)))), close(vv, '}',
+          Lex.TCloseObj{}, {==}, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))
+    case V.JNull{}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNull{}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNull{}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+        Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNull{}))))),
+        Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JNull{}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNull{}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNull{}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNull{})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JNull{})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.quote(kk),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNull{}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}, lex_quote(kk, acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNull{})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JNull{}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JNull{})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JNull{}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JNull{})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), Lex.run(String.to_list(Print.print(V.JNull{})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.print(vv),
+          "," ++ Print.print(V.JNull{}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), ih_v(v_ok)), seq(",", Print.print(V.JNull{}),
+          pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, close(vv, ',', Lex.TComma{}, {==},
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JNull{}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Lex.Lex{Lex.Idle{},
+          [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JNull{}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          ih_r(r_ok), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNull{}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JNull{}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Equal.cong(List<&2,
+          Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx}, List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNull{}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), List.reverse.go(&2, Lex.Tok, tj(V.JNull{},
+          V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), rev_app(tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JNull{}, V.WObj{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))
+    case V.JBool{+t1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBool{t1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBool{t1}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+        Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1}))))),
+        Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1})))), Lex.Lex{Lex.Idle{},
+          [], Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JBool{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.quote(kk),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}, lex_quote(kk, acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1})))), Lex.Lex{Lex.Idle{},
+          [], Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JBool{t1})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)),
+          Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.print(vv),
+          "," ++ Print.print(V.JBool{t1}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), ih_v(v_ok)), seq(",", Print.print(V.JBool{t1}),
+          pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, close(vv, ',', Lex.TComma{}, {==},
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JBool{t1}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          ih_r(r_ok), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JBool{t1}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Equal.cong(List<&2, Lex.Tok>, Lex.Lex,
+          xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx}, List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+          tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), List.reverse.go(&2, Lex.Tok, tj(V.JBool{t1},
+          V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), rev_app(tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))
+    case V.JNum{+t1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNum{t1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNum{t1}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+        Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1}))))),
+        Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JNum{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.quote(kk),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}, lex_quote(kk, acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JNum{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JNum{t1})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), Lex.run(String.to_list(Print.print(V.JNum{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.print(vv),
+          "," ++ Print.print(V.JNum{t1}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), ih_v(v_ok)), seq(",", Print.print(V.JNum{t1}),
+          pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, close(vv, ',', Lex.TComma{}, {==},
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JNum{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Lex.Lex{Lex.Idle{},
+          [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          ih_r(r_ok), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JNum{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Equal.cong(List<&2,
+          Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx}, List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), List.reverse.go(&2, Lex.Tok, tj(V.JNum{t1},
+          V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), rev_app(tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))
+    case V.JStr{+t1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JStr{t1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JStr{t1}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+        Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1}))))),
+        Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JStr{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.quote(kk),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}, lex_quote(kk, acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JStr{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JStr{t1})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), Lex.run(String.to_list(Print.print(V.JStr{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.print(vv),
+          "," ++ Print.print(V.JStr{t1}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), ih_v(v_ok)), seq(",", Print.print(V.JStr{t1}),
+          pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, close(vv, ',', Lex.TComma{}, {==},
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JStr{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Lex.Lex{Lex.Idle{},
+          [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          ih_r(r_ok), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JStr{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Equal.cong(List<&2,
+          Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx}, List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), List.reverse.go(&2, Lex.Tok, tj(V.JStr{t1},
+          V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), rev_app(tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))
+    case V.JArr{+t1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JArr{t1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JArr{t1}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+        Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1}))))),
+        Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JArr{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.quote(kk),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}, lex_quote(kk, acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JArr{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JArr{t1})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), Lex.run(String.to_list(Print.print(V.JArr{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.print(vv),
+          "," ++ Print.print(V.JArr{t1}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), ih_v(v_ok)), seq(",", Print.print(V.JArr{t1}),
+          pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, close(vv, ',', Lex.TComma{}, {==},
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JArr{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Lex.Lex{Lex.Idle{},
+          [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          ih_r(r_ok), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JArr{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Equal.cong(List<&2,
+          Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx}, List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), List.reverse.go(&2, Lex.Tok, tj(V.JArr{t1},
+          V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), rev_app(tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))
+    case V.JObj{+t1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JObj{t1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JObj{t1}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+        Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1}))))),
+        Lex.Lex{Lex.Idle{}, [],
+        acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JObj{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.quote(kk),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}, lex_quote(kk, acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JObj{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JObj{t1})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), Lex.run(String.to_list(Print.print(V.JObj{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.print(vv),
+          "," ++ Print.print(V.JObj{t1}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), ih_v(v_ok)), seq(",", Print.print(V.JObj{t1}),
+          pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, close(vv, ',', Lex.TComma{}, {==},
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JObj{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Lex.Lex{Lex.Idle{},
+          [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          ih_r(r_ok), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JObj{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Equal.cong(List<&2,
+          Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx}, List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), List.reverse.go(&2, Lex.Tok, tj(V.JObj{t1},
+          V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), rev_app(tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))
+    case V.JCons{+t1, +t2}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JCons{t1, t2}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JCons{t1, t2}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+        Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2}))))),
+        Lex.Lex{Lex.Idle{}, [], acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JCons{t1,
+        t2})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1,
+          t2}))))), Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JCons{t1, t2})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1,
+          t2}))))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.quote(kk),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}, lex_quote(kk, acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JCons{t1,
+          t2})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JCons{t1, t2})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), Lex.run(String.to_list(Print.print(V.JCons{t1,
+          t2})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.print(vv),
+          "," ++ Print.print(V.JCons{t1, t2}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), ih_v(v_ok)), seq(",", Print.print(V.JCons{t1,
+          t2}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, close(vv, ',', Lex.TComma{}, {==},
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{t1, t2}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          ih_r(r_ok), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{t1, t2}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Equal.cong(List<&2, Lex.Tok>, Lex.Lex,
+          xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx}, List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+          tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), List.reverse.go(&2, Lex.Tok, tj(V.JCons{t1, t2},
+          V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), rev_app(tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WObj{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))
+    case V.JPair{+t1, +t2, +t3}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JPair{t1, t2, t3}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JPair{t1, t2, t3}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+        Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2,
+        t3}))))), Lex.Lex{Lex.Idle{}, [], acc})), Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Equal.cong(Lex.Lex, Lex.Lex,
+          xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2,
+          t3}))))), Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2,
+          t3}))))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.quote(kk),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}, lex_quote(kk, acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JPair{t1,
+          t2, t3})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JPair{t1, t2, t3})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), Lex.run(String.to_list(Print.print(V.JPair{t1,
+          t2, t3})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.print(vv),
+          "," ++ Print.print(V.JPair{t1, t2, t3}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), ih_v(v_ok)), seq(",", Print.print(V.JPair{t1, t2,
+          t3}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, close(vv, ',', Lex.TComma{}, {==},
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{},
+          [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JPair{t1, t2, t3}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, ih_r(r_ok), Equal.sym(Lex.Lex,
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JPair{t1, t2, t3}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Equal.cong(List<&2, Lex.Tok>, Lex.Lex,
+          xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx}, List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+          tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), List.reverse.go(&2, Lex.Tok, tj(V.JPair{t1, t2,
+          t3}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), rev_app(tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WObj{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))
+    case V.JSpan{+t1, +t2}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JSpan{t1, t2}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JSpan{t1, t2}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+        Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2}))))),
+        Lex.Lex{Lex.Idle{}, [], acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JSpan{t1,
+        t2})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1,
+          t2}))))), Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JSpan{t1, t2})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1,
+          t2}))))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.quote(kk),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}, lex_quote(kk, acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}), Lex.run(String.to_list(Print.print(V.JSpan{t1,
+          t2})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JSpan{t1, t2})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), Lex.run(String.to_list(Print.print(V.JSpan{t1,
+          t2})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.print(vv),
+          "," ++ Print.print(V.JSpan{t1, t2}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), ih_v(v_ok)), seq(",", Print.print(V.JSpan{t1,
+          t2}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, close(vv, ',', Lex.TComma{}, {==},
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JSpan{t1, t2}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)},
+          ih_r(r_ok), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JSpan{t1, t2}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Equal.cong(List<&2, Lex.Tok>, Lex.Lex,
+          xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx}, List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+          tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), List.reverse.go(&2, Lex.Tok, tj(V.JSpan{t1, t2},
+          V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), rev_app(tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WObj{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))
+    case V.JBind{+t1, +t2, +t3, +t4}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBind{t1, t2, t3, t4}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBind{t1, t2, t3, t4}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+        Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3,
+        t4}))))), Lex.Lex{Lex.Idle{}, [], acc})), Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Equal.cong(Lex.Lex, Lex.Lex,
+          xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3,
+          t4}))))), Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.quote(kk) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3,
+          t4}))))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.quote(kk),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}, lex_quote(kk, acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4}))), Lex.Lex{Lex.Idle{},
+          [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(kk))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4}))), Lex.Lex{Lex.Idle{},
+          [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JBind{t1, t2, t3, t4})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), Lex.run(String.to_list(Print.print(V.JBind{t1,
+          t2, t3, t4})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}), seq(Print.print(vv),
+          "," ++ Print.print(V.JBind{t1, t2, t3, t4}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), ih_v(v_ok)), seq(",", Print.print(V.JBind{t1, t2,
+          t3, t4}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, close(vv, ',', Lex.TComma{}, {==},
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JBind{t1, t2, t3, t4}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, ih_r(r_ok), Equal.sym(Lex.Lex,
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JBind{t1, t2, t3, t4}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc))}, Equal.cong(List<&2, Lex.Tok>, Lex.Lex,
+          xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx}, List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+          tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), List.reverse.go(&2, Lex.Tok, tj(V.JBind{t1, t2,
+          t3, t4}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)), rev_app(tj(vv, V.WVal{}),
+          Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WObj{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))))
+
+# lexp for an object cell with a span key, by what follows it
+law lexp_bind:
+  for rr: V.Json
+  for +src: String
+  for +nn: U32
+  for +vv: V.Json
+  for +h: {V.wf.go(V.JBind{src, nn, vv, rr}, V.WObj{}) == True{} : Bool}
+  for +acc: List<&2, Lex.Tok>
+  for ih_v: {V.wf.go(vv, V.WVal{}) == True{} : Bool} -> lg(vv, V.WVal{},
+    Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)
+  for ih_r: {V.wf.go(rr, V.WObj{}) == True{} : Bool} -> lg(rr, V.WObj{}, Lex.TComma{} <> List.reverse.go(&2, Lex.Tok,
+    tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))
+  lg(V.JBind{src, nn, vv, rr}, V.WObj{}, acc)
+
+def lexp_bind(rr, src, nn, vv, h, acc, ih_v, ih_r):
+  match rr:
+    case V.JNil{}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNil{}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+        U32.is_zero(nn))) ++ (":" ++ Print.print(vv))), Lex.Lex{Lex.Idle{}, [], acc})), Lex.run(String.to_list("}"),
+          pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(V.span.str(src, nn, U32.is_zero(nn))) ++ (":" ++ Print.print(vv))),
+          Lex.Lex{Lex.Idle{}, [], acc}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc), Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ Print.print(vv))), Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ Print.print(vv)), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc),
+          seq(Print.quote(V.span.str(src, nn, U32.is_zero(nn))), ":" ++ Print.print(vv), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          lex_quote(V.span.str(src, nn, U32.is_zero(nn)), acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ Print.print(vv)), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv)), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc), seq(":",
+          Print.print(vv), Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, {==}),
+          ih_v(v_ok)))), close(vv, '}', Lex.TCloseObj{}, {==},
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))
+    case V.JNull{}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNull{}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNull{}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+        U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNull{}))))), Lex.Lex{Lex.Idle{}, [],
+          acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JNull{}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNull{}))))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNull{}))))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNull{})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(Print.quote(V.span.str(src, nn, U32.is_zero(nn))),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNull{}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          lex_quote(V.span.str(src, nn, U32.is_zero(nn)), acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNull{})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JNull{}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(":", Print.print(vv) ++ ("," ++ Print.print(V.JNull{})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JNull{}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JNull{})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          Lex.run(String.to_list(Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(Print.print(vv), "," ++ Print.print(V.JNull{}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc), ih_v(v_ok)),
+          seq(",", Print.print(V.JNull{}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          close(vv, ',', Lex.TComma{}, {==}, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)))))), Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JNull{})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)})), Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JNull{}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JNull{}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}, ih_r(r_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNull{}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JNull{}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNull{},
+          V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc),
+          List.reverse.go(&2, Lex.Tok, tj(V.JNull{}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          rev_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNull{}, V.WObj{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)))))
+    case V.JBool{+t1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBool{t1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBool{t1}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+        U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{},
+          [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1}))))), Lex.Lex{Lex.Idle{},
+          [], acc}), Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1}))))), Lex.Lex{Lex.Idle{},
+          [], acc}), Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(Print.quote(V.span.str(src, nn, U32.is_zero(nn))),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          lex_quote(V.span.str(src, nn, U32.is_zero(nn)), acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1})))), Lex.Lex{Lex.Idle{},
+          [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(":", Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JBool{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JBool{t1})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(Print.print(vv), "," ++ Print.print(V.JBool{t1}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc), ih_v(v_ok)),
+          seq(",", Print.print(V.JBool{t1}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          close(vv, ',', Lex.TComma{}, {==}, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)))))), Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JBool{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)})), Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JBool{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}, ih_r(r_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JBool{t1}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBool{t1},
+          V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc),
+          List.reverse.go(&2, Lex.Tok, tj(V.JBool{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          rev_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)))))
+    case V.JNum{+t1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNum{t1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JNum{t1}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+        U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(Print.quote(V.span.str(src, nn, U32.is_zero(nn))),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          lex_quote(V.span.str(src, nn, U32.is_zero(nn)), acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(":", Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JNum{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JNum{t1})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          Lex.run(String.to_list(Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(Print.print(vv), "," ++ Print.print(V.JNum{t1}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc), ih_v(v_ok)),
+          seq(",", Print.print(V.JNum{t1}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          close(vv, ',', Lex.TComma{}, {==}, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)))))), Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JNum{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)})), Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JNum{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}, ih_r(r_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JNum{t1}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNum{t1},
+          V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc),
+          List.reverse.go(&2, Lex.Tok, tj(V.JNum{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          rev_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)))))
+    case V.JStr{+t1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JStr{t1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JStr{t1}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+        U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(Print.quote(V.span.str(src, nn, U32.is_zero(nn))),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          lex_quote(V.span.str(src, nn, U32.is_zero(nn)), acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(":", Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JStr{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JStr{t1})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          Lex.run(String.to_list(Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(Print.print(vv), "," ++ Print.print(V.JStr{t1}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc), ih_v(v_ok)),
+          seq(",", Print.print(V.JStr{t1}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          close(vv, ',', Lex.TComma{}, {==}, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)))))), Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JStr{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)})), Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JStr{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}, ih_r(r_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JStr{t1}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JStr{t1},
+          V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc),
+          List.reverse.go(&2, Lex.Tok, tj(V.JStr{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          rev_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)))))
+    case V.JArr{+t1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JArr{t1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JArr{t1}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+        U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(Print.quote(V.span.str(src, nn, U32.is_zero(nn))),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          lex_quote(V.span.str(src, nn, U32.is_zero(nn)), acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(":", Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JArr{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JArr{t1})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          Lex.run(String.to_list(Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(Print.print(vv), "," ++ Print.print(V.JArr{t1}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc), ih_v(v_ok)),
+          seq(",", Print.print(V.JArr{t1}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          close(vv, ',', Lex.TComma{}, {==}, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)))))), Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JArr{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)})), Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JArr{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}, ih_r(r_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JArr{t1}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JArr{t1},
+          V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc),
+          List.reverse.go(&2, Lex.Tok, tj(V.JArr{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          rev_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)))))
+    case V.JObj{+t1}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JObj{t1}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JObj{t1}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+        U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc})), Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1}))))), Lex.Lex{Lex.Idle{}, [],
+          acc}), Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(Print.quote(V.span.str(src, nn, U32.is_zero(nn))),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          lex_quote(V.span.str(src, nn, U32.is_zero(nn)), acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1})))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(":", Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc}, {==}), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JObj{t1}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list("," ++ Print.print(V.JObj{t1})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          Lex.run(String.to_list(Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)}), seq(Print.print(vv), "," ++ Print.print(V.JObj{t1}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc), ih_v(v_ok)),
+          seq(",", Print.print(V.JObj{t1}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          close(vv, ',', Lex.TComma{}, {==}, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)))))), Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JObj{t1})), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)})), Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok,
+          tj(V.JObj{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}, ih_r(r_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JObj{t1}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JObj{t1},
+          V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc),
+          List.reverse.go(&2, Lex.Tok, tj(V.JObj{t1}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          rev_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)))))
+    case V.JCons{+t1, +t2}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JCons{t1, t2}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JCons{t1, t2}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+        U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1,
+        t2}))))), Lex.Lex{Lex.Idle{}, [], acc})), Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          seq(Print.quote(V.span.str(src, nn, U32.is_zero(nn))),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          lex_quote(V.span.str(src, nn, U32.is_zero(nn)), acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, {==}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JCons{t1, t2}))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc}), Lex.run(String.to_list("," ++ Print.print(V.JCons{t1, t2})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          Lex.run(String.to_list(Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          seq(Print.print(vv), "," ++ Print.print(V.JCons{t1, t2}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc), ih_v(v_ok)),
+          seq(",", Print.print(V.JCons{t1, t2}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src,
+          nn, U32.is_zero(nn))))} <> acc), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          close(vv, ',', Lex.TComma{}, {==}, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)))))), Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JCons{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{t1, t2}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}, ih_r(r_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JCons{t1, t2}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JCons{t1, t2},
+          V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc),
+          List.reverse.go(&2, Lex.Tok, tj(V.JCons{t1, t2}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok,
+          tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)), rev_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WObj{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)))))
+    case V.JPair{+t1, +t2, +t3}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JPair{t1, t2, t3}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JPair{t1, t2, t3}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+        U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2,
+        t3}))))), Lex.Lex{Lex.Idle{}, [], acc})), Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{},
+          [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          seq(Print.quote(V.span.str(src, nn, U32.is_zero(nn))),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          lex_quote(V.span.str(src, nn, U32.is_zero(nn)), acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, {==}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JPair{t1, t2, t3}))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc}), Lex.run(String.to_list("," ++ Print.print(V.JPair{t1, t2, t3})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          seq(Print.print(vv), "," ++ Print.print(V.JPair{t1, t2, t3}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc), ih_v(v_ok)),
+          seq(",", Print.print(V.JPair{t1, t2, t3}), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}, close(vv, ',',
+          Lex.TComma{}, {==}, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)))))), Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JPair{t1, t2, t3})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JPair{t1, t2, t3}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}, ih_r(r_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JPair{t1, t2, t3}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JPair{t1, t2,
+          t3}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc), List.reverse.go(&2, Lex.Tok, tj(V.JPair{t1, t2, t3}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)), rev_app(tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WObj{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)))))
+    case V.JSpan{+t1, +t2}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JSpan{t1, t2}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JSpan{t1, t2}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+        U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1,
+        t2}))))), Lex.Lex{Lex.Idle{}, [], acc})), Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          seq(Print.quote(V.span.str(src, nn, U32.is_zero(nn))),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          lex_quote(V.span.str(src, nn, U32.is_zero(nn)), acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2}))), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, {==}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JSpan{t1, t2}))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc}), Lex.run(String.to_list("," ++ Print.print(V.JSpan{t1, t2})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          Lex.run(String.to_list(Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          seq(Print.print(vv), "," ++ Print.print(V.JSpan{t1, t2}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc), ih_v(v_ok)),
+          seq(",", Print.print(V.JSpan{t1, t2}), pend(vv, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src,
+          nn, U32.is_zero(nn))))} <> acc), Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          close(vv, ',', Lex.TComma{}, {==}, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)))))), Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JSpan{t1, t2})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JSpan{t1, t2}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}, ih_r(r_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JSpan{t1, t2}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{t1, t2},
+          V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc),
+          List.reverse.go(&2, Lex.Tok, tj(V.JSpan{t1, t2}, V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok,
+          tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)), rev_app(tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WObj{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)))))
+    case V.JBind{+t1, +t2, +t3, +t4}:
+      v_ok = stop_l(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBind{t1, t2, t3, t4}, V.WObj{}), h)
+      r_ok = stop_r(V.wf.go(vv, V.WVal{}), V.wf.go(V.JBind{t1, t2, t3, t4}, V.WObj{}), h)
+      Equal.trans(Lex.Lex, Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+        U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3,
+        t4}))))), Lex.Lex{Lex.Idle{}, [], acc})), Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Equal.cong(Lex.Lex, Lex.Lex, xx => Lex.run(String.to_list("}"), xx),
+          Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}), Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.quote(V.span.str(src, nn,
+          U32.is_zero(nn))) ++ (":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4}))))),
+          Lex.Lex{Lex.Idle{}, [], acc}),
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          seq(Print.quote(V.span.str(src, nn, U32.is_zero(nn))),
+          ":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4}))), Lex.Lex{Lex.Idle{}, [], acc},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc},
+          lex_quote(V.span.str(src, nn, U32.is_zero(nn)), acc)), Equal.trans(Lex.Lex,
+          Lex.run(String.to_list(":" ++ (Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4})))),
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4}))), Lex.Lex{Lex.Idle{},
+          [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}),
+          Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}), seq(":",
+          Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3, t4})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, {==}),
+          Equal.trans(Lex.Lex, Lex.run(String.to_list(Print.print(vv) ++ ("," ++ Print.print(V.JBind{t1, t2, t3,
+          t4}))), Lex.Lex{Lex.Idle{}, [], Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc}), Lex.run(String.to_list("," ++ Print.print(V.JBind{t1, t2, t3, t4})), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)),
+          Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}),
+          seq(Print.print(vv), "," ++ Print.print(V.JBind{t1, t2, t3, t4}), Lex.Lex{Lex.Idle{}, [],
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc}, pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc), ih_v(v_ok)),
+          seq(",", Print.print(V.JBind{t1, t2, t3, t4}), pend(vv,
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc),
+          Lex.Lex{Lex.Idle{}, [], Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}, close(vv, ',',
+          Lex.TComma{}, {==}, Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc)))))), Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+          Lex.run(String.to_list(Print.print(V.JBind{t1, t2, t3, t4})), Lex.Lex{Lex.Idle{}, [],
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)})),
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JBind{t1, t2, t3, t4},
+          V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)}, ih_r(r_ok),
+          Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, List.append(&2,
+          Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WObj{})),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(V.JBind{t1, t2, t3, t4},
+          V.WObj{}), Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc))},
+          Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> xx},
+          List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBind{t1, t2,
+          t3, t4}, V.WObj{})), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+          U32.is_zero(nn))))} <> acc), List.reverse.go(&2, Lex.Tok, tj(V.JBind{t1, t2, t3, t4}, V.WObj{}),
+          Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)), rev_app(tj(vv,
+          V.WVal{}), Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WObj{}),
+          Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn, U32.is_zero(nn))))} <> acc)))))
+
+# the character lexer on a well-formed value's text
+law lexp:
+  for +val: V.Json
+  for +sh: V.Shape
+  for +h: {V.wf.go(val, sh) == True{} : Bool}
+  for +acc: List<&2, Lex.Tok>
+  lg(val, sh, acc)
+
+def lexp(val, sh, h, acc):
+  match val:
+    case V.JNull{}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          no(lg(V.JNull{}, V.WArr{}, acc), h)
+        case V.WObj{}:
+          no(lg(V.JNull{}, V.WObj{}, acc), h)
+    case V.JBool{bb}:
+      match sh:
+        case V.WVal{}:
+          lexp_bool(bb, acc)
+        case V.WArr{}:
+          no(lg(V.JBool{bb}, V.WArr{}, acc), h)
+        case V.WObj{}:
+          no(lg(V.JBool{bb}, V.WObj{}, acc), h)
+    case V.JNum{+raw}:
+      match sh:
+        case V.WVal{}:
+          lex_numl(String.to_list(raw), Equal.trans(Bool, Laws.number(String.to_list(raw)), V.num.ok(raw), True{},
+            Equal.sym(Bool, V.num.ok(raw), Laws.number(String.to_list(raw)), Laws.num_grammar(raw)), h), acc)
+        case V.WArr{}:
+          no(lg(V.JNum{raw}, V.WArr{}, acc), h)
+        case V.WObj{}:
+          no(lg(V.JNum{raw}, V.WObj{}, acc), h)
+    case V.JStr{+txt}:
+      match sh:
+        case V.WVal{}:
+          lex_quote(txt, acc)
+        case V.WArr{}:
+          no(lg(V.JStr{txt}, V.WArr{}, acc), h)
+        case V.WObj{}:
+          no(lg(V.JStr{txt}, V.WObj{}, acc), h)
+    case V.JArr{+items}:
+      match sh:
+        case V.WVal{}:
+          Equal.trans(Lex.Lex, Lex.run(String.to_list("[" ++ (Print.print(items) ++ "]")), Lex.Lex{Lex.Idle{}, [],
+            acc}), Lex.run(String.to_list(Print.print(items) ++ "]"), Lex.Lex{Lex.Idle{}, [], Lex.TOpenArr{} <> acc}),
+              Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(items, V.WArr{}),
+              [Lex.TCloseArr{}]), Lex.TOpenArr{} <> acc)}, seq("[", Print.print(items) ++ "]", Lex.Lex{Lex.Idle{}, [],
+              acc}, Lex.Lex{Lex.Idle{}, [], Lex.TOpenArr{} <> acc}, {==}), Equal.trans(Lex.Lex,
+              Lex.run(String.to_list(Print.print(items) ++ "]"), Lex.Lex{Lex.Idle{}, [], Lex.TOpenArr{} <> acc}),
+              Lex.run(String.to_list("]"), Lex.run(String.to_list(Print.print(items)), Lex.Lex{Lex.Idle{}, [],
+              Lex.TOpenArr{} <> acc})), Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+              tj(items, V.WArr{}), [Lex.TCloseArr{}]), Lex.TOpenArr{} <> acc)}, run_app(Print.print(items), "]",
+              Lex.Lex{Lex.Idle{}, [], Lex.TOpenArr{} <> acc}), Equal.trans(Lex.Lex, Lex.run(String.to_list("]"),
+              Lex.run(String.to_list(Print.print(items)), Lex.Lex{Lex.Idle{}, [], Lex.TOpenArr{} <> acc})),
+              Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(items, V.WArr{}),
+              Lex.TOpenArr{} <> acc)}, Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+              tj(items, V.WArr{}), [Lex.TCloseArr{}]), Lex.TOpenArr{} <> acc)}, lexp(items, V.WArr{}, h,
+              Lex.TOpenArr{} <> acc), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok,
+              List.append(&2, Lex.Tok, tj(items, V.WArr{}), [Lex.TCloseArr{}]), Lex.TOpenArr{} <> acc)},
+              Lex.Lex{Lex.Idle{}, [], Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(items, V.WArr{}),
+              Lex.TOpenArr{} <> acc)}, Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], xx},
+              List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(items, V.WArr{}), [Lex.TCloseArr{}]),
+              Lex.TOpenArr{} <> acc), Lex.TCloseArr{} <> List.reverse.go(&2, Lex.Tok, tj(items, V.WArr{}),
+              Lex.TOpenArr{} <> acc), rev_app(tj(items, V.WArr{}), [Lex.TCloseArr{}], Lex.TOpenArr{} <> acc))))))
+        case V.WArr{}:
+          no(lg(V.JArr{items}, V.WArr{}, acc), h)
+        case V.WObj{}:
+          no(lg(V.JArr{items}, V.WObj{}, acc), h)
+    case V.JObj{+pairs}:
+      match sh:
+        case V.WVal{}:
+          Equal.trans(Lex.Lex, Lex.run(String.to_list("{" ++ (Print.print(pairs) ++ "}")), Lex.Lex{Lex.Idle{}, [],
+            acc}), Lex.run(String.to_list(Print.print(pairs) ++ "}"), Lex.Lex{Lex.Idle{}, [], Lex.TOpenObj{} <> acc}),
+              Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(pairs, V.WObj{}),
+              [Lex.TCloseObj{}]), Lex.TOpenObj{} <> acc)}, seq("{", Print.print(pairs) ++ "}", Lex.Lex{Lex.Idle{}, [],
+              acc}, Lex.Lex{Lex.Idle{}, [], Lex.TOpenObj{} <> acc}, {==}), Equal.trans(Lex.Lex,
+              Lex.run(String.to_list(Print.print(pairs) ++ "}"), Lex.Lex{Lex.Idle{}, [], Lex.TOpenObj{} <> acc}),
+              Lex.run(String.to_list("}"), Lex.run(String.to_list(Print.print(pairs)), Lex.Lex{Lex.Idle{}, [],
+              Lex.TOpenObj{} <> acc})), Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+              tj(pairs, V.WObj{}), [Lex.TCloseObj{}]), Lex.TOpenObj{} <> acc)}, run_app(Print.print(pairs), "}",
+              Lex.Lex{Lex.Idle{}, [], Lex.TOpenObj{} <> acc}), Equal.trans(Lex.Lex, Lex.run(String.to_list("}"),
+              Lex.run(String.to_list(Print.print(pairs)), Lex.Lex{Lex.Idle{}, [], Lex.TOpenObj{} <> acc})),
+              Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(pairs, V.WObj{}),
+              Lex.TOpenObj{} <> acc)}, Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok,
+              tj(pairs, V.WObj{}), [Lex.TCloseObj{}]), Lex.TOpenObj{} <> acc)}, lexp(pairs, V.WObj{}, h,
+              Lex.TOpenObj{} <> acc), Equal.sym(Lex.Lex, Lex.Lex{Lex.Idle{}, [], List.reverse.go(&2, Lex.Tok,
+              List.append(&2, Lex.Tok, tj(pairs, V.WObj{}), [Lex.TCloseObj{}]), Lex.TOpenObj{} <> acc)},
+              Lex.Lex{Lex.Idle{}, [], Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(pairs, V.WObj{}),
+              Lex.TOpenObj{} <> acc)}, Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], xx},
+              List.reverse.go(&2, Lex.Tok, List.append(&2, Lex.Tok, tj(pairs, V.WObj{}), [Lex.TCloseObj{}]),
+              Lex.TOpenObj{} <> acc), Lex.TCloseObj{} <> List.reverse.go(&2, Lex.Tok, tj(pairs, V.WObj{}),
+              Lex.TOpenObj{} <> acc), rev_app(tj(pairs, V.WObj{}), [Lex.TCloseObj{}], Lex.TOpenObj{} <> acc))))))
+        case V.WArr{}:
+          no(lg(V.JObj{pairs}, V.WArr{}, acc), h)
+        case V.WObj{}:
+          no(lg(V.JObj{pairs}, V.WObj{}, acc), h)
+    case V.JNil{}:
+      match sh:
+        case V.WVal{}:
+          no(lg(V.JNil{}, V.WVal{}, acc), h)
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          {==}
+    case V.JCons{+hd, +tl}:
+      match sh:
+        case V.WVal{}:
+          no(lg(V.JCons{hd, tl}, V.WVal{}, acc), h)
+        case V.WArr{}:
+          lexp_cons(tl, hd, h, acc, xx => lexp(hd, V.WVal{}, xx, acc), xx => lexp(tl, V.WArr{}, xx,
+            Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(hd, V.WVal{}), acc)))
+        case V.WObj{}:
+          no(lg(V.JCons{hd, tl}, V.WObj{}, acc), h)
+    case V.JPair{+kk, +vv, +rr}:
+      match sh:
+        case V.WVal{}:
+          no(lg(V.JPair{kk, vv, rr}, V.WVal{}, acc), h)
+        case V.WArr{}:
+          no(lg(V.JPair{kk, vv, rr}, V.WArr{}, acc), h)
+        case V.WObj{}:
+          lexp_pair(rr, kk, vv, h, acc, xx => lexp(vv, V.WVal{}, xx,
+            Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc), xx => lexp(rr, V.WObj{}, xx,
+              Lex.TComma{} <> List.reverse.go(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TColon{} <> Lex.TStr{fixs(String.to_list(kk))} <> acc)))
+    case V.JSpan{+src, +nn}:
+      match sh:
+        case V.WVal{}:
+          lex_quote(V.span.str(src, nn, U32.is_zero(nn)), acc)
+        case V.WArr{}:
+          no(lg(V.JSpan{src, nn}, V.WArr{}, acc), h)
+        case V.WObj{}:
+          no(lg(V.JSpan{src, nn}, V.WObj{}, acc), h)
+    case V.JBind{+src, +nn, +vv, +rr}:
+      match sh:
+        case V.WVal{}:
+          no(lg(V.JBind{src, nn, vv, rr}, V.WVal{}, acc), h)
+        case V.WArr{}:
+          no(lg(V.JBind{src, nn, vv, rr}, V.WArr{}, acc), h)
+        case V.WObj{}:
+          lexp_bind(rr, src, nn, vv, h, acc, xx => lexp(vv, V.WVal{}, xx,
+            Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+            U32.is_zero(nn))))} <> acc), xx => lexp(rr, V.WObj{}, xx, Lex.TComma{} <> List.reverse.go(&2, Lex.Tok,
+              tj(vv, V.WVal{}), Lex.TColon{} <> Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+              U32.is_zero(nn))))} <> acc)))
+
+# two appends of equal parts are equal
+law app_cong:
+  for aa: List<&2, Lex.Tok>
+  for a2: List<&2, Lex.Tok>
+  for bb: List<&2, Lex.Tok>
+  for b2: List<&2, Lex.Tok>
+  for ea: {aa == a2 : List<&2, Lex.Tok>}
+  for eb: {bb == b2 : List<&2, Lex.Tok>}
+  {List.append(&2, Lex.Tok, aa, bb) == List.append(&2, Lex.Tok, a2, b2) : List<&2, Lex.Tok>}
+
+def app_cong(aa, _a2, bb, b2, ea, eb):
+  %ea : {List.append(&2, Lex.Tok, aa, bb) == List.append(&2, Lex.Tok, _, b2) : List<&2, Lex.Tok>}
+  %eb : {List.append(&2, Lex.Tok, aa, bb) == List.append(&2, Lex.Tok, aa, _) : List<&2, Lex.Tok>}
+  {==}
+
+# appending nothing
+law lapp_nil:
+  for +xs: List<&2, Lex.Tok>
+  {List.append(&2, Lex.Tok, xs, []) == xs : List<&2, Lex.Tok>}
+
+def lapp_nil(xs):
+  match xs:
+    case Nil{}:
+      {==}
+    case Con{hd, +tl}:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => hd <> yy, List.append(&2, Lex.Tok, tl, []), tl,
+        lapp_nil(tl))
+
+# spans replaced in two token lists joined by a comma, each without spans
+law dens_sep:
+  for +aa: List<&2, Lex.Tok>
+  for +bb: List<&2, Lex.Tok>
+  for ea: {dens(aa) == aa : List<&2, Lex.Tok>}
+  for eb: {dens(bb) == bb : List<&2, Lex.Tok>}
+  {dens(List.append(&2, Lex.Tok, aa, Lex.TComma{} <> bb)) == List.append(&2, Lex.Tok, aa,
+    Lex.TComma{} <> bb) : List<&2, Lex.Tok>}
+
+def dens_sep(aa, bb, ea, eb):
+  Equal.trans(List<&2, Lex.Tok>, dens(List.append(&2, Lex.Tok, aa, Lex.TComma{} <> bb)),
+    List.append(&2, Lex.Tok, dens(aa), Lex.TComma{} <> dens(bb)), List.append(&2, Lex.Tok, aa, Lex.TComma{} <> bb),
+    dens_app(aa, Lex.TComma{} <> bb),
+    app_cong(dens(aa), aa, Lex.TComma{} <> dens(bb), Lex.TComma{} <> bb, ea,
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TComma{} <> yy, dens(bb), bb, eb)))
+
+# dens_tj for a boolean
+law dens_bool:
+  for bb: Bool
+  for sh: V.Shape
+  {dens(tj(V.JBool{bb}, sh)) == tj(V.JBool{bb}, sh) : List<&2, Lex.Tok>}
+
+def dens_bool(bb, sh):
+  match bb:
+    case True{}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          {==}
+    case False{}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          {==}
+
+# dens_tj for an array cell, by what follows it
+law dens_cons:
+  for tl: V.Json
+  for sh: V.Shape
+  for +hd: V.Json
+  for ih_hd: {dens(tj(hd, V.WVal{})) == tj(hd, V.WVal{}) : List<&2, Lex.Tok>}
+  for ih_tl: {dens(tj(tl, V.WArr{})) == tj(tl, V.WArr{}) : List<&2, Lex.Tok>}
+  {dens(tj(V.JCons{hd, tl}, sh)) == tj(V.JCons{hd, tl}, sh) : List<&2, Lex.Tok>}
+
+def dens_cons(tl, sh, hd, ih_hd, ih_tl):
+  match tl:
+    case V.JNil{}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          ih_hd
+        case V.WObj{}:
+          {==}
+    case V.JNull{}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          dens_sep(tj(hd, V.WVal{}), tj(V.JNull{}, V.WArr{}), ih_hd, ih_tl)
+        case V.WObj{}:
+          {==}
+    case V.JBool{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          dens_sep(tj(hd, V.WVal{}), tj(V.JBool{t1}, V.WArr{}), ih_hd, ih_tl)
+        case V.WObj{}:
+          {==}
+    case V.JNum{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          dens_sep(tj(hd, V.WVal{}), tj(V.JNum{t1}, V.WArr{}), ih_hd, ih_tl)
+        case V.WObj{}:
+          {==}
+    case V.JStr{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          dens_sep(tj(hd, V.WVal{}), tj(V.JStr{t1}, V.WArr{}), ih_hd, ih_tl)
+        case V.WObj{}:
+          {==}
+    case V.JArr{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          dens_sep(tj(hd, V.WVal{}), tj(V.JArr{t1}, V.WArr{}), ih_hd, ih_tl)
+        case V.WObj{}:
+          {==}
+    case V.JObj{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          dens_sep(tj(hd, V.WVal{}), tj(V.JObj{t1}, V.WArr{}), ih_hd, ih_tl)
+        case V.WObj{}:
+          {==}
+    case V.JCons{+t1, +t2}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          dens_sep(tj(hd, V.WVal{}), tj(V.JCons{t1, t2}, V.WArr{}), ih_hd, ih_tl)
+        case V.WObj{}:
+          {==}
+    case V.JPair{+t1, +t2, +t3}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          dens_sep(tj(hd, V.WVal{}), tj(V.JPair{t1, t2, t3}, V.WArr{}), ih_hd, ih_tl)
+        case V.WObj{}:
+          {==}
+    case V.JSpan{+t1, +t2}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          dens_sep(tj(hd, V.WVal{}), tj(V.JSpan{t1, t2}, V.WArr{}), ih_hd, ih_tl)
+        case V.WObj{}:
+          {==}
+    case V.JBind{+t1, +t2, +t3, +t4}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          dens_sep(tj(hd, V.WVal{}), tj(V.JBind{t1, t2, t3, t4}, V.WArr{}), ih_hd, ih_tl)
+        case V.WObj{}:
+          {==}
+
+
+# dens_tj for an object cell, by what follows it
+law dens_pair:
+  for rr: V.Json
+  for sh: V.Shape
+  for +kk: String
+  for +vv: V.Json
+  for ih_v: {dens(tj(vv, V.WVal{})) == tj(vv, V.WVal{}) : List<&2, Lex.Tok>}
+  for ih_r: {dens(tj(rr, V.WObj{})) == tj(rr, V.WObj{}) : List<&2, Lex.Tok>}
+  {dens(tj(V.JPair{kk, vv, rr}, sh)) == tj(V.JPair{kk, vv, rr}, sh) : List<&2, Lex.Tok>}
+
+def dens_pair(rr, sh, kk, vv, ih_v, ih_r):
+  match rr:
+    case V.JNil{}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+            yy => Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <> yy, dens(tj(vv, V.WVal{})), tj(vv,
+            V.WVal{}), ih_v)
+    case V.JNull{}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+            yy => Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv,
+            V.WVal{}), Lex.TComma{} <> tj(V.JNull{}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JNull{}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JNull{}, V.WObj{}), ih_v, ih_r))
+    case V.JBool{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+            yy => Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv,
+            V.WVal{}), Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JBool{t1}, V.WObj{}), ih_v, ih_r))
+    case V.JNum{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+            yy => Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv,
+            V.WVal{}), Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JNum{t1}, V.WObj{}), ih_v, ih_r))
+    case V.JStr{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+            yy => Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv,
+            V.WVal{}), Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JStr{t1}, V.WObj{}), ih_v, ih_r))
+    case V.JArr{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+            yy => Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv,
+            V.WVal{}), Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JArr{t1}, V.WObj{}), ih_v, ih_r))
+    case V.JObj{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+            yy => Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv,
+            V.WVal{}), Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JObj{t1}, V.WObj{}), ih_v, ih_r))
+    case V.JCons{+t1, +t2}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+            yy => Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv,
+            V.WVal{}), Lex.TComma{} <> tj(V.JCons{t1,
+            t2}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JCons{t1, t2}, V.WObj{}), ih_v, ih_r))
+    case V.JPair{+t1, +t2, +t3}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+            yy => Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv,
+            V.WVal{}), Lex.TComma{} <> tj(V.JPair{t1, t2,
+            t3}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JPair{t1, t2, t3},
+              V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JPair{t1, t2, t3}, V.WObj{}), ih_v, ih_r))
+    case V.JSpan{+t1, +t2}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+            yy => Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv,
+            V.WVal{}), Lex.TComma{} <> tj(V.JSpan{t1,
+            t2}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JSpan{t1, t2}, V.WObj{}), ih_v, ih_r))
+    case V.JBind{+t1, +t2, +t3, +t4}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>,
+            yy => Lex.TStr{fixs(String.to_list(kk))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv,
+            V.WVal{}), Lex.TComma{} <> tj(V.JBind{t1, t2, t3,
+            t4}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}), Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4},
+              V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JBind{t1, t2, t3, t4}, V.WObj{}), ih_v, ih_r))
+
+
+# dens_tj for an object cell, by what follows it
+law dens_bind:
+  for rr: V.Json
+  for sh: V.Shape
+  for +src: String
+  for +nn: U32
+  for +vv: V.Json
+  for ih_v: {dens(tj(vv, V.WVal{})) == tj(vv, V.WVal{}) : List<&2, Lex.Tok>}
+  for ih_r: {dens(tj(rr, V.WObj{})) == tj(rr, V.WObj{}) : List<&2, Lex.Tok>}
+  {dens(tj(V.JBind{src, nn, vv, rr}, sh)) == tj(V.JBind{src, nn, vv, rr}, sh) : List<&2, Lex.Tok>}
+
+def dens_bind(rr, sh, src, nn, vv, ih_v, ih_r):
+  match rr:
+    case V.JNil{}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+            U32.is_zero(nn))))} <> Lex.TColon{} <> yy, dens(tj(vv, V.WVal{})), tj(vv, V.WVal{}), ih_v)
+    case V.JNull{}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+            U32.is_zero(nn))))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JNull{}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JNull{}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JNull{}, V.WObj{}), ih_v, ih_r))
+    case V.JBool{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+            U32.is_zero(nn))))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JBool{t1}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JBool{t1}, V.WObj{}), ih_v, ih_r))
+    case V.JNum{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+            U32.is_zero(nn))))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JNum{t1}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JNum{t1}, V.WObj{}), ih_v, ih_r))
+    case V.JStr{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+            U32.is_zero(nn))))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JStr{t1}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JStr{t1}, V.WObj{}), ih_v, ih_r))
+    case V.JArr{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+            U32.is_zero(nn))))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JArr{t1}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JArr{t1}, V.WObj{}), ih_v, ih_r))
+    case V.JObj{+t1}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+            U32.is_zero(nn))))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JObj{t1}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JObj{t1}, V.WObj{}), ih_v, ih_r))
+    case V.JCons{+t1, +t2}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+            U32.is_zero(nn))))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JCons{t1, t2}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JCons{t1, t2}, V.WObj{}), ih_v, ih_r))
+    case V.JPair{+t1, +t2, +t3}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+            U32.is_zero(nn))))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JPair{t1, t2, t3}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JPair{t1, t2, t3}, V.WObj{}), ih_v, ih_r))
+    case V.JSpan{+t1, +t2}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+            U32.is_zero(nn))))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JSpan{t1, t2}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JSpan{t1, t2}, V.WObj{}), ih_v, ih_r))
+    case V.JBind{+t1, +t2, +t3, +t4}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TStr{fixs(String.to_list(V.span.str(src, nn,
+            U32.is_zero(nn))))} <> Lex.TColon{} <> yy, dens(List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WObj{}))), List.append(&2, Lex.Tok, tj(vv, V.WVal{}),
+              Lex.TComma{} <> tj(V.JBind{t1, t2, t3, t4}, V.WObj{})),
+            dens_sep(tj(vv, V.WVal{}), tj(V.JBind{t1, t2, t3, t4}, V.WObj{}), ih_v, ih_r))
+
+
+# a value's tokens hold no spans
+law dens_tj:
+  for +val: V.Json
+  for +sh: V.Shape
+  {dens(tj(val, sh)) == tj(val, sh) : List<&2, Lex.Tok>}
+
+def dens_tj(val, sh):
+  match val:
+    case V.JNull{}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          {==}
+    case V.JBool{bb}:
+      dens_bool(bb, sh)
+    case V.JNum{raw}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          {==}
+    case V.JStr{txt}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          {==}
+    case V.JArr{+items}:
+      match sh:
+        case V.WVal{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TOpenArr{} <> yy, dens(List.append(&2, Lex.Tok,
+            tj(items, V.WArr{}), [Lex.TCloseArr{}])), List.append(&2, Lex.Tok, tj(items, V.WArr{}), [Lex.TCloseArr{}]),
+            Equal.trans(List<&2, Lex.Tok>, dens(List.append(&2, Lex.Tok, tj(items, V.WArr{}), [Lex.TCloseArr{}])),
+              List.append(&2, Lex.Tok, dens(tj(items, V.WArr{})), [Lex.TCloseArr{}]), List.append(&2, Lex.Tok,
+              tj(items, V.WArr{}), [Lex.TCloseArr{}]),
+              dens_app(tj(items, V.WArr{}), [Lex.TCloseArr{}]),
+              app_cong(dens(tj(items, V.WArr{})), tj(items, V.WArr{}), [Lex.TCloseArr{}], [Lex.TCloseArr{}],
+                dens_tj(items, V.WArr{}), {==})))
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          {==}
+    case V.JObj{+pairs}:
+      match sh:
+        case V.WVal{}:
+          Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => Lex.TOpenObj{} <> yy, dens(List.append(&2, Lex.Tok,
+            tj(pairs, V.WObj{}), [Lex.TCloseObj{}])), List.append(&2, Lex.Tok, tj(pairs, V.WObj{}), [Lex.TCloseObj{}]),
+            Equal.trans(List<&2, Lex.Tok>, dens(List.append(&2, Lex.Tok, tj(pairs, V.WObj{}), [Lex.TCloseObj{}])),
+              List.append(&2, Lex.Tok, dens(tj(pairs, V.WObj{})), [Lex.TCloseObj{}]), List.append(&2, Lex.Tok,
+              tj(pairs, V.WObj{}), [Lex.TCloseObj{}]),
+              dens_app(tj(pairs, V.WObj{}), [Lex.TCloseObj{}]),
+              app_cong(dens(tj(pairs, V.WObj{})), tj(pairs, V.WObj{}), [Lex.TCloseObj{}], [Lex.TCloseObj{}],
+                dens_tj(pairs, V.WObj{}), {==})))
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          {==}
+    case V.JNil{}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          {==}
+    case V.JCons{+hd, +tl}:
+      dens_cons(tl, sh, hd, dens_tj(hd, V.WVal{}), dens_tj(tl, V.WArr{}))
+    case V.JPair{+kk, +vv, +rr}:
+      dens_pair(rr, sh, kk, vv, dens_tj(vv, V.WVal{}), dens_tj(rr, V.WObj{}))
+    case V.JSpan{src, nn}:
+      match sh:
+        case V.WVal{}:
+          {==}
+        case V.WArr{}:
+          {==}
+        case V.WObj{}:
+          {==}
+    case V.JBind{+src, +nn, +vv, +rr}:
+      dens_bind(rr, sh, src, nn, vv, dens_tj(vv, V.WVal{}), dens_tj(rr, V.WObj{}))
+
+# fin_pend for a boolean
+law fin_bool:
+  for bb: Bool
+  {Lex.finish(pend(V.JBool{bb}, [])) == tj(V.JBool{bb}, V.WVal{}) : List<&2, Lex.Tok>}
+
+def fin_bool(bb):
+  match bb:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# the end of a value's text closes its word, or leaves its tokens in order
+law fin_pend:
+  for +val: V.Json
+  {Lex.finish(pend(val, [])) == tj(val, V.WVal{}) : List<&2, Lex.Tok>}
+
+def fin_pend(val):
+  match val:
+    case V.JNull{}:
+      {==}
+    case V.JBool{bb}:
+      fin_bool(bb)
+    case V.JNum{+raw}:
+      Equal.cong(String, List<&2, Lex.Tok>, xx => [Lex.TWord{xx}], Lex.text(List.reverse.go(&2, Char,
+        String.to_list(raw), [])), raw,
+        word_text(raw))
+    case V.JStr{+a1}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JStr{a1},
+        V.WVal{}), []), []),
+        List.append(&2, Lex.Tok, tj(V.JStr{a1}, V.WVal{}), []), tj(V.JStr{a1}, V.WVal{}), rev_rev(tj(V.JStr{a1},
+          V.WVal{}), [], []), lapp_nil(tj(V.JStr{a1}, V.WVal{})))
+    case V.JArr{+a1}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JArr{a1},
+        V.WVal{}), []), []),
+        List.append(&2, Lex.Tok, tj(V.JArr{a1}, V.WVal{}), []), tj(V.JArr{a1}, V.WVal{}), rev_rev(tj(V.JArr{a1},
+          V.WVal{}), [], []), lapp_nil(tj(V.JArr{a1}, V.WVal{})))
+    case V.JObj{+a1}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JObj{a1},
+        V.WVal{}), []), []),
+        List.append(&2, Lex.Tok, tj(V.JObj{a1}, V.WVal{}), []), tj(V.JObj{a1}, V.WVal{}), rev_rev(tj(V.JObj{a1},
+          V.WVal{}), [], []), lapp_nil(tj(V.JObj{a1}, V.WVal{})))
+    case V.JNil{}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JNil{}, V.WVal{}),
+        []), []),
+        List.append(&2, Lex.Tok, tj(V.JNil{}, V.WVal{}), []), tj(V.JNil{}, V.WVal{}), rev_rev(tj(V.JNil{}, V.WVal{}),
+          [], []), lapp_nil(tj(V.JNil{}, V.WVal{})))
+    case V.JCons{+a1, +a2}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JCons{a1, a2},
+        V.WVal{}), []), []),
+        List.append(&2, Lex.Tok, tj(V.JCons{a1, a2}, V.WVal{}), []), tj(V.JCons{a1, a2},
+          V.WVal{}), rev_rev(tj(V.JCons{a1, a2}, V.WVal{}), [], []), lapp_nil(tj(V.JCons{a1, a2}, V.WVal{})))
+    case V.JPair{+a1, +a2, +a3}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JPair{a1, a2, a3},
+        V.WVal{}), []), []),
+        List.append(&2, Lex.Tok, tj(V.JPair{a1, a2, a3}, V.WVal{}), []), tj(V.JPair{a1, a2, a3},
+          V.WVal{}), rev_rev(tj(V.JPair{a1, a2, a3}, V.WVal{}), [], []), lapp_nil(tj(V.JPair{a1, a2, a3}, V.WVal{})))
+    case V.JSpan{+a1, +a2}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JSpan{a1, a2},
+        V.WVal{}), []), []),
+        List.append(&2, Lex.Tok, tj(V.JSpan{a1, a2}, V.WVal{}), []), tj(V.JSpan{a1, a2},
+          V.WVal{}), rev_rev(tj(V.JSpan{a1, a2}, V.WVal{}), [], []), lapp_nil(tj(V.JSpan{a1, a2}, V.WVal{})))
+    case V.JBind{+a1, +a2, +a3, +a4}:
+      Equal.trans(List<&2, Lex.Tok>, List.reverse.go(&2, Lex.Tok, List.reverse.go(&2, Lex.Tok, tj(V.JBind{a1, a2, a3,
+        a4}, V.WVal{}), []), []),
+        List.append(&2, Lex.Tok, tj(V.JBind{a1, a2, a3, a4}, V.WVal{}), []), tj(V.JBind{a1, a2, a3, a4},
+          V.WVal{}), rev_rev(tj(V.JBind{a1, a2, a3, a4}, V.WVal{}), [], []), lapp_nil(tj(V.JBind{a1, a2, a3, a4},
+          V.WVal{})))
+
+# WP-L2: the character lexer reads a well-formed value's text as its tokens
+law lex_print:
+  for +val: V.Json
+  for h_wf: {V.wf(val) == True{} : Bool}
+  {Lex.finish(Lex.run(String.to_list(Print.print(val)), Lex.Lex{Lex.Idle{}, [], []})) == tj(val, V.WVal{}) : List<&2,
+    Lex.Tok>}
+
+def lex_print(val, h_wf):
+  Equal.trans(List<&2, Lex.Tok>, Lex.finish(Lex.run(String.to_list(Print.print(val)), Lex.Lex{Lex.Idle{}, [], []})),
+    Lex.finish(pend(val, [])), tj(val, V.WVal{}),
+    Equal.cong(Lex.Lex, List<&2, Lex.Tok>, xx => Lex.finish(xx), Lex.run(String.to_list(Print.print(val)),
+      Lex.Lex{Lex.Idle{}, [], []}),
+      pend(val, []), lexp(val, V.WVal{}, h_wf, [])),
+    fin_pend(val))
+
+# WP-L2: parse's lexer reads a well-formed value's text as its tokens, up to spans
+law tokens_print:
+  for +val: V.Json
+  for h_wf: {V.wf(val) == True{} : Bool}
+  for h_s: {Laws.short(Print.print(val)) == True{} : Bool}
+  {dens(Lex.tokens(Print.print(val))) == tj(val, V.WVal{}) : List<&2, Lex.Tok>}
+
+def tokens_print(val, h_wf, h_s):
+  +txt = Print.print(val)
+  +lx = Lex.finish(Lex.run(String.to_list(txt), Lex.Lex{Lex.Idle{}, [], []}))
+  Equal.trans(List<&2, Lex.Tok>, dens(Lex.tokens(txt)), dens(lx), tj(val, V.WVal{}), lexers_agree(txt, h_s),
+    Equal.trans(List<&2, Lex.Tok>, dens(lx), dens(tj(val, V.WVal{})), tj(val, V.WVal{}),
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, xx => dens(xx), lx, tj(val, V.WVal{}), lex_print(val, h_wf)),
+      dens_tj(val, V.WVal{})))
+
+# what esc_ctl says of a control, its other hypotheses first
+def esc_eq(uu: U32) -> Type:
+  {Print.escape.char(Chr{uu}) == "\\u00" ++ String.from_list([Laws.char_at(Laws.hex_lower(), U32.to_nat(U32.div(uu,
+    16))),
+    Laws.char_at(Laws.hex_lower(), U32.to_nat(U32.mod(uu, 16)))]) : String}
+
+def esc_goal(uu: U32) -> Type:
+  {Chr{uu} != '\u{8}' : Char} -> {Chr{uu} != '\u{c}' : Char} -> {Chr{uu} != '\n' : Char} ->
+    {Chr{uu} != '\r' : Char} -> {Chr{uu} != '\t' : Char} -> esc_eq(uu)
+
+# esc_ctl, one control at a time
+law esc_ctl5:
+  for b0: Bool
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for b4: Bool
+  esc_goal(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{False{}, zw(26n)}}}}}}})
+
+def esc_ctl5(b0, b1, b2, b3, b4):
+  match b0 b1 b2 b3 b4:
+    case False{} False{} False{} False{} False{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case False{} False{} False{} False{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case False{} False{} False{} True{} False{}:
+      h_b => _h_f => _h_n => _h_r => _h_t => Empty.absurd(esc_eq(U32{WCon{False{}, WCon{False{}, WCon{False{},
+        WCon{True{}, WCon{False{}, WCon{False{}, zw(26n)}}}}}}}), h_b({==}))
+    case False{} False{} False{} True{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case False{} False{} True{} False{} False{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case False{} False{} True{} False{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case False{} False{} True{} True{} False{}:
+      _h_b => h_f => _h_n => _h_r => _h_t => Empty.absurd(esc_eq(U32{WCon{False{}, WCon{False{}, WCon{True{},
+        WCon{True{}, WCon{False{}, WCon{False{}, zw(26n)}}}}}}}), h_f({==}))
+    case False{} False{} True{} True{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case False{} True{} False{} False{} False{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case False{} True{} False{} False{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case False{} True{} False{} True{} False{}:
+      _h_b => _h_f => h_n => _h_r => _h_t => Empty.absurd(esc_eq(U32{WCon{False{}, WCon{True{}, WCon{False{},
+        WCon{True{}, WCon{False{}, WCon{False{}, zw(26n)}}}}}}}), h_n({==}))
+    case False{} True{} False{} True{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case False{} True{} True{} False{} False{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case False{} True{} True{} False{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case False{} True{} True{} True{} False{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case False{} True{} True{} True{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} False{} False{} False{} False{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} False{} False{} False{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} False{} False{} True{} False{}:
+      _h_b => _h_f => _h_n => _h_r => h_t => Empty.absurd(esc_eq(U32{WCon{True{}, WCon{False{}, WCon{False{},
+        WCon{True{}, WCon{False{}, WCon{False{}, zw(26n)}}}}}}}), h_t({==}))
+    case True{} False{} False{} True{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} False{} True{} False{} False{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} False{} True{} False{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} False{} True{} True{} False{}:
+      _h_b => _h_f => _h_n => h_r => _h_t => Empty.absurd(esc_eq(U32{WCon{True{}, WCon{False{}, WCon{True{},
+        WCon{True{}, WCon{False{}, WCon{False{}, zw(26n)}}}}}}}), h_r({==}))
+    case True{} False{} True{} True{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} True{} False{} False{} False{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} True{} False{} False{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} True{} False{} True{} False{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} True{} False{} True{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} True{} True{} False{} False{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} True{} True{} False{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} True{} True{} True{} False{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+    case True{} True{} True{} True{} True{}:
+      _h_b => _h_f => _h_n => _h_r => _h_t => {==}
+
+# esc_ctl, once bit 5 and the bits above are known
+law esc_ctl.at:
+  for cc: Cmp
+  for b5: Bool
+  for b0: Bool
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for b4: Bool
+  for +rest: Word(26n)
+  for ec: {Word.cmp(26n, rest, zw(26n)) == cc : Cmp}
+  for h_lt: {Cmp.is_lt(Word.cmp.fin(b5, True{}, cc)) == True{} : Bool}
+  esc_goal(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{b5, rest}}}}}}})
+
+def esc_ctl.at(cc, b5, b0, b1, b2, b3, b4, rest, ec, h_lt):
+  match cc:
+    case LT{}:
+      ez = Equal.cong(Cmp, Bool, xx => Cmp.is_lt(xx), Word.cmp(26n, rest, zw(26n)), LT{}, ec)
+      Empty.absurd(esc_goal(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{b5, rest}}}}}}}),
+        true_false(Equal.trans(Bool, True{},
+        Cmp.is_lt(Word.cmp(26n, rest, zw(26n))), False{},
+        Equal.sym(Bool, Cmp.is_lt(Word.cmp(26n, rest, zw(26n))), True{}, ez), zw_nlt(26n, rest))))
+    case GT{}:
+      match b5:
+        case False{}:
+          Empty.absurd(esc_goal(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{False{}, rest}}}}}}}),
+            false_true(h_lt))
+        case True{}:
+          Empty.absurd(esc_goal(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{True{}, rest}}}}}}}),
+            false_true(h_lt))
+    case EQ{}:
+      match b5:
+        case True{}:
+          Empty.absurd(esc_goal(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{True{}, rest}}}}}}}),
+            false_true(h_lt))
+        case False{}:
+          er = Equal.sym(Word(26n), rest, zw(26n),
+            weq(26n, rest, zw(26n), Equal.cong(Cmp, Bool, xx => Cmp.is_eq(xx), Word.cmp(26n, rest, zw(26n)), EQ{}, ec)))
+          %er : esc_goal(U32{WCon{b0, WCon{b1, WCon{b2, WCon{b3, WCon{b4, WCon{False{}, _}}}}}}})
+          esc_ctl5(b0, b1, b2, b3, b4)
+
+# a control below U+0020, other than the five with two-character escapes
+law esc_ctl.go:
+  for +uu: U32
+  for h_lt: {U32.is_lt(uu, 32) == True{} : Bool}
+  esc_goal(uu)
+
+def esc_ctl.go(uu, h_lt):
+  match uu:
+    case U32{WCon{+b0, WCon{+b1, WCon{+b2, WCon{+b3, WCon{+b4, WCon{+b5, +rest}}}}}}}:
+      +c5 = Word.cmp.fin(b5, True{}, Word.cmp(26n, rest, zw(26n)))
+      +c4 = Word.cmp.fin(b4, False{}, c5)
+      +c3 = Word.cmp.fin(b3, False{}, c4)
+      +c2 = Word.cmp.fin(b2, False{}, c3)
+      +c1 = Word.cmp.fin(b1, False{}, c2)
+      h5 = lt_up(b4, c5, lt_up(b3, c4, lt_up(b2, c3, lt_up(b1, c2, lt_up(b0, c1, h_lt)))))
+      esc_ctl.at(Word.cmp(26n, rest, zw(26n)), b5, b0, b1, b2, b3, b4, rest, {==}, h5)
+
+def Laws.esc_ctl(ch, h_ctl, h_b, h_f, h_n, h_r, h_t):
+  match ch:
+    case Chr{+uu}:
+      esc_ctl.go(uu, h_ctl)(h_b, h_f, h_n, h_r, h_t)
+
+# JSON-STR-1: a printed string parses back
+
+# a scalar value is its own fix
+law fix_id:
+  for +ch: Char
+  for h_sc: {Bool.not(Laws.non_scalar(Char.to_u32(ch))) == True{} : Bool}
+  {fix(ch) == ch : Char}
+
+def fix_id(ch, h_sc):
+  match ch:
+    case Chr{+uu}:
+      hs = Equal.sym(Bool, Bool.not(Laws.non_scalar(uu)), True{}, h_sc)
+      %hs : {Bool.pick(Char, _, Chr{uu}, Chr{65533}) == Chr{uu} : Char}
+      {==}
+
+# a text of scalar values is its own fix
+law fixs_id:
+  for +txt: String
+  for +h_sc: {Laws.scalars(txt) == True{} : Bool}
+  {fixs(String.to_list(txt)) == txt : String}
+
+def fixs_id(txt, h_sc):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{+hd, +tl}:
+      +ok = Bool.not(Laws.non_scalar(Char.to_u32(hd)))
+      eh = fix_id(hd, and_left(ok, Laws.scalars(tl), h_sc))
+      et = fixs_id(tl, and_right(ok, Laws.scalars(tl), h_sc))
+      Equal.trans(String, SCon{fix(hd), fixs(String.to_list(tl))}, SCon{hd, fixs(String.to_list(tl))}, SCon{hd, tl},
+        Equal.cong(Char, String, xx => SCon{xx, fixs(String.to_list(tl))}, fix(hd), hd, eh),
+        Equal.cong(String, String, xx => SCon{hd, xx}, fixs(String.to_list(tl)), tl, et))
+
+# whether a token is a string token
+def is_tstr(tok: Lex.Tok) -> Bool:
+  match tok:
+    case Lex.TStr{_}:
+      True{}
+    case _:
+      False{}
+
+# a string token's text
+def tstr_of(tok: Lex.Tok) -> String:
+  match tok:
+    case Lex.TStr{txt}:
+      txt
+    case _:
+      ""
+
+# whether a list is empty
+def tnil(xs: List<&2, Lex.Tok>) -> Bool:
+  match xs:
+    case Nil{}:
+      True{}
+    case _:
+      False{}
+
+# the first token of a list, or a bad one
+def thead(xs: List<&2, Lex.Tok>) -> Lex.Tok:
+  match xs:
+    case Nil{}:
+      Lex.TBad{}
+    case hd <> _:
+      hd
+
+# the tokens after the first
+def ttail(xs: List<&2, Lex.Tok>) -> List<&2, Lex.Tok>:
+  match xs:
+    case Nil{}:
+      Nil{}
+    case _ <> tl:
+      tl
+
+# a token that means a string parses, alone, as a string of its characters
+law one_tok:
+  for tok: Lex.Tok
+  for +txt: String
+  for eh: {den(tok) == Lex.TStr{txt} : Lex.Tok}
+  {Laws.str_of(Parse.finish(Parse.run([tok], Parse.P{False{}, None{}, Nil{}}))) == Some{txt} : Maybe<&2, String>}
+
+def one_tok(tok, txt, eh):
+  match tok:
+    case Lex.TStr{+yy}:
+      Equal.cong(String, Maybe<&2, String>, xx => Some{xx}, yy, txt,
+        Equal.cong(Lex.Tok, String, xx => tstr_of(xx), Lex.TStr{yy}, Lex.TStr{txt}, eh))
+    case Lex.TStrS{+src, +nn}:
+      Equal.cong(String, Maybe<&2, String>, xx => Some{xx}, V.span.str(src, nn, U32.is_zero(nn)), txt,
+        Equal.cong(Lex.Tok, String, xx => tstr_of(xx), Lex.TStr{V.span.str(src, nn, U32.is_zero(nn))}, Lex.TStr{txt},
+          eh))
+    case Lex.TOpenArr{}:
+      Empty.absurd({Laws.str_of(Parse.finish(Parse.run([Lex.TOpenArr{}], Parse.P{False{}, None{}, Nil{}}))) ==
+        Some{txt} : Maybe<&2, String>}, false_true(Equal.cong(Lex.Tok, Bool, xx => is_tstr(xx), Lex.TOpenArr{},
+          Lex.TStr{txt}, eh)))
+    case Lex.TCloseArr{}:
+      Empty.absurd({Laws.str_of(Parse.finish(Parse.run([Lex.TCloseArr{}], Parse.P{False{}, None{}, Nil{}}))) ==
+        Some{txt} : Maybe<&2, String>}, false_true(Equal.cong(Lex.Tok, Bool, xx => is_tstr(xx), Lex.TCloseArr{},
+          Lex.TStr{txt}, eh)))
+    case Lex.TOpenObj{}:
+      Empty.absurd({Laws.str_of(Parse.finish(Parse.run([Lex.TOpenObj{}], Parse.P{False{}, None{}, Nil{}}))) ==
+        Some{txt} : Maybe<&2, String>}, false_true(Equal.cong(Lex.Tok, Bool, xx => is_tstr(xx), Lex.TOpenObj{},
+          Lex.TStr{txt}, eh)))
+    case Lex.TCloseObj{}:
+      Empty.absurd({Laws.str_of(Parse.finish(Parse.run([Lex.TCloseObj{}], Parse.P{False{}, None{}, Nil{}}))) ==
+        Some{txt} : Maybe<&2, String>}, false_true(Equal.cong(Lex.Tok, Bool, xx => is_tstr(xx), Lex.TCloseObj{},
+          Lex.TStr{txt}, eh)))
+    case Lex.TColon{}:
+      Empty.absurd({Laws.str_of(Parse.finish(Parse.run([Lex.TColon{}], Parse.P{False{}, None{}, Nil{}}))) ==
+        Some{txt} : Maybe<&2, String>}, false_true(Equal.cong(Lex.Tok, Bool, xx => is_tstr(xx), Lex.TColon{},
+          Lex.TStr{txt}, eh)))
+    case Lex.TComma{}:
+      Empty.absurd({Laws.str_of(Parse.finish(Parse.run([Lex.TComma{}], Parse.P{False{}, None{}, Nil{}}))) ==
+        Some{txt} : Maybe<&2, String>}, false_true(Equal.cong(Lex.Tok, Bool, xx => is_tstr(xx), Lex.TComma{},
+          Lex.TStr{txt}, eh)))
+    case Lex.TWord{+raw}:
+      Empty.absurd({Laws.str_of(Parse.finish(Parse.run([Lex.TWord{raw}], Parse.P{False{}, None{}, Nil{}}))) ==
+        Some{txt} : Maybe<&2, String>}, false_true(Equal.cong(Lex.Tok, Bool, xx => is_tstr(xx), Lex.TWord{raw},
+          Lex.TStr{txt}, eh)))
+    case Lex.TWordS{+src, +nn}:
+      Empty.absurd({Laws.str_of(Parse.finish(Parse.run([Lex.TWordS{src, nn}], Parse.P{False{}, None{}, Nil{}}))) ==
+        Some{txt} : Maybe<&2, String>}, false_true(Equal.cong(Lex.Tok, Bool, xx => is_tstr(xx),
+          Lex.TWord{V.span.str(src, nn, U32.is_zero(nn))}, Lex.TStr{txt}, eh)))
+    case Lex.TBad{}:
+      Empty.absurd({Laws.str_of(Parse.finish(Parse.run([Lex.TBad{}], Parse.P{False{}, None{}, Nil{}}))) ==
+        Some{txt} : Maybe<&2, String>}, false_true(Equal.cong(Lex.Tok, Bool, xx => is_tstr(xx), Lex.TBad{},
+          Lex.TStr{txt}, eh)))
+
+# one_str, once the list is split
+law one_str.at:
+  for rest: List<&2, Lex.Tok>
+  for tok: Lex.Tok
+  for +txt: String
+  for eh: {den(tok) == Lex.TStr{txt} : Lex.Tok}
+  for er: {dens(rest) == [] : List<&2, Lex.Tok>}
+  {Laws.str_of(Parse.finish(Parse.run(tok <> rest, Parse.P{False{}, None{}, Nil{}}))) == Some{txt} :
+    Maybe<&2, String>}
+
+def one_str.at(rest, tok, txt, eh, er):
+  match rest:
+    case Nil{}:
+      one_tok(tok, txt, eh)
+    case r1 <> r2:
+      Empty.absurd({Laws.str_of(Parse.finish(Parse.run(tok <> r1 <> r2, Parse.P{False{}, None{}, Nil{}}))) ==
+        Some{txt} : Maybe<&2, String>}, false_true(Equal.cong(List<&2, Lex.Tok>, Bool, xx => tnil(xx),
+          den(r1) <> dens(r2), [], er)))
+
+# tokens that mean one string token parse as a string of its characters
+law one_str:
+  for xs: List<&2, Lex.Tok>
+  for +txt: String
+  for +ex: {dens(xs) == [Lex.TStr{txt}] : List<&2, Lex.Tok>}
+  {Laws.str_of(Parse.finish(Parse.run(xs, Parse.P{False{}, None{}, Nil{}}))) == Some{txt} : Maybe<&2, String>}
+
+def one_str(xs, txt, ex):
+  match xs:
+    case Nil{}:
+      Empty.absurd({Laws.str_of(Parse.finish(Parse.run([], Parse.P{False{}, None{}, Nil{}}))) == Some{txt} :
+        Maybe<&2, String>}, true_false(Equal.cong(List<&2, Lex.Tok>, Bool, yy => tnil(yy), [], [Lex.TStr{txt}], ex)))
+    case +hd <> +tl:
+      one_str.at(tl, hd, txt,
+        Equal.cong(List<&2, Lex.Tok>, Lex.Tok, yy => thead(yy), den(hd) <> dens(tl), [Lex.TStr{txt}], ex),
+        Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, yy => ttail(yy), den(hd) <> dens(tl), [Lex.TStr{txt}], ex))
+
+def Laws.str_back(txt, h_sc, h_s):
+  +got = fixs(String.to_list(txt))
+  Equal.trans(Maybe<&2, String>, Laws.str_of(Parse.parse(Print.quote(txt))), Some{got}, Some{txt},
+    one_str(Lex.tokens(Print.quote(txt)), got, tokens_print(V.JStr{txt}, {==}, h_s)),
+    Equal.cong(String, Maybe<&2, String>, xx => Some{xx}, got, txt, fixs_id(txt, h_sc)))

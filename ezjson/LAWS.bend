@@ -69,6 +69,23 @@ def all_wf_pairs(ps: List<&1, String & V.Json>) -> Bool:
 def non_scalar(+cp: U32) -> Bool:
   Bool.or(Bool.and(U32.is_ge(cp, 55296), U32.is_le(cp, 57343)), U32.is_gt(cp, 1114111))
 
+# every character of the text is a Unicode scalar value
+def scalars(+txt: String) -> Bool:
+  match txt:
+    case SNil{}:
+      True{}
+    case SCon{hd, tl}:
+      Bool.and(Bool.not(non_scalar(Char.to_u32(hd))), scalars(tl))
+
+# the characters of a parsed string value; none when parsing failed or gave
+# anything else
+def str_of(mb: Maybe<&2, V.Json>) -> Maybe<&2, String>:
+  match mb:
+    case None{}:
+      None{}
+    case Some{jj}:
+      Ezjson.as_str(jj)
+
 # RFC 8259 §6, the grammar a JSON number must match, one def per production:
 #
 #   number = [ minus ] int [ frac ] [ exp ]
@@ -179,6 +196,20 @@ def number(+cs: List<&2, Char>) -> Bool:
       False{}
     case ch <> tl:
       when(is_cp(ch, 45), int_end(tl), int_end(ch <> tl))
+
+# the lowercase hexadecimal digits, in order
+def hex_lower() -> String:
+  "0123456789abcdef"
+
+# the character at a position of a text; U+0000 past its end
+def char_at(+txt: String, left: Nat) -> Char:
+  match txt left:
+    case SNil{} _:
+      Char.from_u32(0)
+    case SCon{hd, _} 0n:
+      hd
+    case SCon{_, tl} 1n+pp:
+      char_at(tl, pp)
 
 # the list's value at a position; null past the end
 def nth(+xs: List<&2, V.Json>, left: Nat) -> V.Json:
@@ -518,6 +549,15 @@ law num_grammar:
   for +txt: String
   {V.num.ok(txt) == number(String.to_list(txt)) : Bool}
 
+# LAW: a printed string of scalar values parses back as a string of the same
+# characters
+# JSON-STR-1
+law str_back:
+  for +txt: String
+  for h_sc: {scalars(txt) == True{} : Bool}
+  for h_s: {short(Ezjson.print(Ezjson.str(txt))) == True{} : Bool}
+  {str_of(Ezjson.parse(Ezjson.print(Ezjson.str(txt)))) == Some{txt} : Maybe<&2, String>}
+
 # LAW: print escapes a quotation mark as backslash, quotation mark
 # JSON-STR-5
 law esc_quote:
@@ -576,6 +616,20 @@ law esc_plain:
   for h_quote: {ch != '"' : Char}
   for h_back: {ch != '\\' : Char}
   {Print.escape.char(ch) == String.from_list([ch]) : String}
+
+# LAW: print writes every other control below U+0020 as \u00 and two
+# lowercase hex digits
+# JSON-STR-5
+law esc_ctl:
+  for +ch: Char
+  for h_ctl: {U32.is_lt(Char.to_u32(ch), 32) == True{} : Bool}
+  for h_b: {ch != '\u{8}' : Char}
+  for h_f: {ch != '\u{c}' : Char}
+  for h_n: {ch != '\n' : Char}
+  for h_r: {ch != '\r' : Char}
+  for h_t: {ch != '\t' : Char}
+  {Print.escape.char(ch) == "\\u00" ++ String.from_list([char_at(hex_lower(), U32.to_nat(U32.div(Char.to_u32(ch), 16))),
+    char_at(hex_lower(), U32.to_nat(U32.mod(Char.to_u32(ch), 16)))]) : String}
 
 # LAW: next on a failed cursor is an error and a failed cursor
 # JSON-PULL-2
