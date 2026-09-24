@@ -272,6 +272,18 @@ def all_ws(+txt: String) -> Bool:
     case SCon{ch, tl}:
       Bool.and(is_ws(ch), all_ws(tl))
 
+# at most `left` characters, counted down in a U32
+def bounded(+txt: String, +left: U32) -> Bool:
+  match txt:
+    case SNil{}:
+      True{}
+    case SCon{_, tl}:
+      Bool.and(Bool.not(U32.is_zero(left)), bounded(tl, U32.sub(left, 1)))
+
+# at most 2^32 - 1 characters: short enough that no count of them wraps a U32
+def short(+txt: String) -> Bool:
+  bounded(txt, 4294967295)
+
 # LAW: as_bool reads back the boolean bool built
 # JSON-TREE-1
 law as_bool_bool:

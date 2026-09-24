@@ -2012,3 +2012,370 @@ law inc_nonzero:
 
 def inc_nonzero(uu, h_top):
   inc_nonzero.at(uu, U32.is_zero(U32.add(uu, 1)), {==}, h_top)
+
+# what is left of `src` after its first `nn` characters, counted as span.str
+# counts them
+def sdrop(src: String, +nn: U32, zero: Bool) -> String:
+  match src zero:
+    case ss True{}:
+      ss
+    case SNil{} False{}:
+      SNil{}
+    case SCon{_, tl} False{}:
+      sdrop(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)))
+
+# a U32 compares equal to itself
+law u32_eq_refl:
+  for +uu: U32
+  {U32.is_eq(uu, uu) == True{} : Bool}
+
+def u32_eq_refl(uu):
+  match uu:
+    case U32{ww}:
+      rf = Equal.sym(Cmp, Word.cmp(32n, ww, ww), EQ{}, weq_refl(32n, ww))
+      %rf : {Cmp.is_eq(_) == True{} : Bool}
+      {==}
+
+# U32s whose predecessors differ differ
+law u32_ne_pred:
+  for +aa: U32
+  for +bb: U32
+  for h_ne: {U32.is_eq(U32.sub(aa, 1), U32.sub(bb, 1)) == False{} : Bool}
+  for bc: Bool
+  for ec: {U32.is_eq(aa, bb) == bc : Bool}
+  {U32.is_eq(aa, bb) == False{} : Bool}
+
+def u32_ne_pred(aa, bb, h_ne, bc, ec):
+  match bc:
+    case False{}:
+      ec
+    case True{}:
+      eab = ueq(aa, bb, ec)
+      pre = Equal.cong(U32, Bool, xx => U32.is_eq(U32.sub(aa, 1), U32.sub(xx, 1)), aa, bb, eab)
+      same = Equal.trans(Bool, True{}, U32.is_eq(U32.sub(aa, 1), U32.sub(aa, 1)), U32.is_eq(U32.sub(aa, 1),
+        U32.sub(bb, 1)),
+        Equal.sym(Bool, U32.is_eq(U32.sub(aa, 1), U32.sub(aa, 1)), True{}, u32_eq_refl(U32.sub(aa, 1))), pre)
+      Empty.absurd({U32.is_eq(aa, bb) == False{} : Bool},
+        true_false(Equal.trans(Bool, True{}, U32.is_eq(U32.sub(aa, 1), U32.sub(bb, 1)), False{}, same, h_ne)))
+
+# SNil, and nothing else
+def snil(txt: String) -> Bool:
+  match txt:
+    case SNil{}:
+      True{}
+    case SCon{_, _}:
+      False{}
+
+# the empty string is no character followed by more
+law nil_cons:
+  for -cc: Char
+  for -rest: String
+  for ee: {SNil{} == SCon{cc, rest} : String}
+  Empty
+
+def nil_cons(cc, rest, ee):
+  true_false(Equal.cong(String, Bool, xx => snil(xx), SNil{}, SCon{cc, rest}, ee))
+
+# zero differs from a U32 that is not zero
+law zero_ne:
+  for +nn: U32
+  for +bb: U32
+  for e0: {nn == 0 : U32}
+  for h_nz: {Bool.not(U32.is_zero(bb)) == True{} : Bool}
+  for bc: Bool
+  for ec: {U32.is_eq(nn, bb) == bc : Bool}
+  {U32.is_eq(nn, bb) == False{} : Bool}
+
+def zero_ne(nn, bb, e0, h_nz, bc, ec):
+  match bc:
+    case False{}:
+      ec
+    case True{}:
+      b0 = Equal.trans(U32, bb, nn, 0, Equal.sym(U32, nn, bb, ueq(nn, bb, ec)), e0)
+      nz = Equal.cong(U32, Bool, xx => Bool.not(U32.is_zero(xx)), bb, 0, b0)
+      Empty.absurd({U32.is_eq(nn, bb) == False{} : Bool},
+        true_false(Equal.trans(Bool, True{}, Bool.not(U32.is_zero(bb)), False{}, Equal.sym(Bool,
+          Bool.not(U32.is_zero(bb)), True{}, h_nz), nz)))
+
+# pos_ne at the first character: position 0, and bb is not zero
+law pos_ne.head:
+  for +nn: U32
+  for +bb: U32
+  for -tl: String
+  for e0: {nn == 0 : U32}
+  for got: ({Bool.not(U32.is_zero(bb)) == True{} : Bool} & {Laws.bounded(tl, U32.sub(bb, 1)) == True{} : Bool})
+  {U32.is_eq(nn, bb) == False{} : Bool}
+
+def pos_ne.head(nn, bb, _tl, e0, got):
+  (nz, _hb) = got
+  zero_ne(nn, bb, e0, nz, U32.is_eq(nn, bb), {==})
+
+# pos_ne past the first character, the rest given
+law pos_ne.tail:
+  for +nn: U32
+  for +bb: U32
+  for -tl: String
+  for got: ({Bool.not(U32.is_zero(bb)) == True{} : Bool} & {Laws.bounded(tl, U32.sub(bb, 1)) == True{} : Bool})
+  for ih: {Laws.bounded(tl, U32.sub(bb, 1)) == True{} : Bool}
+    -> {U32.is_eq(U32.sub(nn, 1), U32.sub(bb, 1)) == False{} : Bool}
+  {U32.is_eq(nn, bb) == False{} : Bool}
+
+def pos_ne.tail(nn, bb, _tl, got, ih):
+  (_nz, hb) = got
+  u32_ne_pred(nn, bb, ih(hb), U32.is_eq(nn, bb), {==})
+
+# a position that holds a character, in a text of at most bb characters, is not bb
+law pos_ne:
+  for +cut: String
+  for +nn: U32
+  for +bb: U32
+  for zz: Bool
+  for ez: {U32.is_zero(nn) == zz : Bool}
+  for h_b: {Laws.bounded(cut, bb) == True{} : Bool}
+  for cc: Char
+  for rest: String
+  for h_d: {sdrop(cut, nn, zz) == SCon{cc, rest} : String}
+  {U32.is_eq(nn, bb) == False{} : Bool}
+
+def pos_ne(cut, nn, bb, zz, ez, h_b, cc, rest, h_d):
+  match cut zz:
+    case SNil{} True{}:
+      Empty.absurd({U32.is_eq(nn, bb) == False{} : Bool}, nil_cons(cc, rest, h_d))
+    case SNil{} False{}:
+      Empty.absurd({U32.is_eq(nn, bb) == False{} : Bool}, nil_cons(cc, rest, h_d))
+    case SCon{hd, tl} True{}:
+      pos_ne.head(nn, bb, tl, ueq(nn, 0, ez), and_both(Bool.not(U32.is_zero(bb)), Laws.bounded(tl, U32.sub(bb, 1)),
+        h_b))
+    case SCon{hd, tl} False{}:
+      pos_ne.tail(nn, bb, tl, and_both(Bool.not(U32.is_zero(bb)), Laws.bounded(tl, U32.sub(bb, 1)), h_b),
+        hh => pos_ne(tl, U32.sub(nn, 1), U32.sub(bb, 1), U32.is_zero(U32.sub(nn, 1)), {==}, hh, cc, rest, h_d))
+
+# one less than a nonzero U32 is not the top
+law pred_ne_top:
+  for +bb: U32
+  for h_nz: {Bool.not(U32.is_zero(bb)) == True{} : Bool}
+  for bc: Bool
+  for ec: {U32.is_eq(U32.sub(bb, 1), 4294967295) == bc : Bool}
+  {U32.is_eq(U32.sub(bb, 1), 4294967295) == False{} : Bool}
+
+def pred_ne_top(bb, h_nz, bc, ec):
+  match bc:
+    case False{}:
+      ec
+    case True{}:
+      et = ueq(U32.sub(bb, 1), 4294967295, ec)
+      up = Equal.cong(U32, U32, xx => U32.add(xx, 1), U32.sub(bb, 1), 4294967295, et)
+      b0 = Equal.trans(U32, bb, U32.add(U32.sub(bb, 1), 1), 0, Equal.sym(U32, U32.add(U32.sub(bb, 1), 1), bb,
+        u32_inc_dec(bb)), up)
+      nz = Equal.cong(U32, Bool, xx => Bool.not(U32.is_zero(xx)), bb, 0, b0)
+      Empty.absurd({U32.is_eq(U32.sub(bb, 1), 4294967295) == False{} : Bool},
+        true_false(Equal.trans(Bool, True{}, Bool.not(U32.is_zero(bb)), False{},
+          Equal.sym(Bool, Bool.not(U32.is_zero(bb)), True{}, h_nz), nz)))
+
+# bounded_mono past the first character, the rest given
+law bounded_mono.cons:
+  for -tl: String
+  for +bb: U32
+  for h_top: {U32.is_eq(bb, 4294967295) == False{} : Bool}
+  for got: ({Bool.not(U32.is_zero(bb)) == True{} : Bool} & {Laws.bounded(tl, U32.sub(bb, 1)) == True{} : Bool})
+  for ih: {U32.is_eq(U32.sub(bb, 1), 4294967295) == False{} : Bool} -> {Laws.bounded(tl, U32.sub(bb,
+    1)) == True{} : Bool}
+    -> {Laws.bounded(tl, U32.add(U32.sub(bb, 1), 1)) == True{} : Bool}
+  {Bool.and(Bool.not(U32.is_zero(U32.add(bb, 1))), Laws.bounded(tl, U32.sub(U32.add(bb, 1), 1))) == True{} : Bool}
+
+def bounded_mono.cons(tl, bb, h_top, got, ih):
+  (nz, hb) = got
+  z1 = Equal.sym(Bool, U32.is_zero(U32.add(bb, 1)), False{}, inc_nonzero(bb, h_top))
+  %z1 : {Bool.and(Bool.not(_), Laws.bounded(tl, U32.sub(U32.add(bb, 1), 1))) == True{} : Bool}
+  d1 = Equal.sym(U32, U32.sub(U32.add(bb, 1), 1), bb, u32_dec_inc(bb))
+  %d1 : {Bool.and(True{}, Laws.bounded(tl, _)) == True{} : Bool}
+  i1 = u32_inc_dec(bb)
+  %i1 : {Bool.and(True{}, Laws.bounded(tl, _)) == True{} : Bool}
+  ih(pred_ne_top(bb, nz, U32.is_eq(U32.sub(bb, 1), 4294967295), {==}), hb)
+
+# a text within bb characters is within bb + 1, below the top
+law bounded_mono:
+  for +txt: String
+  for +bb: U32
+  for h_top: {U32.is_eq(bb, 4294967295) == False{} : Bool}
+  for h_b: {Laws.bounded(txt, bb) == True{} : Bool}
+  {Laws.bounded(txt, U32.add(bb, 1)) == True{} : Bool}
+
+def bounded_mono(txt, bb, h_top, h_b):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{hd, tl}:
+      bounded_mono.cons(tl, bb, h_top, and_both(Bool.not(U32.is_zero(bb)), Laws.bounded(tl, U32.sub(bb, 1)), h_b),
+        ht => hh => bounded_mono(tl, U32.sub(bb, 1), ht, hh))
+
+# the rest of a short text is short
+law short_tail:
+  for +hd: Char
+  for +tl: String
+  for h_s: {Laws.short(SCon{hd, tl}) == True{} : Bool}
+  {Laws.short(tl) == True{} : Bool}
+
+def short_tail(_hd, tl, h_s):
+  bounded_mono(tl, 4294967294, {==}, h_s)
+
+# the first character of a string, alone
+def first1(txt: String) -> String:
+  match txt:
+    case SNil{}:
+      SNil{}
+    case SCon{hd, _}:
+      SCon{hd, SNil{}}
+
+# a string without its first character
+def rest1(txt: String) -> String:
+  match txt:
+    case SNil{}:
+      SNil{}
+    case SCon{_, tl}:
+      tl
+
+# a nonzero U32's zero test, as the negation span.str and sdrop need
+law nz_of:
+  for +nn: U32
+  for ez: {U32.is_zero(nn) == False{} : Bool}
+  {Bool.not(U32.is_zero(nn)) == True{} : Bool}
+
+def nz_of(nn, ez):
+  ee = Equal.sym(Bool, U32.is_zero(nn), False{}, ez)
+  %ee : {Bool.not(_) == True{} : Bool}
+  {==}
+
+# a span of no characters is empty
+law span_zero:
+  for +txt: String
+  {V.span.str(txt, 0, True{}) == "" : String}
+
+def span_zero(txt):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{_, _}:
+      {==}
+
+# a span one longer, past the first character, the rest given
+law span_grow.cons:
+  for +hd: Char
+  for +tl: String
+  for +nn: U32
+  for +ez: {U32.is_zero(nn) == False{} : Bool}
+  for h_top: {U32.is_eq(nn, 4294967295) == False{} : Bool}
+  for cc: Char
+  for ih: {V.span.str(tl, U32.add(U32.sub(nn, 1), 1), U32.is_zero(U32.add(U32.sub(nn, 1), 1)))
+    == V.span.str(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))) ++ SCon{cc, SNil{}} : String}
+  {V.span.str(SCon{hd, tl}, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)))
+    == V.span.str(SCon{hd, tl}, nn, False{}) ++ SCon{cc, SNil{}} : String}
+
+def span_grow.cons(hd, tl, nn, _ez, h_top, cc, ih):
+  z1 = Equal.sym(Bool, U32.is_zero(U32.add(nn, 1)), False{}, inc_nonzero(nn, h_top))
+  %z1 : {V.span.str(SCon{hd, tl}, U32.add(nn, 1), _) == V.span.str(SCon{hd, tl}, nn, False{}) ++ SCon{cc,
+    SNil{}} : String}
+  d1 = Equal.sym(U32, U32.sub(U32.add(nn, 1), 1), nn, u32_dec_inc(nn))
+  %d1 : {SCon{hd, V.span.str(tl, _, U32.is_zero(_))}
+    == SCon{hd, V.span.str(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))) ++ SCon{cc, SNil{}}} : String}
+  i1 = u32_inc_dec(nn)
+  %i1 : {SCon{hd, V.span.str(tl, _, U32.is_zero(_))}
+    == SCon{hd, V.span.str(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))) ++ SCon{cc, SNil{}}} : String}
+  Equal.cong(String, String, xx => SCon{hd, xx},
+    V.span.str(tl, U32.add(U32.sub(nn, 1), 1), U32.is_zero(U32.add(U32.sub(nn, 1), 1))),
+    V.span.str(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))) ++ SCon{cc, SNil{}}, ih)
+
+# a span one longer is the span and the next character, below the top
+law span_grow:
+  for +cut: String
+  for +nn: U32
+  for zz: Bool
+  for +ez: {U32.is_zero(nn) == zz : Bool}
+  for h_top: {U32.is_eq(nn, 4294967295) == False{} : Bool}
+  for +cc: Char
+  for rest: String
+  for h_d: {sdrop(cut, nn, zz) == SCon{cc, rest} : String}
+  {V.span.str(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1))) == V.span.str(cut, nn, zz) ++ SCon{cc, SNil{}} : String}
+
+def span_grow(cut, nn, zz, ez, h_top, cc, rest, h_d):
+  match cut zz:
+    case SNil{} True{}:
+      Empty.absurd({V.span.str(SNil{}, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1))) == SNil{} ++ SCon{cc,
+        SNil{}} : String},
+        nil_cons(cc, rest, h_d))
+    case SNil{} False{}:
+      Empty.absurd({V.span.str(SNil{}, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1))) == SNil{} ++ SCon{cc,
+        SNil{}} : String},
+        nil_cons(cc, rest, h_d))
+    case SCon{hd, tl} True{}:
+      e0 = Equal.sym(U32, nn, 0, ueq(nn, 0, ez))
+      %e0 : {V.span.str(SCon{hd, tl}, U32.add(_, 1), U32.is_zero(U32.add(_, 1))) == SCon{cc, SNil{}} : String}
+      sz = Equal.sym(String, V.span.str(tl, 0, True{}), "", span_zero(tl))
+      %sz : {SCon{hd, _} == SCon{cc, SNil{}} : String}
+      Equal.cong(String, String, xx => first1(xx), SCon{hd, tl}, SCon{cc, rest}, h_d)
+    case SCon{hd, tl} False{}:
+      span_grow.cons(hd, tl, nn, ez, h_top, cc,
+        span_grow(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), {==},
+          pred_ne_top(nn, nz_of(nn, ez), U32.is_eq(U32.sub(nn, 1), 4294967295), {==}), cc, rest, h_d))
+
+# nothing dropped is the whole string
+law sdrop_zero:
+  for +txt: String
+  for rest: String
+  for ee: {txt == rest : String}
+  {sdrop(txt, 0, True{}) == rest : String}
+
+def sdrop_zero(txt, _rest, ee):
+  match txt:
+    case SNil{}:
+      ee
+    case SCon{_, _}:
+      ee
+
+# what is left after a span one longer, past the first character, the rest given
+law sdrop_grow.cons:
+  for +hd: Char
+  for +tl: String
+  for +nn: U32
+  for h_top: {U32.is_eq(nn, 4294967295) == False{} : Bool}
+  for rest: String
+  for ih: {sdrop(tl, U32.add(U32.sub(nn, 1), 1), U32.is_zero(U32.add(U32.sub(nn, 1), 1))) == rest : String}
+  {sdrop(SCon{hd, tl}, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1))) == rest : String}
+
+def sdrop_grow.cons(hd, tl, nn, h_top, rest, ih):
+  z1 = Equal.sym(Bool, U32.is_zero(U32.add(nn, 1)), False{}, inc_nonzero(nn, h_top))
+  %z1 : {sdrop(SCon{hd, tl}, U32.add(nn, 1), _) == rest : String}
+  d1 = Equal.sym(U32, U32.sub(U32.add(nn, 1), 1), nn, u32_dec_inc(nn))
+  %d1 : {sdrop(tl, _, U32.is_zero(_)) == rest : String}
+  i1 = u32_inc_dec(nn)
+  %i1 : {sdrop(tl, _, U32.is_zero(_)) == rest : String}
+  ih
+
+# what is left after a span one longer is what followed its next character
+law sdrop_grow:
+  for +cut: String
+  for +nn: U32
+  for zz: Bool
+  for +ez: {U32.is_zero(nn) == zz : Bool}
+  for h_top: {U32.is_eq(nn, 4294967295) == False{} : Bool}
+  for cc: Char
+  for +rest: String
+  for h_d: {sdrop(cut, nn, zz) == SCon{cc, rest} : String}
+  {sdrop(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1))) == rest : String}
+
+def sdrop_grow(cut, nn, zz, ez, h_top, cc, rest, h_d):
+  match cut zz:
+    case SNil{} True{}:
+      Empty.absurd({sdrop(SNil{}, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1))) == rest : String}, nil_cons(cc, rest,
+        h_d))
+    case SNil{} False{}:
+      Empty.absurd({sdrop(SNil{}, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1))) == rest : String}, nil_cons(cc, rest,
+        h_d))
+    case SCon{hd, tl} True{}:
+      e0 = Equal.sym(U32, nn, 0, ueq(nn, 0, ez))
+      %e0 : {sdrop(SCon{hd, tl}, U32.add(_, 1), U32.is_zero(U32.add(_, 1))) == rest : String}
+      sdrop_zero(tl, rest, Equal.cong(String, String, xx => rest1(xx), SCon{hd, tl}, SCon{cc, rest}, h_d))
+    case SCon{hd, tl} False{}:
+      sdrop_grow.cons(hd, tl, nn, h_top, rest,
+        sdrop_grow(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), {==},
+          pred_ne_top(nn, nz_of(nn, ez), U32.is_eq(U32.sub(nn, 1), 4294967295), {==}), cc, rest, h_d))
