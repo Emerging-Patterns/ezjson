@@ -2379,3 +2379,1558 @@ def sdrop_grow(cut, nn, zz, ez, h_top, cc, rest, h_d):
       sdrop_grow.cons(hd, tl, nn, h_top, rest,
         sdrop_grow(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), {==},
           pred_ne_top(nn, nz_of(nn, ez), U32.is_eq(U32.sub(nn, 1), 4294967295), {==}), cc, rest, h_d))
+
+# WP-L1: the character machine only adds tokens in front of those it is given
+
+# a lexer state with more tokens after its own
+def lex.app(lx: Lex.Lex, tt: List<&2, Lex.Tok>) -> Lex.Lex:
+  match lx:
+    case Lex.Lex{md, bf, tk}:
+      Lex.Lex{md, bf, List.append(&2, Lex.Tok, tk, tt)}
+
+# escape.put passes its tokens through
+law pass.escape_put:
+  for mb: Maybe<&2, Char>
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.escape.put(mb, bf, tt) == lex.app(Lex.escape.put(mb, bf, []), tt) : Lex.Lex}
+
+def pass.escape_put(mb, _bf, _tt):
+  match mb:
+    case Some{_}:
+      {==}
+    case None{}:
+      {==}
+
+# escape.go passes its tokens through
+law pass.escape_go:
+  for +ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for is_u: Bool
+  {Lex.escape.go(ch, bf, tt, is_u) == lex.app(Lex.escape.go(ch, bf, [], is_u), tt) : Lex.Lex}
+
+def pass.escape_go(ch, bf, tt, is_u):
+  match is_u:
+    case True{}:
+      {==}
+    case False{}:
+      pass.escape_put(Lex.unescape(ch), bf, tt)
+
+# escape passes its tokens through
+law pass.escape:
+  for +ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.escape(ch, bf, tt) == lex.app(Lex.escape(ch, bf, []), tt) : Lex.Lex}
+
+def pass.escape(ch, bf, tt):
+  pass.escape_go(ch, bf, tt, U32.is_eq(Char.to_u32(ch), 117))
+
+# unicode.end.go passes its tokens through
+law pass.end_go:
+  for cp: U32
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for key: Lex.Sur
+  {Lex.unicode.end.go(cp, bf, tt, key) == lex.app(Lex.unicode.end.go(cp, bf, [], key), tt) : Lex.Lex}
+
+def pass.end_go(_cp, _bf, _tt, key):
+  match key:
+    case Lex.SOk{}:
+      {==}
+    case Lex.SHi{}:
+      {==}
+    case Lex.SLo{}:
+      {==}
+
+# unicode.put passes its tokens through
+law pass.put:
+  for left: Nat
+  for +acc: U32
+  for +dig: U32
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.unicode.put(left, acc, dig, bf, tt) == lex.app(Lex.unicode.put(left, acc, dig, bf, []), tt) : Lex.Lex}
+
+def pass.put(left, acc, dig, bf, tt):
+  match left:
+    case 0n:
+      pass.end_go((acc * 16 + dig : U32), bf, tt, Lex.unicode.sur((acc * 16 + dig : U32)))
+    case 1n+_:
+      {==}
+
+# unicode.go passes its tokens through
+law pass.uni_go:
+  for left: Nat
+  for acc: U32
+  for ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for ok: Bool
+  {Lex.unicode.go(left, acc, ch, bf, tt, ok) == lex.app(Lex.unicode.go(left, acc, ch, bf, [], ok), tt) : Lex.Lex}
+
+def pass.uni_go(left, acc, ch, bf, tt, ok):
+  match ok:
+    case True{}:
+      pass.put(left, acc, Lex.hex(ch), bf, tt)
+    case False{}:
+      {==}
+
+# unicode.low.end.go passes its tokens through
+law pass.low_end_go:
+  for lo: U32
+  for hi: U32
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for key: Lex.Sur
+  {Lex.unicode.low.end.go(lo, hi, bf, tt, key) == lex.app(Lex.unicode.low.end.go(lo, hi, bf, [], key), tt) : Lex.Lex}
+
+def pass.low_end_go(_lo, _hi, _bf, _tt, key):
+  match key:
+    case Lex.SLo{}:
+      {==}
+    case Lex.SOk{}:
+      {==}
+    case Lex.SHi{}:
+      {==}
+
+# unicode.low.put passes its tokens through
+law pass.low_put:
+  for left: Nat
+  for +acc: U32
+  for hi: U32
+  for +dig: U32
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.unicode.low.put(left, acc, hi, dig, bf, tt) == lex.app(Lex.unicode.low.put(left, acc, hi, dig, bf, []),
+    tt) : Lex.Lex}
+
+def pass.low_put(left, acc, hi, dig, bf, tt):
+  match left:
+    case 0n:
+      pass.low_end_go((acc * 16 + dig : U32), hi, bf, tt, Lex.unicode.sur((acc * 16 + dig : U32)))
+    case 1n+_:
+      {==}
+
+# unicode.low.go passes its tokens through
+law pass.low_go:
+  for left: Nat
+  for acc: U32
+  for hi: U32
+  for ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for ok: Bool
+  {Lex.unicode.low.go(left, acc, hi, ch, bf, tt, ok) == lex.app(Lex.unicode.low.go(left, acc, hi, ch, bf, [], ok),
+    tt) : Lex.Lex}
+
+def pass.low_go(left, acc, hi, ch, bf, tt, ok):
+  match ok:
+    case True{}:
+      pass.low_put(left, acc, hi, Lex.hex(ch), bf, tt)
+    case False{}:
+      {==}
+
+# step.str.go passes its tokens through
+law pass.str_go:
+  for ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for ctrl: Bool
+  {Lex.step.str.go(ch, bf, tt, ctrl) == lex.app(Lex.step.str.go(ch, bf, [], ctrl), tt) : Lex.Lex}
+
+def pass.str_go(_ch, _bf, _tt, ctrl):
+  match ctrl:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# step.hi.go passes its tokens through
+law pass.hi_go:
+  for hi: U32
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for slash: Bool
+  {Lex.step.hi.go(hi, bf, tt, slash) == lex.app(Lex.step.hi.go(hi, bf, [], slash), tt) : Lex.Lex}
+
+def pass.hi_go(_hi, _bf, _tt, slash):
+  match slash:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# step.hiesc.go passes its tokens through
+law pass.hiesc_go:
+  for hi: U32
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  for is_u: Bool
+  {Lex.step.hiesc.go(hi, bf, tt, is_u) == lex.app(Lex.step.hiesc.go(hi, bf, [], is_u), tt) : Lex.Lex}
+
+def pass.hiesc_go(_hi, _bf, _tt, is_u):
+  match is_u:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# step.hiesc passes its tokens through
+law pass.hiesc:
+  for hi: U32
+  for ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.step.hiesc(hi, ch, bf, tt) == lex.app(Lex.step.hiesc(hi, ch, bf, []), tt) : Lex.Lex}
+
+def pass.hiesc(hi, ch, bf, tt):
+  pass.hiesc_go(hi, bf, tt, U32.is_eq(Char.to_u32(ch), 117))
+
+# step passes its tokens through, after the ones it adds
+law pass.step:
+  for md: Lex.Mode
+  for cls: Lex.Class
+  for +ch: Char
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.step(md, cls, ch, bf, tt) == lex.app(Lex.step(md, cls, ch, bf, []), tt) : Lex.Lex}
+
+def pass.step(md, cls, ch, bf, tt):
+  match md cls:
+    case Lex.Idle{} Lex.CPunct{_}:
+      {==}
+    case Lex.Idle{} Lex.CQuote{}:
+      {==}
+    case Lex.Idle{} Lex.CSpace{}:
+      {==}
+    case Lex.Idle{} Lex.CBack{}:
+      {==}
+    case Lex.Idle{} Lex.COther{}:
+      {==}
+    case Lex.Word{} Lex.CPunct{_}:
+      {==}
+    case Lex.Word{} Lex.CQuote{}:
+      {==}
+    case Lex.Word{} Lex.CSpace{}:
+      {==}
+    case Lex.Word{} Lex.CBack{}:
+      {==}
+    case Lex.Word{} Lex.COther{}:
+      {==}
+    case Lex.Str{} Lex.CQuote{}:
+      {==}
+    case Lex.Str{} Lex.CBack{}:
+      {==}
+    case Lex.Str{} Lex.CPunct{_}:
+      pass.str_go(ch, bf, tt, U32.is_lt(Char.to_u32(ch), 32))
+    case Lex.Str{} Lex.CSpace{}:
+      pass.str_go(ch, bf, tt, U32.is_lt(Char.to_u32(ch), 32))
+    case Lex.Str{} Lex.COther{}:
+      pass.str_go(ch, bf, tt, U32.is_lt(Char.to_u32(ch), 32))
+    case Lex.Esc{} _:
+      pass.escape(ch, bf, tt)
+    case Lex.Uni{left, acc} _:
+      pass.uni_go(left, acc, ch, bf, tt, Lex.hex.ok(Char.to_u32(ch)))
+    case Lex.Hi{hi} _:
+      pass.hi_go(hi, bf, tt, U32.is_eq(Char.to_u32(ch), 92))
+    case Lex.HiEsc{hi} _:
+      pass.hiesc(hi, ch, bf, tt)
+    case Lex.Lo{left, acc, hi} _:
+      pass.low_go(left, acc, hi, ch, bf, tt, Lex.hex.ok(Char.to_u32(ch)))
+    case Lex.Bad{} _:
+      {==}
+
+# feed passes its tokens through, after the ones it adds
+law pass.feed:
+  for +ch: Char
+  for md: Lex.Mode
+  for bf: List<&2, Char>
+  for tt: List<&2, Lex.Tok>
+  {Lex.feed(ch, Lex.Lex{md, bf, tt}) == lex.app(Lex.feed(ch, Lex.Lex{md, bf, []}), tt) : Lex.Lex}
+
+def pass.feed(ch, md, bf, tt):
+  pass.step(md, Lex.classify(ch), ch, bf, tt)
+
+# a token with a span replaced by the characters it covers
+def den(tok: Lex.Tok) -> Lex.Tok:
+  match tok:
+    case Lex.TStrS{cut, +nn}:
+      Lex.TStr{V.span.str(cut, nn, U32.is_zero(nn))}
+    case Lex.TWordS{cut, +nn}:
+      Lex.TWord{V.span.str(cut, nn, U32.is_zero(nn))}
+    case other:
+      other
+
+# tokens with their spans replaced
+def dens(toks: List<&2, Lex.Tok>) -> List<&2, Lex.Tok>:
+  match toks:
+    case Nil{}:
+      Nil{}
+    case hd <> tl:
+      den(hd) <> dens(tl)
+
+# a lexer state with its tokens' spans replaced
+def dlex(lx: Lex.Lex) -> Lex.Lex:
+  match lx:
+    case Lex.Lex{md, bf, tk}:
+      Lex.Lex{md, bf, dens(tk)}
+
+# replacing spans goes through an append
+law dens_app:
+  for +aa: List<&2, Lex.Tok>
+  for bb: List<&2, Lex.Tok>
+  {dens(List.append(&2, Lex.Tok, aa, bb)) == List.append(&2, Lex.Tok, dens(aa), dens(bb)) : List<&2, Lex.Tok>}
+
+def dens_app(aa, bb):
+  match aa:
+    case Nil{}:
+      {==}
+    case hd <> tl:
+      Equal.cong(List<&2, Lex.Tok>, List<&2, Lex.Tok>, xx => den(hd) <> xx,
+        dens(List.append(&2, Lex.Tok, tl, bb)), List.append(&2, Lex.Tok, dens(tl), dens(bb)), dens_app(tl, bb))
+
+# replacing spans goes through a reversal
+law dens_rev:
+  for +aa: List<&2, Lex.Tok>
+  for acc: List<&2, Lex.Tok>
+  {dens(List.reverse.go(&2, Lex.Tok, aa, acc)) == List.reverse.go(&2, Lex.Tok, dens(aa), dens(acc)) : List<&2, Lex.Tok>}
+
+def dens_rev(aa, acc):
+  match aa:
+    case Nil{}:
+      {==}
+    case hd <> tl:
+      dens_rev(tl, hd <> acc)
+
+# replacing spans goes through lex.app
+law dlex_app:
+  for lx: Lex.Lex
+  for tt: List<&2, Lex.Tok>
+  {dlex(lex.app(lx, tt)) == lex.app(dlex(lx), dens(tt)) : Lex.Lex}
+
+def dlex_app(lx, tt):
+  match lx:
+    case Lex.Lex{md, bf, tk}:
+      Equal.cong(List<&2, Lex.Tok>, Lex.Lex, xx => Lex.Lex{md, bf, xx},
+        dens(List.append(&2, Lex.Tok, tk, tt)), List.append(&2, Lex.Tok, dens(tk), dens(tt)), dens_app(tk, tt))
+
+# the tokens a finished lexer gives, with spans replaced, depend only on its
+# state with spans replaced
+law dens_finish:
+  for lx: Lex.Lex
+  {dens(Lex.finish(lx)) == Lex.finish(dlex(lx)) : List<&2, Lex.Tok>}
+
+def dens_finish(lx):
+  match lx:
+    case Lex.Lex{Lex.Idle{}, bf, tk}:
+      dens_rev(tk, [])
+    case Lex.Lex{Lex.Word{}, bf, tk}:
+      dens_rev(Lex.TWord{Lex.text(bf)} <> tk, [])
+    case Lex.Lex{Lex.Str{}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+    case Lex.Lex{Lex.Esc{}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+    case Lex.Lex{Lex.Uni{_, _}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+    case Lex.Lex{Lex.Hi{_}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+    case Lex.Lex{Lex.HiEsc{_}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+    case Lex.Lex{Lex.Lo{_, _, _}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+    case Lex.Lex{Lex.Bad{}, bf, tk}:
+      dens_rev(Lex.TBad{} <> tk, [])
+
+# feed as a function of a lexer state with its spans replaced
+def feedg(+ch: Char, lx: Lex.Lex) -> Lex.Lex:
+  match lx:
+    case Lex.Lex{md, bf, dd}:
+      lex.app(dlex(Lex.feed(ch, Lex.Lex{md, bf, []})), dd)
+
+# feeding, then replacing spans, is feedg of the replaced state
+law dlex_feed_g:
+  for +ch: Char
+  for +lx: Lex.Lex
+  {dlex(Lex.feed(ch, lx)) == feedg(ch, dlex(lx)) : Lex.Lex}
+
+def dlex_feed_g(ch, lx):
+  match lx:
+    case Lex.Lex{md, bf, tk}:
+      Equal.trans(Lex.Lex, dlex(Lex.feed(ch, Lex.Lex{md, bf, tk})), dlex(lex.app(Lex.feed(ch, Lex.Lex{md, bf, []}),
+        tk)),
+        lex.app(dlex(Lex.feed(ch, Lex.Lex{md, bf, []})), dens(tk)),
+        Equal.cong(Lex.Lex, Lex.Lex, xx => dlex(xx), Lex.feed(ch, Lex.Lex{md, bf, tk}),
+          lex.app(Lex.feed(ch, Lex.Lex{md, bf, []}), tk), pass.feed(ch, md, bf, tk)),
+        dlex_app(Lex.feed(ch, Lex.Lex{md, bf, []}), tk))
+
+# two lexer states the same up to spans stay so after one character
+law dlex_feed:
+  for +ch: Char
+  for +l1: Lex.Lex
+  for +l2: Lex.Lex
+  for ee: {dlex(l1) == dlex(l2) : Lex.Lex}
+  {dlex(Lex.feed(ch, l1)) == dlex(Lex.feed(ch, l2)) : Lex.Lex}
+
+def dlex_feed(ch, l1, l2, ee):
+  Equal.trans(Lex.Lex, dlex(Lex.feed(ch, l1)), feedg(ch, dlex(l2)), dlex(Lex.feed(ch, l2)),
+    Equal.trans(Lex.Lex, dlex(Lex.feed(ch, l1)), feedg(ch, dlex(l1)), feedg(ch, dlex(l2)),
+      dlex_feed_g(ch, l1), Equal.cong(Lex.Lex, Lex.Lex, xx => feedg(ch, xx), dlex(l1), dlex(l2), ee)),
+    Equal.sym(Lex.Lex, dlex(Lex.feed(ch, l2)), feedg(ch, dlex(l2)), dlex_feed_g(ch, l2)))
+
+# appending nothing
+law append_nil:
+  for +txt: String
+  {txt ++ "" == txt : String}
+
+def append_nil(txt):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{hd, tl}:
+      Equal.cong(String, String, xx => SCon{hd, xx}, tl ++ "", tl, append_nil(tl))
+
+# a reversed prefix of no characters is the accumulator
+law rev_zero:
+  for +src: String
+  for +nn: U32
+  for acc: List<&2, Char>
+  {Lex.tokens.rev(src, nn, True{}, acc) == acc : List<&2, Char>}
+
+def rev_zero(src, _nn, _acc):
+  match src:
+    case SNil{}:
+      {==}
+    case SCon{_, _}:
+      {==}
+
+# a span of no characters is empty, whatever the count
+law span_true:
+  for +src: String
+  for +nn: U32
+  {V.span.str(src, nn, True{}) == "" : String}
+
+def span_true(src, _nn):
+  match src:
+    case SNil{}:
+      {==}
+    case SCon{_, _}:
+      {==}
+
+# reading a reversed prefix back gives the span's characters, in order
+law text_rev:
+  for +src: String
+  for +nn: U32
+  for zz: Bool
+  for acc: List<&2, Char>
+  for aa: String
+  {Lex.text.go(Lex.tokens.rev(src, nn, zz, acc), aa) == Lex.text.go(acc, V.span.str(src, nn, zz) ++ aa) : String}
+
+def text_rev(src, nn, zz, acc, aa):
+  match src zz:
+    case ss True{}:
+      rz = Equal.sym(List<&2, Char>, Lex.tokens.rev(ss, nn, True{}, acc), acc, rev_zero(ss, nn, acc))
+      %rz : {Lex.text.go(_, aa) == Lex.text.go(acc, V.span.str(ss, nn, True{}) ++ aa) : String}
+      st = Equal.sym(String, V.span.str(ss, nn, True{}), "", span_true(ss, nn))
+      %st : {Lex.text.go(acc, aa) == Lex.text.go(acc, _ ++ aa) : String}
+      {==}
+    case SNil{} False{}:
+      {==}
+    case SCon{hd, tl} False{}:
+      text_rev(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), hd <> acc, aa)
+
+# the text of a reversed prefix is the span
+law text_span:
+  for +src: String
+  for +nn: U32
+  for +zz: Bool
+  {Lex.text(Lex.tokens.rev(src, nn, zz, [])) == V.span.str(src, nn, zz) : String}
+
+def text_span(src, nn, zz):
+  Equal.trans(String, Lex.text(Lex.tokens.rev(src, nn, zz, [])), V.span.str(src, nn, zz) ++ "", V.span.str(src, nn, zz),
+    text_rev(src, nn, zz, [], ""), append_nil(V.span.str(src, nn, zz)))
+
+# the first character of a string, or U+0000
+def head0(txt: String) -> Char:
+  match txt:
+    case SNil{}:
+      Char.from_u32(0)
+    case SCon{hd, _}:
+      hd
+
+# a reversed prefix one longer, past the first character, the rest given
+law rev_grow.cons:
+  for +hd: Char
+  for +tl: String
+  for +nn: U32
+  for h_top: {U32.is_eq(nn, 4294967295) == False{} : Bool}
+  for cc: Char
+  for +acc: List<&2, Char>
+  for ih: {Lex.tokens.rev(tl, U32.add(U32.sub(nn, 1), 1), U32.is_zero(U32.add(U32.sub(nn, 1), 1)), hd <> acc)
+    == cc <> Lex.tokens.rev(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), hd <> acc) : List<&2, Char>}
+  {Lex.tokens.rev(SCon{hd, tl}, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), acc)
+    == cc <> Lex.tokens.rev(SCon{hd, tl}, nn, False{}, acc) : List<&2, Char>}
+
+def rev_grow.cons(hd, tl, nn, h_top, cc, acc, ih):
+  z1 = Equal.sym(Bool, U32.is_zero(U32.add(nn, 1)), False{}, inc_nonzero(nn, h_top))
+  %z1 : {Lex.tokens.rev(SCon{hd, tl}, U32.add(nn, 1), _, acc)
+    == cc <> Lex.tokens.rev(SCon{hd, tl}, nn, False{}, acc) : List<&2, Char>}
+  d1 = Equal.sym(U32, U32.sub(U32.add(nn, 1), 1), nn, u32_dec_inc(nn))
+  %d1 : {Lex.tokens.rev(tl, _, U32.is_zero(_), hd <> acc)
+    == cc <> Lex.tokens.rev(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), hd <> acc) : List<&2, Char>}
+  i1 = u32_inc_dec(nn)
+  %i1 : {Lex.tokens.rev(tl, _, U32.is_zero(_), hd <> acc)
+    == cc <> Lex.tokens.rev(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), hd <> acc) : List<&2, Char>}
+  ih
+
+# a reversed prefix one longer is the next character in front, below the top
+law rev_grow:
+  for +cut: String
+  for +nn: U32
+  for zz: Bool
+  for +ez: {U32.is_zero(nn) == zz : Bool}
+  for h_top: {U32.is_eq(nn, 4294967295) == False{} : Bool}
+  for +cc: Char
+  for rest: String
+  for h_d: {sdrop(cut, nn, zz) == SCon{cc, rest} : String}
+  for +acc: List<&2, Char>
+  {Lex.tokens.rev(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), acc)
+    == cc <> Lex.tokens.rev(cut, nn, zz, acc) : List<&2, Char>}
+
+def rev_grow(cut, nn, zz, ez, h_top, cc, rest, h_d, acc):
+  match cut zz:
+    case SNil{} True{}:
+      Empty.absurd({Lex.tokens.rev(SNil{}, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), acc)
+        == cc <> Lex.tokens.rev(SNil{}, nn, True{}, acc) : List<&2, Char>}, nil_cons(cc, rest, h_d))
+    case SNil{} False{}:
+      Empty.absurd({Lex.tokens.rev(SNil{}, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), acc)
+        == cc <> Lex.tokens.rev(SNil{}, nn, False{}, acc) : List<&2, Char>}, nil_cons(cc, rest, h_d))
+    case SCon{hd, tl} True{}:
+      e0 = Equal.sym(U32, nn, 0, ueq(nn, 0, ez))
+      %e0 : {Lex.tokens.rev(SCon{hd, tl}, U32.add(_, 1), U32.is_zero(U32.add(_, 1)), acc) == cc <> acc : List<&2, Char>}
+      rz = Equal.sym(List<&2, Char>, Lex.tokens.rev(tl, 0, True{}, hd <> acc), hd <> acc, rev_zero(tl, 0, hd <> acc))
+      %rz : {_ == cc <> acc : List<&2, Char>}
+      Equal.cong(Char, List<&2, Char>, xx => xx <> acc, hd, cc,
+        Equal.cong(String, Char, xx => head0(xx), SCon{hd, tl}, SCon{cc, rest}, h_d))
+    case SCon{hd, tl} False{}:
+      rev_grow.cons(hd, tl, nn, h_top, cc, acc,
+        rev_grow(tl, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)), {==},
+          pred_ne_top(nn, nz_of(nn, ez), U32.is_eq(U32.sub(nn, 1), 4294967295), {==}), cc, rest, h_d, hd <> acc))
+
+# whether a class is Lex.CQuote{}
+def is_quote(cls: Lex.Class) -> Bool:
+  match cls:
+    case Lex.CQuote{}:
+      True{}
+    case _:
+      False{}
+
+# the last test of classify: a character past them all is COther, not Lex.CQuote{}
+law cls_quote_end:
+  for +cp: U32
+  for h_c: {Lex.COther{} == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_end(cp, h_c):
+  Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.COther{},
+    Lex.CQuote{}, h_c)))
+
+# classify's test for 9, once its answer is named
+law cls_quote_11:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 9) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Lex.COther{}) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_11(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CSpace{},
+        Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_end(cp, h_c)
+
+# classify's test for 13, once its answer is named
+law cls_quote_10:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 13) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+    Lex.COther{})) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_10(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CSpace{},
+        Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_11(cp, U32.is_eq(cp, 9), {==}, h_c)
+
+# classify's test for 10, once its answer is named
+law cls_quote_9:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 10) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_9(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CSpace{},
+        Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_10(cp, U32.is_eq(cp, 13), {==}, h_c)
+
+# classify's test for 32, once its answer is named
+law cls_quote_8:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 32) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+      Lex.COther{})))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_8(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CSpace{},
+        Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_9(cp, U32.is_eq(cp, 10), {==}, h_c)
+
+# classify's test for 92, once its answer is named
+law cls_quote_7:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 92) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+      Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_7(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx), Lex.CBack{},
+        Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_8(cp, U32.is_eq(cp, 32), {==}, h_c)
+
+# classify's test for 34, once its answer is named
+law cls_quote_6:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 34) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{},
+      Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+        Lex.COther{})))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_6(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      ueq(cp, 34, eb)
+    case False{}:
+      cls_quote_7(cp, U32.is_eq(cp, 92), {==}, h_c)
+
+# classify's test for 44, once its answer is named
+law cls_quote_5:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 44) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{},
+      Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+        Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_5(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx),
+        Lex.CPunct{Lex.TComma{}}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_6(cp, U32.is_eq(cp, 34), {==}, h_c)
+
+# classify's test for 58, once its answer is named
+law cls_quote_4:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 58) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44),
+    Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class,
+      U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class,
+        U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class,
+          U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_4(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx),
+        Lex.CPunct{Lex.TColon{}}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_5(cp, U32.is_eq(cp, 44), {==}, h_c)
+
+# classify's test for 125, once its answer is named
+law cls_quote_3:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 125) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58),
+    Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class,
+      U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class,
+        U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class,
+          U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+            Lex.COther{}))))))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_3(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx),
+        Lex.CPunct{Lex.TCloseObj{}}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_4(cp, U32.is_eq(cp, 58), {==}, h_c)
+
+# classify's test for 123, once its answer is named
+law cls_quote_2:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 123) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125),
+    Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}},
+      Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34),
+        Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32),
+          Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13),
+            Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+              Lex.COther{})))))))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_2(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx),
+        Lex.CPunct{Lex.TOpenObj{}}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_3(cp, U32.is_eq(cp, 125), {==}, h_c)
+
+# classify's test for 93, once its answer is named
+law cls_quote_1:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 93) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TCloseArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 123),
+    Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}},
+      Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44),
+        Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class,
+          U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class,
+            U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+              Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_1(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx),
+        Lex.CPunct{Lex.TCloseArr{}}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_2(cp, U32.is_eq(cp, 123), {==}, h_c)
+
+# classify's test for 91, once its answer is named
+law cls_quote_0:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 91) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TOpenArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 93),
+    Lex.CPunct{Lex.TCloseArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 123), Lex.CPunct{Lex.TOpenObj{}},
+      Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58),
+        Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}},
+          Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{},
+            Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10),
+              Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp,
+                9), Lex.CSpace{}, Lex.COther{})))))))))))) == Lex.CQuote{} : Lex.Class}
+  {cp == 34 : U32}
+
+def cls_quote_0(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 34 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_quote(xx),
+        Lex.CPunct{Lex.TOpenArr{}}, Lex.CQuote{}, h_c)))
+    case False{}:
+      cls_quote_1(cp, U32.is_eq(cp, 93), {==}, h_c)
+
+# a character classify reads as Lex.CQuote{} is code point 34
+law cls_quote:
+  for +ch: Char
+  for h_c: {Lex.classify(ch) == Lex.CQuote{} : Lex.Class}
+  {Char.to_u32(ch) == 34 : U32}
+
+def cls_quote(ch, h_c):
+  cls_quote_0(Char.to_u32(ch), U32.is_eq(Char.to_u32(ch), 91), {==}, h_c)
+
+# whether a class is Lex.CBack{}
+def is_back(cls: Lex.Class) -> Bool:
+  match cls:
+    case Lex.CBack{}:
+      True{}
+    case _:
+      False{}
+
+# the last test of classify: a character past them all is COther, not Lex.CBack{}
+law cls_back_end:
+  for +cp: U32
+  for h_c: {Lex.COther{} == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_end(cp, h_c):
+  Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.COther{}, Lex.CBack{},
+    h_c)))
+
+# classify's test for 9, once its answer is named
+law cls_back_11:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 9) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Lex.COther{}) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_11(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CSpace{},
+        Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_end(cp, h_c)
+
+# classify's test for 13, once its answer is named
+law cls_back_10:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 13) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+    Lex.COther{})) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_10(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CSpace{},
+        Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_11(cp, U32.is_eq(cp, 9), {==}, h_c)
+
+# classify's test for 10, once its answer is named
+law cls_back_9:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 10) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_9(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CSpace{},
+        Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_10(cp, U32.is_eq(cp, 13), {==}, h_c)
+
+# classify's test for 32, once its answer is named
+law cls_back_8:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 32) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+      Lex.COther{})))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_8(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CSpace{},
+        Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_9(cp, U32.is_eq(cp, 10), {==}, h_c)
+
+# classify's test for 92, once its answer is named
+law cls_back_7:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 92) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+      Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_7(cp, bb, eb, h_c):
+  match bb:
+    case True{}:
+      ueq(cp, 92, eb)
+    case False{}:
+      cls_back_8(cp, U32.is_eq(cp, 32), {==}, h_c)
+
+# classify's test for 34, once its answer is named
+law cls_back_6:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 34) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{},
+      Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+        Lex.COther{})))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_6(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx), Lex.CQuote{},
+        Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_7(cp, U32.is_eq(cp, 92), {==}, h_c)
+
+# classify's test for 44, once its answer is named
+law cls_back_5:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 44) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{},
+    Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{},
+      Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+        Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_5(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx),
+        Lex.CPunct{Lex.TComma{}}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_6(cp, U32.is_eq(cp, 34), {==}, h_c)
+
+# classify's test for 58, once its answer is named
+law cls_back_4:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 58) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44),
+    Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class,
+      U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class,
+        U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class,
+          U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{})))))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_4(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx),
+        Lex.CPunct{Lex.TColon{}}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_5(cp, U32.is_eq(cp, 44), {==}, h_c)
+
+# classify's test for 125, once its answer is named
+law cls_back_3:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 125) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58),
+    Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class,
+      U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class,
+        U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class,
+          U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+            Lex.COther{}))))))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_3(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx),
+        Lex.CPunct{Lex.TCloseObj{}}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_4(cp, U32.is_eq(cp, 58), {==}, h_c)
+
+# classify's test for 123, once its answer is named
+law cls_back_2:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 123) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125),
+    Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}},
+      Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34),
+        Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32),
+          Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13),
+            Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{},
+              Lex.COther{})))))))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_2(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx),
+        Lex.CPunct{Lex.TOpenObj{}}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_3(cp, U32.is_eq(cp, 125), {==}, h_c)
+
+# classify's test for 93, once its answer is named
+law cls_back_1:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 93) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TCloseArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 123),
+    Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}},
+      Bool.pick(Lex.Class, U32.is_eq(cp, 58), Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44),
+        Lex.CPunct{Lex.TComma{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class,
+          U32.is_eq(cp, 92), Lex.CBack{}, Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class,
+            U32.is_eq(cp, 10), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{},
+              Bool.pick(Lex.Class, U32.is_eq(cp, 9), Lex.CSpace{}, Lex.COther{}))))))))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_1(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx),
+        Lex.CPunct{Lex.TCloseArr{}}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_2(cp, U32.is_eq(cp, 123), {==}, h_c)
+
+# classify's test for 91, once its answer is named
+law cls_back_0:
+  for +cp: U32
+  for bb: Bool
+  for eb: {U32.is_eq(cp, 91) == bb : Bool}
+  for h_c: {Bool.pick(Lex.Class, bb, Lex.CPunct{Lex.TOpenArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 93),
+    Lex.CPunct{Lex.TCloseArr{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 123), Lex.CPunct{Lex.TOpenObj{}},
+      Bool.pick(Lex.Class, U32.is_eq(cp, 125), Lex.CPunct{Lex.TCloseObj{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 58),
+        Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, U32.is_eq(cp, 44), Lex.CPunct{Lex.TComma{}},
+          Bool.pick(Lex.Class, U32.is_eq(cp, 34), Lex.CQuote{}, Bool.pick(Lex.Class, U32.is_eq(cp, 92), Lex.CBack{},
+            Bool.pick(Lex.Class, U32.is_eq(cp, 32), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 10),
+              Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp, 13), Lex.CSpace{}, Bool.pick(Lex.Class, U32.is_eq(cp,
+                9), Lex.CSpace{}, Lex.COther{})))))))))))) == Lex.CBack{} : Lex.Class}
+  {cp == 92 : U32}
+
+def cls_back_0(cp, bb, _eb, h_c):
+  match bb:
+    case True{}:
+      Empty.absurd({cp == 92 : U32}, false_true(Equal.cong(Lex.Class, Bool, xx => is_back(xx),
+        Lex.CPunct{Lex.TOpenArr{}}, Lex.CBack{}, h_c)))
+    case False{}:
+      cls_back_1(cp, U32.is_eq(cp, 93), {==}, h_c)
+
+# a character classify reads as Lex.CBack{} is code point 92
+law cls_back:
+  for +ch: Char
+  for h_c: {Lex.classify(ch) == Lex.CBack{} : Lex.Class}
+  {Char.to_u32(ch) == 92 : U32}
+
+def cls_back(ch, h_c):
+  cls_back_0(Char.to_u32(ch), U32.is_eq(Char.to_u32(ch), 91), {==}, h_c)
+
+# WP-L1: the span scanner against the character machine. rel says what a
+# scanner state and a lexer state have in common: the same tokens up to
+# spans, and a span that holds exactly the reversed buffer
+
+# rel for a span scanner state, by its mode
+def rel.go(+cut: String, +nn: U32, md: Lex.Span, +toks: List<&2, Lex.Tok>, lx: Lex.Lex, ss: String) -> Type:
+  match md:
+    case Lex.GIdle{}:
+      {dlex(lx) == Lex.Lex{Lex.Idle{}, [], dens(toks)} : Lex.Lex}
+    case Lex.GWord{}:
+      ({dlex(lx) == Lex.Lex{Lex.Word{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), dens(toks)} : Lex.Lex}
+        & ({sdrop(cut, nn, U32.is_zero(nn)) == ss : String} & {Laws.short(cut) == True{} : Bool}))
+    case Lex.GStr{}:
+      ({dlex(lx) == Lex.Lex{Lex.Str{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), dens(toks)} : Lex.Lex}
+        & ({sdrop(cut, nn, U32.is_zero(nn)) == ss : String} & {Laws.short(cut) == True{} : Bool}))
+    case Lex.GBad{}:
+      {dlex(lx) == Lex.Lex{Lex.Bad{}, [], dens(toks)} : Lex.Lex}
+
+# what a span scanner state and a lexer state share, with `ss` left to read
+def rel(sc: Lex.Scan, lx: Lex.Lex, ss: String) -> Type:
+  match sc:
+    case Lex.Go{cut, nn, md, toks}:
+      rel.go(cut, nn, md, toks, lx, ss)
+    case Lex.Old{ol}:
+      {dlex(lx) == dlex(ol) : Lex.Lex}
+
+# feed, with the character's class named
+law feed_as:
+  for +ch: Char
+  for md: Lex.Mode
+  for bf: List<&2, Char>
+  for tk: List<&2, Lex.Tok>
+  for cls: Lex.Class
+  for ecls: {Lex.classify(ch) == cls : Lex.Class}
+  {Lex.feed(ch, Lex.Lex{md, bf, tk}) == Lex.step(md, cls, ch, bf, tk) : Lex.Lex}
+
+def feed_as(ch, md, bf, tk, cls, ecls):
+  ec = Equal.sym(Lex.Class, Lex.classify(ch), cls, ecls)
+  %ec : {Lex.step(md, _, ch, bf, tk) == Lex.step(md, cls, ch, bf, tk) : Lex.Lex}
+  {==}
+
+# a lexer state the same as Lex{md, bf, tk} up to spans, fed one character
+law via:
+  for +ch: Char
+  for +lx: Lex.Lex
+  for +md: Lex.Mode
+  for +bf: List<&2, Char>
+  for +tk: List<&2, Lex.Tok>
+  for cls: Lex.Class
+  for ecls: {Lex.classify(ch) == cls : Lex.Class}
+  for hr: {dlex(lx) == Lex.Lex{md, bf, dens(tk)} : Lex.Lex}
+  {dlex(Lex.feed(ch, lx)) == dlex(Lex.step(md, cls, ch, bf, tk)) : Lex.Lex}
+
+def via(ch, lx, md, bf, tk, cls, ecls, hr):
+  Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), dlex(Lex.feed(ch, Lex.Lex{md, bf, tk})), dlex(Lex.step(md, cls, ch,
+    bf, tk)),
+    dlex_feed(ch, lx, Lex.Lex{md, bf, tk}, hr),
+    Equal.cong(Lex.Lex, Lex.Lex, xx => dlex(xx), Lex.feed(ch, Lex.Lex{md, bf, tk}), Lex.step(md, cls, ch, bf, tk),
+      feed_as(ch, md, bf, tk, cls, ecls)))
+
+# step.str, with the control test named
+law str_as:
+  for +ch: Char
+  for bf: List<&2, Char>
+  for tk: List<&2, Lex.Tok>
+  for ctl: Bool
+  for ectl: {U32.is_lt(Char.to_u32(ch), 32) == ctl : Bool}
+  {Lex.step.str(ch, bf, tk) == Lex.step.str.go(ch, bf, tk, ctl) : Lex.Lex}
+
+def str_as(ch, bf, tk, ctl, ectl):
+  ec = Equal.sym(Bool, U32.is_lt(Char.to_u32(ch), 32), ctl, ectl)
+  %ec : {Lex.step.str.go(ch, bf, tk, _) == Lex.step.str.go(ch, bf, tk, ctl) : Lex.Lex}
+  {==}
+
+# a quote or a backslash is not a control character
+law not_ctl:
+  for +ch: Char
+  for kk: U32
+  for ek: {Char.to_u32(ch) == kk : U32}
+  for h_kk: {U32.is_lt(kk, 32) == False{} : Bool}
+  for ectl: {U32.is_lt(Char.to_u32(ch), 32) == True{} : Bool}
+  Empty
+
+def not_ctl(ch, kk, ek, h_kk, ectl):
+  lt = Equal.cong(U32, Bool, xx => U32.is_lt(xx, 32), Char.to_u32(ch), kk, ek)
+  true_false(Equal.trans(Bool, True{}, U32.is_lt(kk, 32), False{},
+    Equal.trans(Bool, True{}, U32.is_lt(Char.to_u32(ch), 32), U32.is_lt(kk, 32), Equal.sym(Bool,
+      U32.is_lt(Char.to_u32(ch), 32), True{}, ectl), lt),
+    h_kk))
+
+# a word or string span grown by one character, from the step's lexer state
+law grow_rel:
+  for +ch: Char
+  for +tl: String
+  for +cut: String
+  for +nn: U32
+  for +toks: List<&2, Lex.Tok>
+  for -lx: Lex.Lex
+  for +md: Lex.Mode
+  for +hd: {sdrop(cut, nn, U32.is_zero(nn)) == SCon{ch, tl} : String}
+  for +hs: {Laws.short(cut) == True{} : Bool}
+  for hf: {dlex(Lex.feed(ch, lx)) == Lex.Lex{md, ch <> Lex.tokens.rev(cut, nn, U32.is_zero(nn), []),
+    dens(toks)} : Lex.Lex}
+  ({dlex(Lex.feed(ch, lx)) == Lex.Lex{md, Lex.tokens.rev(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), []),
+    dens(toks)} : Lex.Lex}
+    & ({sdrop(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1))) == tl : String} & {Laws.short(cut) == True{} : Bool}))
+
+def grow_rel(ch, tl, cut, nn, toks, lx, md, hd, hs, hf):
+  +top = pos_ne(cut, nn, 4294967295, U32.is_zero(nn), {==}, hs, ch, tl, hd)
+  rg = rev_grow(cut, nn, U32.is_zero(nn), {==}, top, ch, tl, hd, [])
+  (Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{md, ch <> Lex.tokens.rev(cut, nn, U32.is_zero(nn), []),
+    dens(toks)},
+      Lex.Lex{md, Lex.tokens.rev(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), []), dens(toks)}, hf,
+      Equal.cong(List<&2, Char>, Lex.Lex, xx => Lex.Lex{md, xx, dens(toks)}, ch <> Lex.tokens.rev(cut, nn,
+        U32.is_zero(nn), []),
+        Lex.tokens.rev(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), []),
+        Equal.sym(List<&2, Char>, Lex.tokens.rev(cut, U32.add(nn, 1), U32.is_zero(U32.add(nn, 1)), []),
+          ch <> Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), rg))),
+    (sdrop_grow(cut, nn, U32.is_zero(nn), {==}, top, ch, tl, hd), hs))
+
+# a string opened after a word: its empty buffer, and the word's span as text
+law two_cong:
+  for +tl: String
+  for aa: String
+  for bb: String
+  for ee: {aa == bb : String}
+  for +toks: List<&2, Lex.Tok>
+  {Lex.Lex{Lex.Str{}, [], Lex.TWord{aa} <> dens(toks)} == Lex.Lex{Lex.Str{}, Lex.tokens.rev(tl, 0, True{}, []),
+    Lex.TWord{bb} <> dens(toks)}
+    : Lex.Lex}
+
+def two_cong(tl, aa, bb, ee, toks):
+  rz = Equal.sym(List<&2, Char>, Lex.tokens.rev(tl, 0, True{}, []), [], rev_zero(tl, 0, []))
+  %rz : {Lex.Lex{Lex.Str{}, [], Lex.TWord{aa} <> dens(toks)} == Lex.Lex{Lex.Str{}, _,
+    Lex.TWord{bb} <> dens(toks)} : Lex.Lex}
+  %ee : {Lex.Lex{Lex.Str{}, [], Lex.TWord{aa} <> dens(toks)} == Lex.Lex{Lex.Str{}, [],
+    Lex.TWord{_} <> dens(toks)} : Lex.Lex}
+  {==}
+
+# one character of the span scanner and of the character machine, with its
+# class and its control test named
+law rel_hit:
+  for +ch: Char
+  for +tl: String
+  for +cut: String
+  for +nn: U32
+  for md: Lex.Span
+  for +toks: List<&2, Lex.Tok>
+  for +lx: Lex.Lex
+  for cls: Lex.Class
+  for +ecls: {Lex.classify(ch) == cls : Lex.Class}
+  for ctl: Bool
+  for +ectl: {U32.is_lt(Char.to_u32(ch), 32) == ctl : Bool}
+  for h_r: rel.go(cut, nn, md, toks, lx, SCon{ch, tl})
+  for +h_s: {Laws.short(SCon{ch, tl}) == True{} : Bool}
+  rel(Lex.tokens.hit(ch, tl, cut, nn, md, toks, cls, ctl), Lex.feed(ch, lx), tl)
+
+def rel_hit(ch, tl, cut, nn, md, toks, lx, cls, ecls, ctl, ectl, h_r, h_s):
+  match md cls ctl:
+    case Lex.GIdle{} Lex.CPunct{pp} True{}:
+      via(ch, lx, Lex.Idle{}, [], toks, Lex.CPunct{pp}, ecls, h_r)
+    case Lex.GBad{} Lex.CPunct{pp} True{}:
+      via(ch, lx, Lex.Bad{}, [], toks, Lex.CPunct{pp}, ecls, h_r)
+    case Lex.GWord{} Lex.CPunct{pp} True{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Idle{}, [],
+        den(pp) <> Lex.TWord{Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), []))} <> dens(toks)},
+          Lex.Lex{Lex.Idle{}, [], den(pp) <> Lex.TWord{V.span.str(cut, nn, U32.is_zero(nn))} <> dens(toks)}, via(ch,
+            lx, Lex.Word{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.CPunct{pp}, ecls, eq),
+          Equal.cong(String, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], den(pp) <> Lex.TWord{xx} <> dens(toks)},
+            Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), [])), V.span.str(cut, nn, U32.is_zero(nn)),
+              text_span(cut, nn, U32.is_zero(nn))))
+    case Lex.GStr{} Lex.CPunct{pp} True{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), dlex(Lex.step.str(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+        []), toks)), Lex.Lex{Lex.Bad{}, [], dens(toks)},
+          via(ch, lx, Lex.Str{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.CPunct{pp}, ecls, eq),
+          Equal.cong(Lex.Lex, Lex.Lex, xx => dlex(xx), Lex.step.str(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []),
+            toks), Lex.step.str.go(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, True{}),
+            str_as(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, True{}, ectl)))
+    case Lex.GIdle{} Lex.CPunct{pp} False{}:
+      via(ch, lx, Lex.Idle{}, [], toks, Lex.CPunct{pp}, ecls, h_r)
+    case Lex.GBad{} Lex.CPunct{pp} False{}:
+      via(ch, lx, Lex.Bad{}, [], toks, Lex.CPunct{pp}, ecls, h_r)
+    case Lex.GWord{} Lex.CPunct{pp} False{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Idle{}, [],
+        den(pp) <> Lex.TWord{Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), []))} <> dens(toks)},
+          Lex.Lex{Lex.Idle{}, [], den(pp) <> Lex.TWord{V.span.str(cut, nn, U32.is_zero(nn))} <> dens(toks)}, via(ch,
+            lx, Lex.Word{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.CPunct{pp}, ecls, eq),
+          Equal.cong(String, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], den(pp) <> Lex.TWord{xx} <> dens(toks)},
+            Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), [])), V.span.str(cut, nn, U32.is_zero(nn)),
+              text_span(cut, nn, U32.is_zero(nn))))
+    case Lex.GStr{} Lex.CPunct{pp} False{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      grow_rel(ch, tl, cut, nn, toks, lx, Lex.Str{}, hd, hs,
+          Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), dlex(Lex.step.str(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+            []), toks)), dlex(Lex.step.str.go(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, False{})),
+            via(ch, lx, Lex.Str{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.CPunct{pp}, ecls, eq),
+            Equal.cong(Lex.Lex, Lex.Lex, xx => dlex(xx), Lex.step.str(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+              []), toks), Lex.step.str.go(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, False{}),
+              str_as(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, False{}, ectl))))
+    case Lex.GIdle{} Lex.CQuote{} True{}:
+      (Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Str{}, [], dens(toks)},
+            Lex.Lex{Lex.Str{}, Lex.tokens.rev(tl, 0, True{}, []), dens(toks)}, via(ch, lx, Lex.Idle{}, [], toks,
+              Lex.CQuote{}, ecls, h_r),
+            Equal.cong(List<&2, Char>, Lex.Lex, xx => Lex.Lex{Lex.Str{}, xx, dens(toks)}, [], Lex.tokens.rev(tl, 0,
+              True{}, []),
+              Equal.sym(List<&2, Char>, Lex.tokens.rev(tl, 0, True{}, []), [], rev_zero(tl, 0, [])))),
+          (sdrop_zero(tl, tl, {==}), short_tail(ch, tl, h_s)))
+    case Lex.GBad{} Lex.CQuote{} True{}:
+      via(ch, lx, Lex.Bad{}, [], toks, Lex.CQuote{}, ecls, h_r)
+    case Lex.GWord{} Lex.CQuote{} True{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      (Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Str{}, [], Lex.TWord{Lex.text(Lex.tokens.rev(cut, nn,
+        U32.is_zero(nn), []))} <> dens(toks)},
+            Lex.Lex{Lex.Str{}, Lex.tokens.rev(tl, 0, True{}, []), Lex.TWord{V.span.str(cut, nn,
+              U32.is_zero(nn))} <> dens(toks)},
+            Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Str{}, [],
+              Lex.TWord{Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), []))} <> dens(toks)},
+              Lex.Lex{Lex.Str{}, [], Lex.TWord{Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+                []))} <> dens(toks)}, via(ch, lx, Lex.Word{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks,
+                  Lex.CQuote{}, ecls, eq), {==}),
+            two_cong(tl, Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), [])), V.span.str(cut, nn,
+              U32.is_zero(nn)), text_span(cut, nn, U32.is_zero(nn)), toks)),
+          (sdrop_zero(tl, tl, {==}), short_tail(ch, tl, h_s)))
+    case Lex.GStr{} Lex.CQuote{} True{}:
+      Empty.absurd(rel(Lex.tokens.hit(ch, tl, cut, nn, Lex.GStr{}, toks, Lex.CQuote{}, True{}), Lex.feed(ch, lx),
+        tl), not_ctl(ch, 34, cls_quote(ch, ecls), {==}, ectl))
+    case Lex.GIdle{} Lex.CQuote{} False{}:
+      (Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Str{}, [], dens(toks)},
+            Lex.Lex{Lex.Str{}, Lex.tokens.rev(tl, 0, True{}, []), dens(toks)}, via(ch, lx, Lex.Idle{}, [], toks,
+              Lex.CQuote{}, ecls, h_r),
+            Equal.cong(List<&2, Char>, Lex.Lex, xx => Lex.Lex{Lex.Str{}, xx, dens(toks)}, [], Lex.tokens.rev(tl, 0,
+              True{}, []),
+              Equal.sym(List<&2, Char>, Lex.tokens.rev(tl, 0, True{}, []), [], rev_zero(tl, 0, [])))),
+          (sdrop_zero(tl, tl, {==}), short_tail(ch, tl, h_s)))
+    case Lex.GBad{} Lex.CQuote{} False{}:
+      via(ch, lx, Lex.Bad{}, [], toks, Lex.CQuote{}, ecls, h_r)
+    case Lex.GWord{} Lex.CQuote{} False{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      (Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Str{}, [], Lex.TWord{Lex.text(Lex.tokens.rev(cut, nn,
+        U32.is_zero(nn), []))} <> dens(toks)},
+            Lex.Lex{Lex.Str{}, Lex.tokens.rev(tl, 0, True{}, []), Lex.TWord{V.span.str(cut, nn,
+              U32.is_zero(nn))} <> dens(toks)},
+            Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Str{}, [],
+              Lex.TWord{Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), []))} <> dens(toks)},
+              Lex.Lex{Lex.Str{}, [], Lex.TWord{Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+                []))} <> dens(toks)}, via(ch, lx, Lex.Word{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks,
+                  Lex.CQuote{}, ecls, eq), {==}),
+            two_cong(tl, Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), [])), V.span.str(cut, nn,
+              U32.is_zero(nn)), text_span(cut, nn, U32.is_zero(nn)), toks)),
+          (sdrop_zero(tl, tl, {==}), short_tail(ch, tl, h_s)))
+    case Lex.GStr{} Lex.CQuote{} False{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Idle{}, [], Lex.TStr{Lex.text(Lex.tokens.rev(cut, nn,
+        U32.is_zero(nn), []))} <> dens(toks)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TStr{V.span.str(cut, nn, U32.is_zero(nn))} <> dens(toks)}, via(ch, lx,
+            Lex.Str{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.CQuote{}, ecls, eq),
+          Equal.cong(String, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TStr{xx} <> dens(toks)},
+            Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), [])), V.span.str(cut, nn, U32.is_zero(nn)),
+              text_span(cut, nn, U32.is_zero(nn))))
+    case Lex.GIdle{} Lex.CSpace{} True{}:
+      via(ch, lx, Lex.Idle{}, [], toks, Lex.CSpace{}, ecls, h_r)
+    case Lex.GBad{} Lex.CSpace{} True{}:
+      via(ch, lx, Lex.Bad{}, [], toks, Lex.CSpace{}, ecls, h_r)
+    case Lex.GWord{} Lex.CSpace{} True{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Idle{}, [], Lex.TWord{Lex.text(Lex.tokens.rev(cut, nn,
+        U32.is_zero(nn), []))} <> dens(toks)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TWord{V.span.str(cut, nn, U32.is_zero(nn))} <> dens(toks)}, via(ch, lx,
+            Lex.Word{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.CSpace{}, ecls, eq),
+          Equal.cong(String, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TWord{xx} <> dens(toks)},
+            Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), [])), V.span.str(cut, nn, U32.is_zero(nn)),
+              text_span(cut, nn, U32.is_zero(nn))))
+    case Lex.GStr{} Lex.CSpace{} True{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), dlex(Lex.step.str(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+        []), toks)), Lex.Lex{Lex.Bad{}, [], dens(toks)},
+          via(ch, lx, Lex.Str{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.CSpace{}, ecls, eq),
+          Equal.cong(Lex.Lex, Lex.Lex, xx => dlex(xx), Lex.step.str(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []),
+            toks), Lex.step.str.go(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, True{}),
+            str_as(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, True{}, ectl)))
+    case Lex.GIdle{} Lex.CSpace{} False{}:
+      via(ch, lx, Lex.Idle{}, [], toks, Lex.CSpace{}, ecls, h_r)
+    case Lex.GBad{} Lex.CSpace{} False{}:
+      via(ch, lx, Lex.Bad{}, [], toks, Lex.CSpace{}, ecls, h_r)
+    case Lex.GWord{} Lex.CSpace{} False{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Idle{}, [], Lex.TWord{Lex.text(Lex.tokens.rev(cut, nn,
+        U32.is_zero(nn), []))} <> dens(toks)},
+          Lex.Lex{Lex.Idle{}, [], Lex.TWord{V.span.str(cut, nn, U32.is_zero(nn))} <> dens(toks)}, via(ch, lx,
+            Lex.Word{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.CSpace{}, ecls, eq),
+          Equal.cong(String, Lex.Lex, xx => Lex.Lex{Lex.Idle{}, [], Lex.TWord{xx} <> dens(toks)},
+            Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), [])), V.span.str(cut, nn, U32.is_zero(nn)),
+              text_span(cut, nn, U32.is_zero(nn))))
+    case Lex.GStr{} Lex.CSpace{} False{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      grow_rel(ch, tl, cut, nn, toks, lx, Lex.Str{}, hd, hs,
+          Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), dlex(Lex.step.str(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+            []), toks)), dlex(Lex.step.str.go(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, False{})),
+            via(ch, lx, Lex.Str{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.CSpace{}, ecls, eq),
+            Equal.cong(Lex.Lex, Lex.Lex, xx => dlex(xx), Lex.step.str(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+              []), toks), Lex.step.str.go(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, False{}),
+              str_as(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, False{}, ectl))))
+    case Lex.GIdle{} Lex.CBack{} True{}:
+      via(ch, lx, Lex.Idle{}, [], toks, Lex.CBack{}, ecls, h_r)
+    case Lex.GBad{} Lex.CBack{} True{}:
+      via(ch, lx, Lex.Bad{}, [], toks, Lex.CBack{}, ecls, h_r)
+    case Lex.GWord{} Lex.CBack{} True{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      via(ch, lx, Lex.Word{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.CBack{}, ecls, eq)
+    case Lex.GStr{} Lex.CBack{} True{}:
+      Empty.absurd(rel(Lex.tokens.hit(ch, tl, cut, nn, Lex.GStr{}, toks, Lex.CBack{}, True{}), Lex.feed(ch, lx), tl),
+        not_ctl(ch, 92, cls_back(ch, ecls), {==}, ectl))
+    case Lex.GIdle{} Lex.CBack{} False{}:
+      via(ch, lx, Lex.Idle{}, [], toks, Lex.CBack{}, ecls, h_r)
+    case Lex.GBad{} Lex.CBack{} False{}:
+      via(ch, lx, Lex.Bad{}, [], toks, Lex.CBack{}, ecls, h_r)
+    case Lex.GWord{} Lex.CBack{} False{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      via(ch, lx, Lex.Word{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.CBack{}, ecls, eq)
+    case Lex.GStr{} Lex.CBack{} False{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      via(ch, lx, Lex.Str{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.CBack{}, ecls, eq)
+    case Lex.GIdle{} Lex.COther{} True{}:
+      (Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Word{}, [ch], dens(toks)},
+            Lex.Lex{Lex.Word{}, Lex.tokens.rev(tl, 0, True{}, [ch]), dens(toks)}, via(ch, lx, Lex.Idle{}, [], toks,
+              Lex.COther{}, ecls, h_r),
+            Equal.cong(List<&2, Char>, Lex.Lex, xx => Lex.Lex{Lex.Word{}, xx, dens(toks)}, [ch], Lex.tokens.rev(tl,
+              0, True{}, [ch]),
+              Equal.sym(List<&2, Char>, Lex.tokens.rev(tl, 0, True{}, [ch]), [ch], rev_zero(tl, 0, [ch])))),
+          (sdrop_zero(tl, tl, {==}), h_s))
+    case Lex.GBad{} Lex.COther{} True{}:
+      via(ch, lx, Lex.Bad{}, [], toks, Lex.COther{}, ecls, h_r)
+    case Lex.GWord{} Lex.COther{} True{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      grow_rel(ch, tl, cut, nn, toks, lx, Lex.Word{}, hd, hs, via(ch, lx, Lex.Word{}, Lex.tokens.rev(cut, nn,
+        U32.is_zero(nn), []), toks, Lex.COther{}, ecls, eq))
+    case Lex.GStr{} Lex.COther{} True{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), dlex(Lex.step.str(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+        []), toks)), Lex.Lex{Lex.Bad{}, [], dens(toks)},
+          via(ch, lx, Lex.Str{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.COther{}, ecls, eq),
+          Equal.cong(Lex.Lex, Lex.Lex, xx => dlex(xx), Lex.step.str(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []),
+            toks), Lex.step.str.go(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, True{}),
+            str_as(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, True{}, ectl)))
+    case Lex.GIdle{} Lex.COther{} False{}:
+      (Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), Lex.Lex{Lex.Word{}, [ch], dens(toks)},
+            Lex.Lex{Lex.Word{}, Lex.tokens.rev(tl, 0, True{}, [ch]), dens(toks)}, via(ch, lx, Lex.Idle{}, [], toks,
+              Lex.COther{}, ecls, h_r),
+            Equal.cong(List<&2, Char>, Lex.Lex, xx => Lex.Lex{Lex.Word{}, xx, dens(toks)}, [ch], Lex.tokens.rev(tl,
+              0, True{}, [ch]),
+              Equal.sym(List<&2, Char>, Lex.tokens.rev(tl, 0, True{}, [ch]), [ch], rev_zero(tl, 0, [ch])))),
+          (sdrop_zero(tl, tl, {==}), h_s))
+    case Lex.GBad{} Lex.COther{} False{}:
+      via(ch, lx, Lex.Bad{}, [], toks, Lex.COther{}, ecls, h_r)
+    case Lex.GWord{} Lex.COther{} False{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      grow_rel(ch, tl, cut, nn, toks, lx, Lex.Word{}, hd, hs, via(ch, lx, Lex.Word{}, Lex.tokens.rev(cut, nn,
+        U32.is_zero(nn), []), toks, Lex.COther{}, ecls, eq))
+    case Lex.GStr{} Lex.COther{} False{}:
+      (eq, more) = h_r
+      (hd, hs) = more
+      grow_rel(ch, tl, cut, nn, toks, lx, Lex.Str{}, hd, hs,
+          Equal.trans(Lex.Lex, dlex(Lex.feed(ch, lx)), dlex(Lex.step.str(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+            []), toks)), dlex(Lex.step.str.go(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, False{})),
+            via(ch, lx, Lex.Str{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, Lex.COther{}, ecls, eq),
+            Equal.cong(Lex.Lex, Lex.Lex, xx => dlex(xx), Lex.step.str(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn),
+              []), toks), Lex.step.str.go(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, False{}),
+              str_as(ch, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), toks, False{}, ectl))))
+
+# one character keeps a scanner state and a lexer state related
+law rel_step:
+  for +sc: Lex.Scan
+  for +lx: Lex.Lex
+  for +ch: Char
+  for +tl: String
+  for h_r: rel(sc, lx, SCon{ch, tl})
+  for h_s: {Laws.short(SCon{ch, tl}) == True{} : Bool}
+  rel(Lex.tokens.feed(ch, tl, sc), Lex.feed(ch, lx), tl)
+
+def rel_step(sc, lx, ch, tl, h_r, h_s):
+  match sc:
+    case Lex.Old{ol}:
+      dlex_feed(ch, lx, ol, h_r)
+    case Lex.Go{cut, nn, md, toks}:
+      rel_hit(ch, tl, cut, nn, md, toks, lx, Lex.classify(ch), {==}, U32.is_lt(Char.to_u32(ch), 32), {==}, h_r, h_s)
+
+# the tokens at the end of a word, with spans replaced: the word's span as text
+law end_word:
+  for +cut: String
+  for +nn: U32
+  for +toks: List<&2, Lex.Tok>
+  {dens(Lex.tokens.done(cut, nn, Lex.GWord{}, toks))
+    == Lex.finish(Lex.Lex{Lex.Word{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), dens(toks)}) : List<&2, Lex.Tok>}
+
+def end_word(cut, nn, toks):
+  dr = dens_rev(Lex.TWordS{cut, nn} <> toks, [])
+  ts = Equal.sym(String, Lex.text(Lex.tokens.rev(cut, nn, U32.is_zero(nn), [])), V.span.str(cut, nn, U32.is_zero(nn)),
+    text_span(cut, nn, U32.is_zero(nn)))
+  %ts : {dens(Lex.tokens.done(cut, nn, Lex.GWord{}, toks))
+    == List.reverse(&2, Lex.Tok, Lex.TWord{_} <> dens(toks)) : List<&2, Lex.Tok>}
+  dr
+
+# rel_end, once the scanner's tokens are known to be finish of a lexer state
+# the same as lx up to spans
+law rel_end.at:
+  for -tks: List<&2, Lex.Tok>
+  for -ls: Lex.Lex
+  for +lx: Lex.Lex
+  for et: {dens(tks) == Lex.finish(ls) : List<&2, Lex.Tok>}
+  for hl: {dlex(lx) == ls : Lex.Lex}
+  {dens(tks) == dens(Lex.finish(lx)) : List<&2, Lex.Tok>}
+
+def rel_end.at(tks, ls, lx, et, hl):
+  Equal.trans(List<&2, Lex.Tok>, dens(tks), Lex.finish(dlex(lx)), dens(Lex.finish(lx)),
+    Equal.trans(List<&2, Lex.Tok>, dens(tks), Lex.finish(ls), Lex.finish(dlex(lx)), et,
+      Equal.cong(Lex.Lex, List<&2, Lex.Tok>, xx => Lex.finish(xx), ls, dlex(lx), Equal.sym(Lex.Lex, dlex(lx), ls, hl))),
+    Equal.sym(List<&2, Lex.Tok>, dens(Lex.finish(lx)), Lex.finish(dlex(lx)), dens_finish(lx)))
+
+# at the end of the text, a scanner state and a lexer state give the same
+# tokens up to spans
+law rel_end:
+  for sc: Lex.Scan
+  for +lx: Lex.Lex
+  for h_r: rel(sc, lx, "")
+  {dens(Lex.tokens.end(sc)) == dens(Lex.finish(lx)) : List<&2, Lex.Tok>}
+
+def rel_end(sc, lx, h_r):
+  match sc:
+    case Lex.Old{ol}:
+      Equal.trans(List<&2, Lex.Tok>, dens(Lex.finish(ol)), Lex.finish(dlex(lx)), dens(Lex.finish(lx)),
+        Equal.trans(List<&2, Lex.Tok>, dens(Lex.finish(ol)), Lex.finish(dlex(ol)), Lex.finish(dlex(lx)),
+          dens_finish(ol),
+          Equal.cong(Lex.Lex, List<&2, Lex.Tok>, xx => Lex.finish(xx), dlex(ol), dlex(lx), Equal.sym(Lex.Lex,
+            dlex(lx), dlex(ol), h_r))),
+        Equal.sym(List<&2, Lex.Tok>, dens(Lex.finish(lx)), Lex.finish(dlex(lx)), dens_finish(lx)))
+    case Lex.Go{cut, nn, Lex.GIdle{}, toks}:
+      rel_end.at(Lex.tokens.done(cut, nn, Lex.GIdle{}, toks), Lex.Lex{Lex.Idle{}, [], dens(toks)}, lx,
+        dens_rev(toks, []), h_r)
+    case Lex.Go{cut, nn, Lex.GWord{}, toks}:
+      (eq, _more) = h_r
+      rel_end.at(Lex.tokens.done(cut, nn, Lex.GWord{}, toks),
+        Lex.Lex{Lex.Word{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), dens(toks)}, lx, end_word(cut, nn, toks), eq)
+    case Lex.Go{cut, nn, Lex.GStr{}, toks}:
+      (eq, _more) = h_r
+      rel_end.at(Lex.tokens.done(cut, nn, Lex.GStr{}, toks),
+        Lex.Lex{Lex.Str{}, Lex.tokens.rev(cut, nn, U32.is_zero(nn), []), dens(toks)}, lx,
+          dens_rev(Lex.TBad{} <> toks, []), eq)
+    case Lex.Go{cut, nn, Lex.GBad{}, toks}:
+      rel_end.at(Lex.tokens.done(cut, nn, Lex.GBad{}, toks), Lex.Lex{Lex.Bad{}, [], dens(toks)}, lx,
+        dens_rev(Lex.TBad{} <> toks, []), h_r)
+
+# the span scanner and the character machine, run over the rest of a short
+# text from related states, give the same tokens up to spans
+law lex_agree_go:
+  for +ss: String
+  for +sc: Lex.Scan
+  for +lx: Lex.Lex
+  for h_r: rel(sc, lx, ss)
+  for +h_s: {Laws.short(ss) == True{} : Bool}
+  {dens(Lex.tokens.go(ss, sc)) == dens(Lex.finish(Lex.run(String.to_list(ss), lx))) : List<&2, Lex.Tok>}
+
+def lex_agree_go(ss, sc, lx, h_r, h_s):
+  match ss:
+    case SNil{}:
+      rel_end(sc, lx, h_r)
+    case SCon{ch, tl}:
+      lex_agree_go(tl, Lex.tokens.feed(ch, tl, sc), Lex.feed(ch, lx), rel_step(sc, lx, ch, tl, h_r, h_s),
+        short_tail(ch, tl, h_s))
+
+# WP-L1: for a text of at most 2^32 - 1 characters, the lexer's span path
+# and its character path give the same tokens, once spans are replaced by the
+# characters they cover
+law lexers_agree:
+  for +ss: String
+  for h_s: {Laws.short(ss) == True{} : Bool}
+  {dens(Lex.tokens(ss)) == dens(Lex.finish(Lex.run(String.to_list(ss), Lex.Lex{Lex.Idle{}, [], []}))) : List<&2,
+    Lex.Tok>}
+
+def lexers_agree(ss, h_s):
+  lex_agree_go(ss, Lex.Go{"", 0, Lex.GIdle{}, []}, Lex.Lex{Lex.Idle{}, [], []}, {==}, h_s)
