@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/Emerging-Patterns/ezjson/compare/v0.5.0...v1.0.0) (2026-09-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* a package that imports ezjson by path imports main.bend at the package root, and the modules under src/ (src/pull.bend, src/value.bend) rather than ezjson/.
+
+### Code Refactoring
+
+* lay out main.bend and src/ as ez init does ([#51](https://github.com/Emerging-Patterns/ezjson/issues/51)) ([4d66ce5](https://github.com/Emerging-Patterns/ezjson/commit/4d66ce5116019b665e6bb42e4971da0863169757))
+
 ## [0.5.0](https://github.com/Emerging-Patterns/ezjson/compare/v0.4.2...v0.5.0) (2026-09-24)
 
 
