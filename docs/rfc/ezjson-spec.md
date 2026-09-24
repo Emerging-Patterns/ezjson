@@ -287,7 +287,7 @@ is mergeable on the gate alone.
 | ID | Assumption | Why it is trusted |
 | :---- | :---- | :---- |
 | JSON-TRUST-1 | The Bend checker is sound: a proof it accepts proves its law | The gate cannot check the checker. Same as EZ-TRUST-1 |
-| JSON-TRUST-2 | `U32.read` and `F32.read` in Bend's base library read a decimal spelling as documented, rounding to nearest for F32 | Foreign to this project; `as_u32` and `as_f32` forward to them. JSON-TREE-6 no longer needs the `U32.read` half: its law `as_u32_num` is proved through base's `U32.read` as written |
+| JSON-TRUST-2 | `F32.read` in Bend's base library reads a decimal spelling as documented, rounding to nearest | Foreign to this project; `as_f32` forwards to it. Narrowed from `U32.read` and `F32.read` once JSON-TREE-6's law `as_u32_num` was proved through base's `U32.read` as written |
 | JSON-TRUST-3 | The cursor does not keep a parse tree or the text it has passed: memory while walking a large text stays proportional to the open containers and the events the caller holds | A law sees values, not heap shape. The `scale` check walks 563 KiB and 615 KiB texts in CI as an integration check |
 | JSON-TRUST-4 | The proof-gate runner (`ez.mkProofs`) fails the build unless the first line is `All terms check.` | It is ez's code, trusted as EZ-TRUST-4 |
 
