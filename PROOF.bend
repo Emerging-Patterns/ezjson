@@ -26706,6 +26706,6811 @@ def Laws.text_derives(txt, h_s, h_p):
       fin_inv(Parse.run(dens(Lex.tokens(txt)), Parse.P{False{}, None{}, Nil{}}), run_inv(dens(Lex.tokens(txt)),
       Parse.P{False{}, None{}, Nil{}}, (Unit{}, Unit{}))))))
 
+# JSON-TEXT-2: whitespace between tokens
+
+# a derivation's value does not depend on its whitespace
+law val_bare:
+  for +gg: Laws.Gv
+  {Laws.g.val(Laws.g.bare(gg)) == Laws.g.val(gg) : V.Json}
+
+def val_bare(gg):
+  match gg:
+    case Laws.GWord{_a1}:
+      {==}
+    case Laws.GStr{_a1}:
+      {==}
+    case Laws.GArr0{_a1}:
+      {==}
+    case Laws.GArr{_a1, +a2, _a3, +a4}:
+      Equal.trans(V.Json, V.JArr{V.JCons{Laws.g.val(Laws.g.bare(a2)), Laws.g.val(Laws.g.bare(a4))}},
+        V.JArr{V.JCons{Laws.g.val(a2), Laws.g.val(Laws.g.bare(a4))}}, V.JArr{V.JCons{Laws.g.val(a2), Laws.g.val(a4)}},
+        Equal.cong(V.Json, V.Json, zz => V.JArr{V.JCons{zz, Laws.g.val(Laws.g.bare(a4))}}, Laws.g.val(Laws.g.bare(a2)),
+        Laws.g.val(a2), val_bare(a2)), Equal.cong(V.Json, V.Json, zz => V.JArr{V.JCons{Laws.g.val(a2), zz}},
+        Laws.g.val(Laws.g.bare(a4)), Laws.g.val(a4), val_bare(a4)))
+    case Laws.GObj0{_a1}:
+      {==}
+    case Laws.GObj{_a1, +a2, _a3, _a4, +a5, _a6, +a7}:
+      Equal.trans(V.Json, V.JObj{V.JPair{Laws.spelled(a2), Laws.g.val(Laws.g.bare(a5)), Laws.g.val(Laws.g.bare(a7))}},
+        V.JObj{V.JPair{Laws.spelled(a2), Laws.g.val(a5), Laws.g.val(Laws.g.bare(a7))}},
+        V.JObj{V.JPair{Laws.spelled(a2), Laws.g.val(a5), Laws.g.val(a7)}}, Equal.cong(V.Json, V.Json,
+        zz => V.JObj{V.JPair{Laws.spelled(a2), zz, Laws.g.val(Laws.g.bare(a7))}}, Laws.g.val(Laws.g.bare(a5)),
+        Laws.g.val(a5), val_bare(a5)), Equal.cong(V.Json, V.Json, zz => V.JObj{V.JPair{Laws.spelled(a2),
+        Laws.g.val(a5), zz}}, Laws.g.val(Laws.g.bare(a7)), Laws.g.val(a7), val_bare(a7)))
+    case Laws.GEnd{}:
+      {==}
+    case Laws.GNext{_a1, +a2, _a3, +a4}:
+      Equal.trans(V.Json, V.JCons{Laws.g.val(Laws.g.bare(a2)), Laws.g.val(Laws.g.bare(a4))}, V.JCons{Laws.g.val(a2),
+        Laws.g.val(Laws.g.bare(a4))}, V.JCons{Laws.g.val(a2), Laws.g.val(a4)}, Equal.cong(V.Json, V.Json,
+        zz => V.JCons{zz, Laws.g.val(Laws.g.bare(a4))}, Laws.g.val(Laws.g.bare(a2)), Laws.g.val(a2), val_bare(a2)),
+        Equal.cong(V.Json, V.Json, zz => V.JCons{Laws.g.val(a2), zz}, Laws.g.val(Laws.g.bare(a4)), Laws.g.val(a4),
+        val_bare(a4)))
+    case Laws.GNextM{_a1, +a2, _a3, _a4, +a5, _a6, +a7}:
+      Equal.trans(V.Json, V.JPair{Laws.spelled(a2), Laws.g.val(Laws.g.bare(a5)), Laws.g.val(Laws.g.bare(a7))},
+        V.JPair{Laws.spelled(a2), Laws.g.val(a5), Laws.g.val(Laws.g.bare(a7))}, V.JPair{Laws.spelled(a2),
+        Laws.g.val(a5), Laws.g.val(a7)}, Equal.cong(V.Json, V.Json, zz => V.JPair{Laws.spelled(a2), zz,
+        Laws.g.val(Laws.g.bare(a7))}, Laws.g.val(Laws.g.bare(a5)), Laws.g.val(a5), val_bare(a5)), Equal.cong(V.Json,
+        V.Json, zz => V.JPair{Laws.spelled(a2), Laws.g.val(a5), zz}, Laws.g.val(Laws.g.bare(a7)), Laws.g.val(a7),
+        val_bare(a7)))
+
+def Laws.ws_same(gg, hh, wa, wb, wc, wd, h_g, h_h, h_e, h_sg, h_sh):
+  Equal.trans(Maybe<&2, V.Json>, Laws.own_m(Ezjson.parse(wc ++ Laws.g.text(hh) ++ wd)), Some{Laws.g.val(hh)},
+    Laws.own_m(Ezjson.parse(wa ++ Laws.g.text(gg) ++ wb)), Laws.text_some(hh, wc, wd, and_left(Laws.g.ok(hh,
+    Laws.GKVal{}), Laws.all_ws(wd), and_right(Laws.all_ws(wc), Bool.and(Laws.g.ok(hh, Laws.GKVal{}), Laws.all_ws(wd)),
+    h_h)), and_left(Laws.all_ws(wc), Bool.and(Laws.g.ok(hh, Laws.GKVal{}), Laws.all_ws(wd)), h_h),
+    and_right(Laws.g.ok(hh, Laws.GKVal{}), Laws.all_ws(wd), and_right(Laws.all_ws(wc), Bool.and(Laws.g.ok(hh,
+    Laws.GKVal{}), Laws.all_ws(wd)), h_h)), h_sh), Equal.trans(Maybe<&2, V.Json>, Some{Laws.g.val(hh)},
+    Some{Laws.g.val(Laws.g.bare(hh))}, Laws.own_m(Ezjson.parse(wa ++ Laws.g.text(gg) ++ wb)), Equal.cong(V.Json,
+    Maybe<&2, V.Json>, zz => Some{zz}, Laws.g.val(hh), Laws.g.val(Laws.g.bare(hh)), Equal.sym(V.Json,
+    Laws.g.val(Laws.g.bare(hh)), Laws.g.val(hh), val_bare(hh))), Equal.trans(Maybe<&2, V.Json>,
+    Some{Laws.g.val(Laws.g.bare(hh))}, Some{Laws.g.val(Laws.g.bare(gg))},
+    Laws.own_m(Ezjson.parse(wa ++ Laws.g.text(gg) ++ wb)), Equal.cong(Laws.Gv, Maybe<&2, V.Json>,
+    zz => Some{Laws.g.val(zz)}, Laws.g.bare(hh), Laws.g.bare(gg), Equal.sym(Laws.Gv, Laws.g.bare(gg), Laws.g.bare(hh),
+    h_e)), Equal.trans(Maybe<&2, V.Json>, Some{Laws.g.val(Laws.g.bare(gg))}, Some{Laws.g.val(gg)},
+    Laws.own_m(Ezjson.parse(wa ++ Laws.g.text(gg) ++ wb)), Equal.cong(V.Json, Maybe<&2, V.Json>, zz => Some{zz},
+    Laws.g.val(Laws.g.bare(gg)), Laws.g.val(gg), val_bare(gg)), Equal.sym(Maybe<&2, V.Json>,
+    Laws.own_m(Ezjson.parse(wa ++ Laws.g.text(gg) ++ wb)), Some{Laws.g.val(gg)}, Laws.text_some(gg, wa, wb,
+    and_left(Laws.g.ok(gg, Laws.GKVal{}), Laws.all_ws(wb), and_right(Laws.all_ws(wa), Bool.and(Laws.g.ok(gg,
+    Laws.GKVal{}), Laws.all_ws(wb)), h_g)), and_left(Laws.all_ws(wa), Bool.and(Laws.g.ok(gg, Laws.GKVal{}),
+    Laws.all_ws(wb)), h_g), and_right(Laws.g.ok(gg, Laws.GKVal{}), Laws.all_ws(wb), and_right(Laws.all_ws(wa),
+    Bool.and(Laws.g.ok(gg, Laws.GKVal{}), Laws.all_ws(wb)), h_g)), h_sg))))))
+
+# JSON-TEXT-2: any other character put between tokens. A scan that every
+# text parse accepts passes (sc.acc). Outside strings it keeps how deep the
+# text is in brackets and what the last token lets come next: a value (at
+# the start, after a comma or a colon), a value or a close (after an open
+# bracket), or a comma, a colon or a close (after a value). A word is read
+# whole, and must be a literal name or a number when it ends
+
+# what the last token outside strings lets come next
+type Lt is Data:
+  LSt{}
+  LOp{}
+  LVal{}
+
+# where the scan is: outside strings, in a word (its characters reversed),
+# in a string, just after a backslash in one, or past a fault
+type Sc is Data:
+  SOut{lt: Lt, dd: Nat}
+  SWord{buf: List<&2, Char>, dd: Nat}
+  SIn{dd: Nat}
+  SEsc{dd: Nat}
+  SBad{}
+
+# a close bracket, one level up
+def sc.down(dd: Nat) -> Sc:
+  match dd:
+    case 0n:
+      SBad{}
+    case 1n+ee:
+      SOut{LVal{}, ee}
+
+# an open bracket
+def sc.open(lt: Lt, dd: Nat) -> Sc:
+  match lt:
+    case LSt{}:
+      SOut{LOp{}, 1n+dd}
+    case LOp{}:
+      SOut{LOp{}, 1n+dd}
+    case LVal{}:
+      SBad{}
+
+# a close bracket
+def sc.close(lt: Lt, dd: Nat) -> Sc:
+  match lt:
+    case LSt{}:
+      SBad{}
+    case LOp{}:
+      sc.down(dd)
+    case LVal{}:
+      sc.down(dd)
+
+# a comma or a colon
+def sc.sep(lt: Lt, dd: Nat) -> Sc:
+  match lt:
+    case LSt{}:
+      SBad{}
+    case LOp{}:
+      SBad{}
+    case LVal{}:
+      SOut{LSt{}, dd}
+
+# a punctuation character
+def sc.punct(lt: Lt, dd: Nat, tk: Lex.Tok) -> Sc:
+  match tk:
+    case Lex.TOpenArr{}:
+      sc.open(lt, dd)
+    case Lex.TCloseArr{}:
+      sc.close(lt, dd)
+    case Lex.TOpenObj{}:
+      sc.open(lt, dd)
+    case Lex.TCloseObj{}:
+      sc.close(lt, dd)
+    case Lex.TColon{}:
+      sc.sep(lt, dd)
+    case Lex.TComma{}:
+      sc.sep(lt, dd)
+    case _:
+      SBad{}
+
+# a quotation mark outside strings
+def sc.quote(lt: Lt, dd: Nat) -> Sc:
+  match lt:
+    case LSt{}:
+      SIn{dd}
+    case LOp{}:
+      SIn{dd}
+    case LVal{}:
+      SBad{}
+
+# a word's first character
+def sc.wstart(lt: Lt, dd: Nat, ch: Char) -> Sc:
+  match lt:
+    case LSt{}:
+      SWord{[ch], dd}
+    case LOp{}:
+      SWord{[ch], dd}
+    case LVal{}:
+      SBad{}
+
+# one character outside strings, by its class
+def sc.out(lt: Lt, dd: Nat, cls: Lex.Class, ch: Char) -> Sc:
+  match cls:
+    case Lex.CPunct{tk}:
+      sc.punct(lt, dd, tk)
+    case Lex.CQuote{}:
+      sc.quote(lt, dd)
+    case Lex.CBack{}:
+      SBad{}
+    case Lex.CSpace{}:
+      SOut{lt, dd}
+    case Lex.COther{}:
+      sc.wstart(lt, dd, ch)
+
+# the end of a word: it must be a literal name or a number
+def sc.wend(buf: List<&2, Char>, dd: Nat, cls: Lex.Class, ch: Char) -> Sc:
+  Bool.pick(Sc, Laws.lit_or_num(Lex.text(buf)), sc.out(LVal{}, dd, cls, ch), SBad{})
+
+# one character in a word
+def sc.word(buf: List<&2, Char>, dd: Nat, cls: Lex.Class, ch: Char) -> Sc:
+  match cls:
+    case Lex.CPunct{tk}:
+      sc.wend(buf, dd, Lex.CPunct{tk}, ch)
+    case Lex.CQuote{}:
+      sc.wend(buf, dd, Lex.CQuote{}, ch)
+    case Lex.CBack{}:
+      sc.wend(buf, dd, Lex.CBack{}, ch)
+    case Lex.CSpace{}:
+      sc.wend(buf, dd, Lex.CSpace{}, ch)
+    case Lex.COther{}:
+      SWord{ch <> buf, dd}
+
+# one character in a string
+def sc.in(dd: Nat, cls: Lex.Class) -> Sc:
+  match cls:
+    case Lex.CPunct{_}:
+      SIn{dd}
+    case Lex.CQuote{}:
+      SOut{LVal{}, dd}
+    case Lex.CBack{}:
+      SEsc{dd}
+    case Lex.CSpace{}:
+      SIn{dd}
+    case Lex.COther{}:
+      SIn{dd}
+
+# one character, its class given
+def sc.stepc(st: Sc, cls: Lex.Class, ch: Char) -> Sc:
+  match st:
+    case SOut{lt, dd}:
+      sc.out(lt, dd, cls, ch)
+    case SWord{buf, dd}:
+      sc.word(buf, dd, cls, ch)
+    case SIn{dd}:
+      sc.in(dd, cls)
+    case SEsc{dd}:
+      SIn{dd}
+    case SBad{}:
+      SBad{}
+
+# one character
+def sc.step(st: Sc, +ch: Char) -> Sc:
+  sc.stepc(st, Lex.classify(ch), ch)
+
+# every character, in order
+def sc.run(txt: String, st: Sc) -> Sc:
+  match txt:
+    case SNil{}:
+      st
+    case SCon{hd, tl}:
+      sc.run(tl, sc.step(st, hd))
+
+# the scan at the end of the text: a word there ends
+def sc.fin(st: Sc) -> Sc:
+  match st:
+    case SOut{lt, dd}:
+      SOut{lt, dd}
+    case SWord{buf, dd}:
+      Bool.pick(Sc, Laws.lit_or_num(Lex.text(buf)), SOut{LVal{}, dd}, SBad{})
+    case SIn{dd}:
+      SIn{dd}
+    case SEsc{dd}:
+      SEsc{dd}
+    case SBad{}:
+      SBad{}
+
+# after a value, at the top level
+def sc.top.o(lt: Lt, dd: Nat) -> Bool:
+  match lt:
+    case LVal{}:
+      match dd:
+        case 0n:
+          True{}
+        case 1n+_:
+          False{}
+    case _:
+      False{}
+
+def sc.top(st: Sc) -> Bool:
+  match st:
+    case SOut{lt, dd}:
+      sc.top.o(lt, dd)
+    case _:
+      False{}
+
+# whether the scan accepts, once the text is over
+def sc.acc(st: Sc) -> Bool:
+  sc.top(sc.fin(st))
+
+# a word character's class
+def is_oth(cls: Lex.Class) -> Bool:
+  match cls:
+    case Lex.COther{}:
+      True{}
+    case _:
+      False{}
+
+# what may come next is not a separator or a close
+def notval(lt: Lt) -> Bool:
+  match lt:
+    case LVal{}:
+      False{}
+    case _:
+      True{}
+
+# what a derivation of a kind starts after: a value after anything but a
+# value, cells after a value
+def okl(kk: Laws.GK, lt: Lt) -> Bool:
+  match kk:
+    case Laws.GKVal{}:
+      notval(lt)
+    case _:
+      Bool.not(notval(lt))
+
+# the scan over two texts, one after the other
+law sc_app:
+  for +aa: String
+  for +bb: String
+  for +st: Sc
+  {sc.run(aa ++ bb, st) == sc.run(bb, sc.run(aa, st)) : Sc}
+
+def sc_app(aa, bb, st):
+  match aa:
+    case SNil{}:
+      {==}
+    case SCon{+hd, +tl}:
+      sc_app(tl, bb, sc.step(st, hd))
+
+# past a fault the scan stays there
+law sc_bad:
+  for +txt: String
+  {sc.run(txt, SBad{}) == SBad{} : Sc}
+
+def sc_bad(txt):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{_hd, +tl}:
+      sc_bad(tl)
+
+# a word's end, by whether it is a literal name or a number
+law pick_step:
+  for bv: Bool
+  for +dd: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  {Bool.pick(Sc, bv, sc.out(LVal{}, dd, cls, ch), SBad{}) == sc.stepc(Bool.pick(Sc, bv, SOut{LVal{}, dd}, SBad{}),
+    cls, ch) : Sc}
+
+def pick_step(bv, _dd, _cls, _ch):
+  match bv:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# a character that is no word character ends a word as the end of the text
+# does
+law fin_stepc:
+  for +st: Sc
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: {is_oth(cls) == False{} : Bool}
+  {sc.stepc(st, cls, ch) == sc.stepc(sc.fin(st), cls, ch) : Sc}
+
+def fin_stepc(st, cls, ch, h):
+  match st:
+    case SOut{_lt, _dd}:
+      {==}
+    case SWord{+buf, +dd}:
+      match cls:
+        case Lex.CPunct{+tk}:
+          pick_step(Laws.lit_or_num(Lex.text(buf)), dd, Lex.CPunct{tk}, ch)
+        case Lex.CQuote{}:
+          pick_step(Laws.lit_or_num(Lex.text(buf)), dd, Lex.CQuote{}, ch)
+        case Lex.CBack{}:
+          pick_step(Laws.lit_or_num(Lex.text(buf)), dd, Lex.CBack{}, ch)
+        case Lex.CSpace{}:
+          pick_step(Laws.lit_or_num(Lex.text(buf)), dd, Lex.CSpace{}, ch)
+        case Lex.COther{}:
+          Empty.absurd({sc.stepc(SWord{buf, dd}, Lex.COther{}, ch) == sc.stepc(sc.fin(SWord{buf, dd}), Lex.COther{},
+            ch) : Sc}, true_false(h))
+    case SIn{_dd}:
+      {==}
+    case SEsc{_dd}:
+      {==}
+    case SBad{}:
+      {==}
+
+# the scan after two texts, the first's end described
+law tr:
+  for +aa: String
+  for +bb: String
+  for +xx: Sc
+  for +mid: Sc
+  for +out: Sc
+  for ha: {sc.fin(sc.run(aa, xx)) == mid : Sc}
+  for hb: @yy: Sc -> {sc.fin(yy) == mid : Sc} -> {sc.fin(sc.run(bb, yy)) == out : Sc}
+  {sc.fin(sc.run(aa ++ bb, xx)) == out : Sc}
+
+def tr(aa, bb, xx, _mid, out, ha, hb):
+  Equal.trans(Sc, sc.fin(sc.run(aa ++ bb, xx)), sc.fin(sc.run(bb, sc.run(aa, xx))), out,
+    Equal.cong(Sc, Sc, zz => sc.fin(zz), sc.run(aa ++ bb, xx), sc.run(bb, sc.run(aa, xx)), sc_app(aa, bb, xx)),
+    hb(sc.run(aa, xx), ha))
+
+# one character that is no word character, the scan before it described
+law p_ch:
+  for +ch: Char
+  for h_nw: {is_oth(Lex.classify(ch)) == False{} : Bool}
+  for +aa: Sc
+  for +yy: Sc
+  for hy: {sc.fin(yy) == aa : Sc}
+  {sc.fin(sc.run(SCon{ch, ""}, yy)) == sc.fin(sc.stepc(aa, Lex.classify(ch), ch)) : Sc}
+
+def p_ch(ch, h_nw, aa, yy, hy):
+  Equal.trans(Sc, sc.fin(sc.stepc(yy, Lex.classify(ch), ch)), sc.fin(sc.stepc(sc.fin(yy), Lex.classify(ch), ch)),
+    sc.fin(sc.stepc(aa, Lex.classify(ch), ch)),
+    Equal.cong(Sc, Sc, zz => sc.fin(zz), sc.stepc(yy, Lex.classify(ch), ch), sc.stepc(sc.fin(yy), Lex.classify(ch),
+      ch), fin_stepc(yy, Lex.classify(ch), ch, h_nw)),
+    Equal.cong(Sc, Sc, zz => sc.fin(sc.stepc(zz, Lex.classify(ch), ch)), sc.fin(yy), aa, hy))
+
+# a whitespace character's class
+law ws_cls:
+  for +ch: Char
+  for h: {Laws.is_ws(ch) == True{} : Bool}
+  {Lex.classify(ch) == Lex.CSpace{} : Lex.Class}
+
+def ws_cls(ch, h):
+  match ch:
+    case Chr{+uu}:
+      ws_a(uu, U32.is_eq(uu, 32), {==}, h)
+
+# whitespace leaves the scan outside strings where it is
+law p_ws:
+  for +ww: String
+  for +h_w: {Laws.all_ws(ww) == True{} : Bool}
+  for +lt: Lt
+  for +dd: Nat
+  for +yy: Sc
+  for +hy: {sc.fin(yy) == SOut{lt, dd} : Sc}
+  {sc.fin(sc.run(ww, yy)) == SOut{lt, dd} : Sc}
+
+def p_ws(ww, h_w, lt, dd, yy, hy):
+  match ww:
+    case SNil{}:
+      hy
+    case SCon{+hd, +tl}:
+      +ecl = ws_cls(hd, and_left(Laws.is_ws(hd), Laws.all_ws(tl), h_w))
+      Equal.trans(Sc, sc.fin(sc.run(tl, sc.stepc(yy, Lex.classify(hd), hd))), sc.fin(sc.run(tl, SOut{lt, dd})),
+        SOut{lt, dd},
+        Equal.cong(Sc, Sc, zz => sc.fin(sc.run(tl, zz)), sc.stepc(yy, Lex.classify(hd), hd), SOut{lt, dd},
+          Equal.trans(Sc, sc.stepc(yy, Lex.classify(hd), hd), sc.stepc(sc.fin(yy), Lex.classify(hd), hd), SOut{lt, dd},
+            fin_stepc(yy, Lex.classify(hd), hd, Equal.cong(Lex.Class, Bool, zz => is_oth(zz), Lex.classify(hd),
+              Lex.CSpace{}, ecl)),
+            Equal.trans(Sc, sc.stepc(sc.fin(yy), Lex.classify(hd), hd), sc.stepc(SOut{lt, dd}, Lex.classify(hd), hd),
+              SOut{lt, dd},
+              Equal.cong(Sc, Sc, zz => sc.stepc(zz, Lex.classify(hd), hd), sc.fin(yy), SOut{lt, dd}, hy),
+              Equal.cong(Lex.Class, Sc, zz => sc.out(lt, dd, zz, hd), Lex.classify(hd), Lex.CSpace{}, ecl)))),
+        p_ws(tl, and_right(Laws.is_ws(hd), Laws.all_ws(tl), h_w), lt, dd, SOut{lt, dd}, {==}))
+
+# the scan outside strings
+def is_out(st: Sc) -> Bool:
+  match st:
+    case SOut{_, _}:
+      True{}
+    case _:
+      False{}
+
+# the scan in a string
+def is_in(st: Sc) -> Bool:
+  match st:
+    case SIn{_}:
+      True{}
+    case _:
+      False{}
+
+# what may come next, outside strings
+def lt_of(st: Sc) -> Lt:
+  match st:
+    case SOut{lt, _}:
+      lt
+    case _:
+      LSt{}
+
+# a word's end described as not a value's: a word was not read
+law fin_ex_w:
+  for bv: Bool
+  for +dd: Nat
+  for +lt: Lt
+  for +ee: Nat
+  for hy: {Bool.pick(Sc, bv, SOut{LVal{}, dd}, SBad{}) == SOut{lt, ee} : Sc}
+  for h_lt: {notval(lt) == True{} : Bool}
+  Empty
+
+def fin_ex_w(bv, dd, lt, ee, hy, h_lt):
+  match bv:
+    case True{}:
+      false_true(Equal.trans(Bool, False{}, notval(lt), True{}, Equal.cong(Sc, Bool, zz => notval(lt_of(zz)),
+        SOut{LVal{}, dd}, SOut{lt, ee}, hy), h_lt))
+    case False{}:
+      false_true(Equal.cong(Sc, Bool, zz => is_out(zz), SBad{}, SOut{lt, ee}, hy))
+
+# a scan whose end is outside strings, where a value may come, is there
+law fin_ex_o:
+  for +yy: Sc
+  for +lt: Lt
+  for +dd: Nat
+  for hy: {sc.fin(yy) == SOut{lt, dd} : Sc}
+  for h_lt: {notval(lt) == True{} : Bool}
+  {yy == SOut{lt, dd} : Sc}
+
+def fin_ex_o(yy, lt, dd, hy, h_lt):
+  match yy:
+    case SOut{_l, _d}:
+      hy
+    case SWord{+buf, +ee}:
+      Empty.absurd({SWord{buf, ee} == SOut{lt, dd} : Sc}, fin_ex_w(Laws.lit_or_num(Lex.text(buf)), ee, lt, dd, hy,
+        h_lt))
+    case SIn{+ee}:
+      Empty.absurd({SIn{ee} == SOut{lt, dd} : Sc}, false_true(Equal.cong(Sc, Bool, zz => is_out(zz), SIn{ee},
+        SOut{lt, dd}, hy)))
+    case SEsc{+ee}:
+      Empty.absurd({SEsc{ee} == SOut{lt, dd} : Sc}, false_true(Equal.cong(Sc, Bool, zz => is_out(zz), SEsc{ee},
+        SOut{lt, dd}, hy)))
+    case SBad{}:
+      Empty.absurd({SBad{} == SOut{lt, dd} : Sc}, false_true(Equal.cong(Sc, Bool, zz => is_out(zz), SBad{},
+        SOut{lt, dd}, hy)))
+
+# a word's end is not in a string
+law fin_ex_wi:
+  for bv: Bool
+  for +dd: Nat
+  for +ee: Nat
+  for hy: {Bool.pick(Sc, bv, SOut{LVal{}, dd}, SBad{}) == SIn{ee} : Sc}
+  Empty
+
+def fin_ex_wi(bv, dd, ee, hy):
+  match bv:
+    case True{}:
+      false_true(Equal.cong(Sc, Bool, zz => is_in(zz), SOut{LVal{}, dd}, SIn{ee}, hy))
+    case False{}:
+      false_true(Equal.cong(Sc, Bool, zz => is_in(zz), SBad{}, SIn{ee}, hy))
+
+# a scan whose end is in a string is there
+law fin_ex_i:
+  for +yy: Sc
+  for +dd: Nat
+  for hy: {sc.fin(yy) == SIn{dd} : Sc}
+  {yy == SIn{dd} : Sc}
+
+def fin_ex_i(yy, dd, hy):
+  match yy:
+    case SOut{+l, +ee}:
+      Empty.absurd({SOut{l, ee} == SIn{dd} : Sc}, false_true(Equal.cong(Sc, Bool, zz => is_in(zz), SOut{l, ee},
+        SIn{dd}, hy)))
+    case SWord{+buf, +ee}:
+      Empty.absurd({SWord{buf, ee} == SIn{dd} : Sc}, fin_ex_wi(Laws.lit_or_num(Lex.text(buf)), ee, dd, hy))
+    case SIn{_ee}:
+      hy
+    case SEsc{+ee}:
+      Empty.absurd({SEsc{ee} == SIn{dd} : Sc}, false_true(Equal.cong(Sc, Bool, zz => is_in(zz), SEsc{ee},
+        SIn{dd}, hy)))
+    case SBad{}:
+      Empty.absurd({SBad{} == SIn{dd} : Sc}, false_true(Equal.cong(Sc, Bool, zz => is_in(zz), SBad{}, SIn{dd}, hy)))
+
+# cells start after a value
+law lv_eq:
+  for +lt: Lt
+  for h: {Bool.not(notval(lt)) == True{} : Bool}
+  {lt == LVal{} : Lt}
+
+def lv_eq(lt, h):
+  match lt:
+    case LSt{}:
+      no({LSt{} == LVal{} : Lt}, h)
+    case LOp{}:
+      no({LOp{} == LVal{} : Lt}, h)
+    case LVal{}:
+      {==}
+
+# an open bracket where a value may come
+law open_ok:
+  for +lt: Lt
+  for +dd: Nat
+  for h: {notval(lt) == True{} : Bool}
+  {sc.open(lt, dd) == SOut{LOp{}, 1n+dd} : Sc}
+
+def open_ok(lt, dd, h):
+  match lt:
+    case LSt{}:
+      {==}
+    case LOp{}:
+      {==}
+    case LVal{}:
+      no({sc.open(LVal{}, dd) == SOut{LOp{}, 1n+dd} : Sc}, h)
+
+# a quotation mark where a value may come
+law quote_ok:
+  for +lt: Lt
+  for +dd: Nat
+  for h: {notval(lt) == True{} : Bool}
+  {sc.quote(lt, dd) == SIn{dd} : Sc}
+
+def quote_ok(lt, dd, h):
+  match lt:
+    case LSt{}:
+      {==}
+    case LOp{}:
+      {==}
+    case LVal{}:
+      no({sc.quote(LVal{}, dd) == SIn{dd} : Sc}, h)
+
+# a word's first character where a value may come
+law wstart_ok:
+  for +lt: Lt
+  for +dd: Nat
+  for +ch: Char
+  for h: {notval(lt) == True{} : Bool}
+  {sc.wstart(lt, dd, ch) == SWord{[ch], dd} : Sc}
+
+def wstart_ok(lt, dd, ch, h):
+  match lt:
+    case LSt{}:
+      {==}
+    case LOp{}:
+      {==}
+    case LVal{}:
+      no({sc.wstart(LVal{}, dd, ch) == SWord{[ch], dd} : Sc}, h)
+
+# word characters in a word
+law wrun:
+  for +cs: String
+  for h: others(String.to_list(cs))
+  for +buf: List<&2, Char>
+  for +dd: Nat
+  {sc.run(cs, SWord{buf, dd}) == SWord{List.reverse.go(&2, Char, String.to_list(cs), buf), dd} : Sc}
+
+def wrun(cs, h, buf, dd):
+  match cs:
+    case SNil{}:
+      {==}
+    case SCon{+hd, +tl}:
+      (h1, h2) = h
+      Equal.trans(Sc, sc.run(tl, sc.word(buf, dd, Lex.classify(hd), hd)), sc.run(tl, SWord{hd <> buf, dd}),
+        SWord{List.reverse.go(&2, Char, String.to_list(tl), hd <> buf), dd},
+        Equal.cong(Lex.Class, Sc, zz => sc.run(tl, sc.word(buf, dd, zz, hd)), Lex.classify(hd), Lex.COther{}, h1),
+        wrun(tl, h2, hd <> buf, dd))
+
+# a word read from where a value may come
+law wrun0:
+  for +hd: Char
+  for +tl: String
+  for h: others(hd <> String.to_list(tl))
+  for +lt: Lt
+  for +dd: Nat
+  for +h_lt: {notval(lt) == True{} : Bool}
+  {sc.run(SCon{hd, tl}, SOut{lt, dd}) == SWord{List.reverse.go(&2, Char, String.to_list(tl), [hd]), dd} : Sc}
+
+def wrun0(hd, tl, h, lt, dd, h_lt):
+  (h1, h2) = h
+  Equal.trans(Sc, sc.run(tl, sc.out(lt, dd, Lex.classify(hd), hd)), sc.run(tl, sc.wstart(lt, dd, hd)),
+    SWord{List.reverse.go(&2, Char, String.to_list(tl), [hd]), dd},
+    Equal.cong(Lex.Class, Sc, zz => sc.run(tl, sc.out(lt, dd, zz, hd)), Lex.classify(hd), Lex.COther{}, h1),
+    Equal.trans(Sc, sc.run(tl, sc.wstart(lt, dd, hd)), sc.run(tl, SWord{[hd], dd}),
+      SWord{List.reverse.go(&2, Char, String.to_list(tl), [hd]), dd},
+      Equal.cong(Sc, Sc, zz => sc.run(tl, zz), sc.wstart(lt, dd, hd), SWord{[hd], dd}, wstart_ok(lt, dd, hd, h_lt)),
+      wrun(tl, h2, [hd], dd)))
+
+# a literal name or a number is word characters
+law lon_oth.at:
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for +w: String
+  for e1: {String.eq(w, "null") == b1 : Bool}
+  for e2: {String.eq(w, "true") == b2 : Bool}
+  for e3: {String.eq(w, "false") == b3 : Bool}
+  for h: {Bool.or(b1, Bool.or(b2, Bool.or(b3, Laws.number(String.to_list(w))))) == True{} : Bool}
+  others(String.to_list(w))
+
+def lon_oth.at(b1, b2, b3, w, e1, e2, e3, h):
+  match b1:
+    case True{}:
+      ek = Equal.sym(String, w, "null", str_eq_sound(w, "null", e1))
+      %ek : others(String.to_list(_))
+      ({==}, ({==}, ({==}, ({==}, Unit{}))))
+    case False{}:
+      match b2:
+        case True{}:
+          ek = Equal.sym(String, w, "true", str_eq_sound(w, "true", e2))
+          %ek : others(String.to_list(_))
+          ({==}, ({==}, ({==}, ({==}, Unit{}))))
+        case False{}:
+          match b3:
+            case True{}:
+              ek = Equal.sym(String, w, "false", str_eq_sound(w, "false", e3))
+              %ek : others(String.to_list(_))
+              ({==}, ({==}, ({==}, ({==}, ({==}, Unit{})))))
+            case False{}:
+              oth_number(String.to_list(w), h)
+
+law lon_oth:
+  for +w: String
+  for h: {Laws.lit_or_num(w) == True{} : Bool}
+  others(String.to_list(w))
+
+def lon_oth(w, h):
+  lon_oth.at(String.eq(w, "null"), String.eq(w, "true"), String.eq(w, "false"), w, {==}, {==}, {==}, h)
+
+# a word read where a value may come ends where a value ends
+law g1_word:
+  for +w: String
+  for +h_ok: {Laws.lit_or_num(w) == True{} : Bool}
+  for +lt: Lt
+  for +dd: Nat
+  for +h_lt: {notval(lt) == True{} : Bool}
+  for +yy: Sc
+  for +hy: {sc.fin(yy) == SOut{lt, dd} : Sc}
+  {sc.fin(sc.run(w, yy)) == SOut{LVal{}, dd} : Sc}
+
+def g1_word(w, h_ok, lt, dd, h_lt, yy, hy):
+  match w:
+    case SNil{}:
+      no({sc.fin(sc.run("", yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+    case SCon{+hd, +tl}:
+      +rw = List.reverse.go(&2, Char, String.to_list(tl), [hd])
+      Equal.trans(Sc, sc.fin(sc.run(SCon{hd, tl}, yy)), sc.fin(sc.run(SCon{hd, tl}, SOut{lt, dd})), SOut{LVal{}, dd},
+        Equal.cong(Sc, Sc, zz => sc.fin(sc.run(SCon{hd, tl}, zz)), yy, SOut{lt, dd}, fin_ex_o(yy, lt, dd, hy, h_lt)),
+        Equal.trans(Sc, sc.fin(sc.run(SCon{hd, tl}, SOut{lt, dd})), sc.fin(SWord{rw, dd}), SOut{LVal{}, dd},
+          Equal.cong(Sc, Sc, zz => sc.fin(zz), sc.run(SCon{hd, tl}, SOut{lt, dd}), SWord{rw, dd}, wrun0(hd, tl,
+            lon_oth(SCon{hd, tl}, h_ok), lt, dd, h_lt)),
+          Equal.trans(Sc, sc.fin(SWord{rw, dd}), Bool.pick(Sc, Laws.lit_or_num(SCon{hd, tl}), SOut{LVal{}, dd},
+            SBad{}), SOut{LVal{}, dd},
+            Equal.cong(String, Sc, zz => Bool.pick(Sc, Laws.lit_or_num(zz), SOut{LVal{}, dd}, SBad{}), Lex.text(rw),
+              SCon{hd, tl}, word_text(SCon{hd, tl})),
+            Equal.cong(Bool, Sc, zz => Bool.pick(Sc, zz, SOut{LVal{}, dd}, SBad{}), Laws.lit_or_num(SCon{hd, tl}),
+              True{}, h_ok))))
+
+# RFC 8259's hexadecimal digit test on a code point
+def hexu(+cp: U32) -> Bool:
+  Bool.or(Bool.and(U32.is_ge(cp, 48), U32.is_le(cp, 57)), Bool.or(Bool.and(U32.is_ge(cp, 65), U32.is_le(cp, 70)),
+    Bool.and(U32.is_ge(cp, 97), U32.is_le(cp, 102))))
+
+# a character in a string that is no quotation mark or reverse solidus
+law in_nq:
+  for +ch: Char
+  for cls: Lex.Class
+  for +e: {Lex.classify(ch) == cls : Lex.Class}
+  for hq: {Laws.is_cp(ch, 34) == False{} : Bool}
+  for hb: {Laws.is_cp(ch, 92) == False{} : Bool}
+  for +dd: Nat
+  {sc.in(dd, cls) == SIn{dd} : Sc}
+
+def in_nq(ch, cls, e, hq, hb, dd):
+  match cls:
+    case Lex.CPunct{_tk}:
+      {==}
+    case Lex.CQuote{}:
+      Empty.absurd({SOut{LVal{}, dd} == SIn{dd} : Sc}, false_true(Equal.trans(Bool, False{}, Laws.is_cp(ch, 34),
+        True{}, Equal.sym(Bool, Laws.is_cp(ch, 34), False{}, hq), Equal.cong(U32, Bool, zz => U32.is_eq(zz, 34),
+        Char.to_u32(ch), 34, cls_quote(ch, e)))))
+    case Lex.CBack{}:
+      Empty.absurd({SEsc{dd} == SIn{dd} : Sc}, false_true(Equal.trans(Bool, False{}, Laws.is_cp(ch, 92),
+        True{}, Equal.sym(Bool, Laws.is_cp(ch, 92), False{}, hb), Equal.cong(U32, Bool, zz => U32.is_eq(zz, 92),
+        Char.to_u32(ch), 92, cls_back(ch, e)))))
+    case Lex.CSpace{}:
+      {==}
+    case Lex.COther{}:
+      {==}
+
+law in_step:
+  for +ch: Char
+  for +rest: String
+  for hq: {Laws.is_cp(ch, 34) == False{} : Bool}
+  for hb: {Laws.is_cp(ch, 92) == False{} : Bool}
+  for +dd: Nat
+  {sc.run(SCon{ch, rest}, SIn{dd}) == sc.run(rest, SIn{dd}) : Sc}
+
+def in_step(ch, rest, hq, hb, dd):
+  Equal.cong(Sc, Sc, zz => sc.run(rest, zz), sc.in(dd, Lex.classify(ch)), SIn{dd}, in_nq(ch, Lex.classify(ch), {==},
+    hq, hb, dd))
+
+# a hexadecimal digit is not the code point cp
+law hex_ne.at:
+  for bv: Bool
+  for +ch: Char
+  for +cp: U32
+  for e: {Laws.is_cp(ch, cp) == bv : Bool}
+  for h: {Laws.hexd(ch) == True{} : Bool}
+  for n: {hexu(cp) == False{} : Bool}
+  {Laws.is_cp(ch, cp) == False{} : Bool}
+
+def hex_ne.at(bv, ch, cp, e, h, n):
+  match bv:
+    case False{}:
+      e
+    case True{}:
+      Empty.absurd({Laws.is_cp(ch, cp) == False{} : Bool}, true_false(Equal.trans(Bool, True{}, hexu(Char.to_u32(ch)),
+        False{}, Equal.sym(Bool, Laws.hexd(ch), True{}, h), Equal.trans(Bool, hexu(Char.to_u32(ch)), hexu(cp),
+        False{}, Equal.cong(U32, Bool, zz => hexu(zz), Char.to_u32(ch), cp, ueq(Char.to_u32(ch), cp, e)), n))))
+
+law hex_ne:
+  for +ch: Char
+  for +cp: U32
+  for h: {Laws.hexd(ch) == True{} : Bool}
+  for n: {hexu(cp) == False{} : Bool}
+  {Laws.is_cp(ch, cp) == False{} : Bool}
+
+def hex_ne(ch, cp, h, n):
+  hex_ne.at(Laws.is_cp(ch, cp), ch, cp, {==}, h, n)
+
+law hex_step:
+  for +ch: Char
+  for +rest: String
+  for +h: {Laws.hexd(ch) == True{} : Bool}
+  for +dd: Nat
+  {sc.run(SCon{ch, rest}, SIn{dd}) == sc.run(rest, SIn{dd}) : Sc}
+
+def hex_step(ch, rest, h, dd):
+  in_step(ch, rest, hex_ne(ch, 34, h, {==}), hex_ne(ch, 92, h, {==}), dd)
+
+# a piece of a string, read in a string, leaves the scan in it
+law pc_in:
+  for +pc: Laws.Piece
+  for +h: {Laws.piece.ok(pc) == True{} : Bool}
+  for +dd: Nat
+  {sc.run(Laws.piece.text(pc), SIn{dd}) == SIn{dd} : Sc}
+
+def pc_in(pc, h, dd):
+  match pc:
+    case Laws.PRaw{+ch}:
+      +nt = not_true(Bool.or(Laws.is_cp(ch, 34), Bool.or(Laws.is_cp(ch, 92), U32.is_lt(Char.to_u32(ch), 32))), h)
+      in_step(ch, "", or_false_l(Laws.is_cp(ch, 34), Bool.or(Laws.is_cp(ch, 92), U32.is_lt(Char.to_u32(ch), 32)), nt),
+        or_false_l(Laws.is_cp(ch, 92), U32.is_lt(Char.to_u32(ch), 32), or_false_r(Laws.is_cp(ch, 34),
+        Bool.or(Laws.is_cp(ch, 92), U32.is_lt(Char.to_u32(ch), 32)), nt)), dd)
+    case Laws.PEsc{_ch}:
+      {==}
+    case Laws.PU{+a1, +a2, +a3, +a4}:
+      Equal.trans(Sc, sc.run(SCon{a1, SCon{a2, SCon{a3, SCon{a4, ""}}}}, SIn{dd}), sc.run(SCon{a2, SCon{a3, SCon{a4,
+        ""}}}, SIn{dd}), sc.run("", SIn{dd}), hex_step(a1, SCon{a2, SCon{a3, SCon{a4, ""}}}, and_left(Laws.hexd(a1),
+        Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4))), and_left(Bool.and(Laws.hexd(a1),
+        Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4)))), Laws.non_sur(Laws.hex4(a1, a2, a3, a4)), h)),
+        dd), Equal.trans(Sc, sc.run(SCon{a2, SCon{a3, SCon{a4, ""}}}, SIn{dd}), sc.run(SCon{a3, SCon{a4, ""}},
+        SIn{dd}), sc.run("", SIn{dd}), hex_step(a2, SCon{a3, SCon{a4, ""}}, and_left(Laws.hexd(a2),
+        Bool.and(Laws.hexd(a3), Laws.hexd(a4)), and_right(Laws.hexd(a1), Bool.and(Laws.hexd(a2),
+        Bool.and(Laws.hexd(a3), Laws.hexd(a4))), and_left(Bool.and(Laws.hexd(a1), Bool.and(Laws.hexd(a2),
+        Bool.and(Laws.hexd(a3), Laws.hexd(a4)))), Laws.non_sur(Laws.hex4(a1, a2, a3, a4)), h))), dd), Equal.trans(Sc,
+        sc.run(SCon{a3, SCon{a4, ""}}, SIn{dd}), sc.run(SCon{a4, ""}, SIn{dd}), sc.run("", SIn{dd}), hex_step(a3,
+        SCon{a4, ""}, and_left(Laws.hexd(a3), Laws.hexd(a4), and_right(Laws.hexd(a2), Bool.and(Laws.hexd(a3),
+        Laws.hexd(a4)), and_right(Laws.hexd(a1), Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4))),
+        and_left(Bool.and(Laws.hexd(a1), Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4)))),
+        Laws.non_sur(Laws.hex4(a1, a2, a3, a4)), h)))), dd), hex_step(a4, "", and_right(Laws.hexd(a3), Laws.hexd(a4),
+        and_right(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4)), and_right(Laws.hexd(a1),
+        Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4))), and_left(Bool.and(Laws.hexd(a1),
+        Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4)))), Laws.non_sur(Laws.hex4(a1, a2, a3, a4)),
+        h)))), dd))))
+    case Laws.PPair{+a1, +a2, +a3, +a4, +a5, +a6, +a7, +a8}:
+      Equal.trans(Sc, sc.run(SCon{a1, SCon{a2, SCon{a3, SCon{a4, SCon{'\\', SCon{'u', SCon{a5, SCon{a6, SCon{a7,
+        SCon{a8, ""}}}}}}}}}}, SIn{dd}), sc.run(SCon{a2, SCon{a3, SCon{a4, SCon{'\\', SCon{'u', SCon{a5, SCon{a6,
+        SCon{a7, SCon{a8, ""}}}}}}}}}, SIn{dd}), sc.run("", SIn{dd}), hex_step(a1, SCon{a2, SCon{a3, SCon{a4,
+        SCon{'\\', SCon{'u', SCon{a5, SCon{a6, SCon{a7, SCon{a8, ""}}}}}}}}}, and_left(Laws.hexd(a1),
+        Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4))), and_left(Bool.and(Laws.hexd(a1),
+        Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4)))), Bool.and(Bool.and(Laws.hexd(a5),
+        Bool.and(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8)))), Bool.and(Laws.in_hi(Laws.hex4(a1, a2, a3,
+        a4)), Laws.lo_sur(Laws.hex4(a5, a6, a7, a8)))), h)), dd), Equal.trans(Sc, sc.run(SCon{a2, SCon{a3, SCon{a4,
+        SCon{'\\', SCon{'u', SCon{a5, SCon{a6, SCon{a7, SCon{a8, ""}}}}}}}}}, SIn{dd}), sc.run(SCon{a3, SCon{a4,
+        SCon{'\\', SCon{'u', SCon{a5, SCon{a6, SCon{a7, SCon{a8, ""}}}}}}}}, SIn{dd}), sc.run("", SIn{dd}),
+        hex_step(a2, SCon{a3, SCon{a4, SCon{'\\', SCon{'u', SCon{a5, SCon{a6, SCon{a7, SCon{a8, ""}}}}}}}},
+        and_left(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4)), and_right(Laws.hexd(a1),
+        Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4))), and_left(Bool.and(Laws.hexd(a1),
+        Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4)))), Bool.and(Bool.and(Laws.hexd(a5),
+        Bool.and(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8)))), Bool.and(Laws.in_hi(Laws.hex4(a1, a2, a3,
+        a4)), Laws.lo_sur(Laws.hex4(a5, a6, a7, a8)))), h))), dd), Equal.trans(Sc, sc.run(SCon{a3, SCon{a4, SCon{'\\',
+        SCon{'u', SCon{a5, SCon{a6, SCon{a7, SCon{a8, ""}}}}}}}}, SIn{dd}), sc.run(SCon{a4, SCon{'\\', SCon{'u',
+        SCon{a5, SCon{a6, SCon{a7, SCon{a8, ""}}}}}}}, SIn{dd}), sc.run("", SIn{dd}), hex_step(a3, SCon{a4, SCon{'\\',
+        SCon{'u', SCon{a5, SCon{a6, SCon{a7, SCon{a8, ""}}}}}}}, and_left(Laws.hexd(a3), Laws.hexd(a4),
+        and_right(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4)), and_right(Laws.hexd(a1),
+        Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4))), and_left(Bool.and(Laws.hexd(a1),
+        Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4)))), Bool.and(Bool.and(Laws.hexd(a5),
+        Bool.and(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8)))), Bool.and(Laws.in_hi(Laws.hex4(a1, a2, a3,
+        a4)), Laws.lo_sur(Laws.hex4(a5, a6, a7, a8)))), h)))), dd), Equal.trans(Sc, sc.run(SCon{a4, SCon{'\\',
+        SCon{'u', SCon{a5, SCon{a6, SCon{a7, SCon{a8, ""}}}}}}}, SIn{dd}), sc.run(SCon{a5, SCon{a6, SCon{a7, SCon{a8,
+        ""}}}}, SIn{dd}), sc.run("", SIn{dd}), hex_step(a4, SCon{'\\', SCon{'u', SCon{a5, SCon{a6, SCon{a7, SCon{a8,
+        ""}}}}}}, and_right(Laws.hexd(a3), Laws.hexd(a4), and_right(Laws.hexd(a2), Bool.and(Laws.hexd(a3),
+        Laws.hexd(a4)), and_right(Laws.hexd(a1), Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4))),
+        and_left(Bool.and(Laws.hexd(a1), Bool.and(Laws.hexd(a2), Bool.and(Laws.hexd(a3), Laws.hexd(a4)))),
+        Bool.and(Bool.and(Laws.hexd(a5), Bool.and(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8)))),
+        Bool.and(Laws.in_hi(Laws.hex4(a1, a2, a3, a4)), Laws.lo_sur(Laws.hex4(a5, a6, a7, a8)))), h)))), dd),
+        Equal.trans(Sc, sc.run(SCon{a5, SCon{a6, SCon{a7, SCon{a8, ""}}}}, SIn{dd}), sc.run(SCon{a6, SCon{a7, SCon{a8,
+        ""}}}, SIn{dd}), sc.run("", SIn{dd}), hex_step(a5, SCon{a6, SCon{a7, SCon{a8, ""}}}, and_left(Laws.hexd(a5),
+        Bool.and(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8))), and_left(Bool.and(Laws.hexd(a5),
+        Bool.and(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8)))), Bool.and(Laws.in_hi(Laws.hex4(a1, a2, a3,
+        a4)), Laws.lo_sur(Laws.hex4(a5, a6, a7, a8))), and_right(Bool.and(Laws.hexd(a1), Bool.and(Laws.hexd(a2),
+        Bool.and(Laws.hexd(a3), Laws.hexd(a4)))), Bool.and(Bool.and(Laws.hexd(a5), Bool.and(Laws.hexd(a6),
+        Bool.and(Laws.hexd(a7), Laws.hexd(a8)))), Bool.and(Laws.in_hi(Laws.hex4(a1, a2, a3, a4)),
+        Laws.lo_sur(Laws.hex4(a5, a6, a7, a8)))), h))), dd), Equal.trans(Sc, sc.run(SCon{a6, SCon{a7, SCon{a8, ""}}},
+        SIn{dd}), sc.run(SCon{a7, SCon{a8, ""}}, SIn{dd}), sc.run("", SIn{dd}), hex_step(a6, SCon{a7, SCon{a8, ""}},
+        and_left(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8)), and_right(Laws.hexd(a5),
+        Bool.and(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8))), and_left(Bool.and(Laws.hexd(a5),
+        Bool.and(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8)))), Bool.and(Laws.in_hi(Laws.hex4(a1, a2, a3,
+        a4)), Laws.lo_sur(Laws.hex4(a5, a6, a7, a8))), and_right(Bool.and(Laws.hexd(a1), Bool.and(Laws.hexd(a2),
+        Bool.and(Laws.hexd(a3), Laws.hexd(a4)))), Bool.and(Bool.and(Laws.hexd(a5), Bool.and(Laws.hexd(a6),
+        Bool.and(Laws.hexd(a7), Laws.hexd(a8)))), Bool.and(Laws.in_hi(Laws.hex4(a1, a2, a3, a4)),
+        Laws.lo_sur(Laws.hex4(a5, a6, a7, a8)))), h)))), dd), Equal.trans(Sc, sc.run(SCon{a7, SCon{a8, ""}}, SIn{dd}),
+        sc.run(SCon{a8, ""}, SIn{dd}), sc.run("", SIn{dd}), hex_step(a7, SCon{a8, ""}, and_left(Laws.hexd(a7),
+        Laws.hexd(a8), and_right(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8)), and_right(Laws.hexd(a5),
+        Bool.and(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8))), and_left(Bool.and(Laws.hexd(a5),
+        Bool.and(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8)))), Bool.and(Laws.in_hi(Laws.hex4(a1, a2, a3,
+        a4)), Laws.lo_sur(Laws.hex4(a5, a6, a7, a8))), and_right(Bool.and(Laws.hexd(a1), Bool.and(Laws.hexd(a2),
+        Bool.and(Laws.hexd(a3), Laws.hexd(a4)))), Bool.and(Bool.and(Laws.hexd(a5), Bool.and(Laws.hexd(a6),
+        Bool.and(Laws.hexd(a7), Laws.hexd(a8)))), Bool.and(Laws.in_hi(Laws.hex4(a1, a2, a3, a4)),
+        Laws.lo_sur(Laws.hex4(a5, a6, a7, a8)))), h))))), dd), hex_step(a8, "", and_right(Laws.hexd(a7), Laws.hexd(a8),
+        and_right(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8)), and_right(Laws.hexd(a5),
+        Bool.and(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8))), and_left(Bool.and(Laws.hexd(a5),
+        Bool.and(Laws.hexd(a6), Bool.and(Laws.hexd(a7), Laws.hexd(a8)))), Bool.and(Laws.in_hi(Laws.hex4(a1, a2, a3,
+        a4)), Laws.lo_sur(Laws.hex4(a5, a6, a7, a8))), and_right(Bool.and(Laws.hexd(a1), Bool.and(Laws.hexd(a2),
+        Bool.and(Laws.hexd(a3), Laws.hexd(a4)))), Bool.and(Bool.and(Laws.hexd(a5), Bool.and(Laws.hexd(a6),
+        Bool.and(Laws.hexd(a7), Laws.hexd(a8)))), Bool.and(Laws.in_hi(Laws.hex4(a1, a2, a3, a4)),
+        Laws.lo_sur(Laws.hex4(a5, a6, a7, a8)))), h))))), dd))))))))
+
+# a string's pieces, read in a string, leave the scan in it
+law sp_in:
+  for +ps: List<&2, Laws.Piece>
+  for +h: {Laws.spell_ok(ps) == True{} : Bool}
+  for +dd: Nat
+  {sc.run(Laws.spell(ps), SIn{dd}) == SIn{dd} : Sc}
+
+def sp_in(ps, h, dd):
+  match ps:
+    case Nil{}:
+      {==}
+    case +pc <> +tl:
+      Equal.trans(Sc, sc.run(Laws.piece.text(pc) ++ Laws.spell(tl), SIn{dd}), sc.run(Laws.spell(tl),
+        sc.run(Laws.piece.text(pc), SIn{dd})), SIn{dd}, sc_app(Laws.piece.text(pc), Laws.spell(tl), SIn{dd}),
+        Equal.trans(Sc, sc.run(Laws.spell(tl), sc.run(Laws.piece.text(pc), SIn{dd})), sc.run(Laws.spell(tl), SIn{dd}),
+          SIn{dd}, Equal.cong(Sc, Sc, zz => sc.run(Laws.spell(tl), zz), sc.run(Laws.piece.text(pc), SIn{dd}), SIn{dd},
+          pc_in(pc, and_left(Laws.piece.ok(pc), Laws.spell_ok(tl), h), dd)),
+          sp_in(tl, and_right(Laws.piece.ok(pc), Laws.spell_ok(tl), h), dd)))
+
+# a string's pieces, the scan before them described
+law p_sp:
+  for +ps: List<&2, Laws.Piece>
+  for +h: {Laws.spell_ok(ps) == True{} : Bool}
+  for +dd: Nat
+  for +yy: Sc
+  for +hy: {sc.fin(yy) == SIn{dd} : Sc}
+  {sc.fin(sc.run(Laws.spell(ps), yy)) == SIn{dd} : Sc}
+
+def p_sp(ps, h, dd, yy, hy):
+  Equal.cong(Sc, Sc, zz => sc.fin(zz), sc.run(Laws.spell(ps), yy), SIn{dd}, Equal.trans(Sc, sc.run(Laws.spell(ps), yy),
+    sc.run(Laws.spell(ps), SIn{dd}), SIn{dd}, Equal.cong(Sc, Sc, zz => sc.run(Laws.spell(ps), zz), yy, SIn{dd},
+    fin_ex_i(yy, dd, hy)), sp_in(ps, h, dd)))
+
+
+# a derivation's text, read from where it may start, ends where a value
+# ends: at the depth it started, a value just read
+law g1:
+  for +gg: Laws.Gv
+  for +kk: Laws.GK
+  for +h_ok: {Laws.g.ok(gg, kk) == True{} : Bool}
+  for +lt: Lt
+  for +dd: Nat
+  for +h_lt: {okl(kk, lt) == True{} : Bool}
+  for +yy: Sc
+  for +hy: {sc.fin(yy) == SOut{lt, dd} : Sc}
+  {sc.fin(sc.run(Laws.g.text(gg), yy)) == SOut{LVal{}, dd} : Sc}
+
+def g1(gg, kk, h_ok, lt, dd, h_lt, yy, hy):
+  match gg:
+    case Laws.GWord{+a1}:
+      match kk:
+        case Laws.GKVal{}:
+          g1_word(a1, h_ok, lt, dd, h_lt, yy, hy)
+        case Laws.GKArr{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GWord{a1}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+        case Laws.GKObj{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GWord{a1}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+    case Laws.GStr{+a1}:
+      match kk:
+        case Laws.GKVal{}:
+          tr("\"", Laws.spell(a1) ++ "\"", yy, SIn{dd}, SOut{LVal{}, dd}, Equal.trans(Sc, sc.fin(sc.run("\"", yy)),
+            sc.fin(sc.quote(lt, dd)), SIn{dd}, p_ch('"', {==}, SOut{lt, dd}, yy, hy), Equal.cong(Sc, Sc,
+            zz => sc.fin(zz), sc.quote(lt, dd), SIn{dd}, quote_ok(lt, dd, h_lt))), +y0 => e0 => tr(Laws.spell(a1),
+            "\"", y0, SIn{dd}, SOut{LVal{}, dd}, p_sp(a1, h_ok, dd, y0, e0), +y1 => e1 => p_ch('"', {==}, SIn{dd}, y1,
+            e1)))
+        case Laws.GKArr{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GStr{a1}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+        case Laws.GKObj{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GStr{a1}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+    case Laws.GArr0{+a1}:
+      match kk:
+        case Laws.GKVal{}:
+          tr("[", a1 ++ "]", yy, SOut{LOp{}, 1n+dd}, SOut{LVal{}, dd}, Equal.trans(Sc, sc.fin(sc.run(SCon{'[', ""},
+            yy)), sc.fin(sc.open(lt, dd)), SOut{LOp{}, 1n+dd}, p_ch('[', {==}, SOut{lt, dd}, yy, hy), Equal.cong(Sc,
+            Sc, zz => sc.fin(zz), sc.open(lt, dd), SOut{LOp{}, 1n+dd}, open_ok(lt, dd, h_lt))), +y0 => e0 => tr(a1,
+            "]", y0, SOut{LOp{}, 1n+dd}, SOut{LVal{}, dd}, p_ws(a1, h_ok, LOp{}, 1n+dd, y0, e0), +y1 => e1 => p_ch(']',
+            {==}, SOut{LOp{}, 1n+dd}, y1, e1)))
+        case Laws.GKArr{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GArr0{a1}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+        case Laws.GKObj{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GArr0{a1}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+    case Laws.GArr{+a1, +a2, +a3, +a4}:
+      match kk:
+        case Laws.GKVal{}:
+          tr("[", a1 ++ Laws.g.text(a2) ++ a3 ++ Laws.g.text(a4) ++ "]", yy, SOut{LOp{}, 1n+dd}, SOut{LVal{}, dd},
+            Equal.trans(Sc, sc.fin(sc.run(SCon{'[', ""}, yy)), sc.fin(sc.open(lt, dd)), SOut{LOp{}, 1n+dd}, p_ch('[',
+            {==}, SOut{lt, dd}, yy, hy), Equal.cong(Sc, Sc, zz => sc.fin(zz), sc.open(lt, dd), SOut{LOp{}, 1n+dd},
+            open_ok(lt, dd, h_lt))), +y0 => e0 => tr(a1, Laws.g.text(a2) ++ a3 ++ Laws.g.text(a4) ++ "]", y0,
+            SOut{LOp{}, 1n+dd}, SOut{LVal{}, dd}, p_ws(a1, and_left(Laws.all_ws(a1), Bool.and(Laws.g.ok(a2,
+            Laws.GKVal{}), Bool.and(Laws.all_ws(a3), Laws.g.ok(a4, Laws.GKArr{}))), h_ok), LOp{}, 1n+dd, y0, e0),
+            +y1 => e1 => tr(Laws.g.text(a2), a3 ++ Laws.g.text(a4) ++ "]", y1, SOut{LVal{}, 1n+dd}, SOut{LVal{}, dd},
+            g1(a2, Laws.GKVal{}, and_left(Laws.g.ok(a2, Laws.GKVal{}), Bool.and(Laws.all_ws(a3), Laws.g.ok(a4,
+            Laws.GKArr{})), and_right(Laws.all_ws(a1), Bool.and(Laws.g.ok(a2, Laws.GKVal{}), Bool.and(Laws.all_ws(a3),
+            Laws.g.ok(a4, Laws.GKArr{}))), h_ok)), LOp{}, 1n+dd, {==}, y1, e1), +y2 => e2 => tr(a3,
+            Laws.g.text(a4) ++ "]", y2, SOut{LVal{}, 1n+dd}, SOut{LVal{}, dd}, p_ws(a3, and_left(Laws.all_ws(a3),
+            Laws.g.ok(a4, Laws.GKArr{}), and_right(Laws.g.ok(a2, Laws.GKVal{}), Bool.and(Laws.all_ws(a3), Laws.g.ok(a4,
+            Laws.GKArr{})), and_right(Laws.all_ws(a1), Bool.and(Laws.g.ok(a2, Laws.GKVal{}), Bool.and(Laws.all_ws(a3),
+            Laws.g.ok(a4, Laws.GKArr{}))), h_ok))), LVal{}, 1n+dd, y2, e2), +y3 => e3 => tr(Laws.g.text(a4), "]", y3,
+            SOut{LVal{}, 1n+dd}, SOut{LVal{}, dd}, g1(a4, Laws.GKArr{}, and_right(Laws.all_ws(a3), Laws.g.ok(a4,
+            Laws.GKArr{}), and_right(Laws.g.ok(a2, Laws.GKVal{}), Bool.and(Laws.all_ws(a3), Laws.g.ok(a4,
+            Laws.GKArr{})), and_right(Laws.all_ws(a1), Bool.and(Laws.g.ok(a2, Laws.GKVal{}), Bool.and(Laws.all_ws(a3),
+            Laws.g.ok(a4, Laws.GKArr{}))), h_ok))), LVal{}, 1n+dd, {==}, y3, e3), +y4 => e4 => p_ch(']', {==},
+            SOut{LVal{}, 1n+dd}, y4, e4))))))
+        case Laws.GKArr{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GArr{a1, a2, a3, a4}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+        case Laws.GKObj{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GArr{a1, a2, a3, a4}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+    case Laws.GObj0{+a1}:
+      match kk:
+        case Laws.GKVal{}:
+          tr("{", a1 ++ "}", yy, SOut{LOp{}, 1n+dd}, SOut{LVal{}, dd}, Equal.trans(Sc, sc.fin(sc.run(SCon{'{', ""},
+            yy)), sc.fin(sc.open(lt, dd)), SOut{LOp{}, 1n+dd}, p_ch('{', {==}, SOut{lt, dd}, yy, hy), Equal.cong(Sc,
+            Sc, zz => sc.fin(zz), sc.open(lt, dd), SOut{LOp{}, 1n+dd}, open_ok(lt, dd, h_lt))), +y0 => e0 => tr(a1,
+            "}", y0, SOut{LOp{}, 1n+dd}, SOut{LVal{}, dd}, p_ws(a1, h_ok, LOp{}, 1n+dd, y0, e0), +y1 => e1 => p_ch('}',
+            {==}, SOut{LOp{}, 1n+dd}, y1, e1)))
+        case Laws.GKArr{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GObj0{a1}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+        case Laws.GKObj{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GObj0{a1}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+    case Laws.GObj{+a1, +a2, +a3, +a4, +a5, +a6, +a7}:
+      match kk:
+        case Laws.GKVal{}:
+          tr("{",
+            a1 ++ "\"" ++ Laws.spell(a2) ++ "\"" ++ a3 ++ ":" ++ a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7) ++ "}",
+            yy, SOut{LOp{}, 1n+dd}, SOut{LVal{}, dd}, Equal.trans(Sc, sc.fin(sc.run(SCon{'{', ""}, yy)),
+            sc.fin(sc.open(lt, dd)), SOut{LOp{}, 1n+dd}, p_ch('{', {==}, SOut{lt, dd}, yy, hy), Equal.cong(Sc, Sc,
+            zz => sc.fin(zz), sc.open(lt, dd), SOut{LOp{}, 1n+dd}, open_ok(lt, dd, h_lt))), +y0 => e0 => tr(a1,
+            "\"" ++ Laws.spell(a2) ++ "\"" ++ a3 ++ ":" ++ a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7) ++ "}", y0,
+            SOut{LOp{}, 1n+dd}, SOut{LVal{}, dd}, p_ws(a1, and_left(Laws.all_ws(a1), Bool.and(Laws.spell_ok(a2),
+            Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))), h_ok), LOp{}, 1n+dd, y0, e0),
+            +y1 => e1 => tr("\"",
+            Laws.spell(a2) ++ "\"" ++ a3 ++ ":" ++ a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7) ++ "}", y1,
+            SIn{1n+dd}, SOut{LVal{}, dd}, p_ch('"', {==}, SOut{LOp{}, 1n+dd}, y1, e1), +y2 => e2 => tr(Laws.spell(a2),
+            "\"" ++ a3 ++ ":" ++ a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7) ++ "}", y2, SIn{1n+dd}, SOut{LVal{},
+            dd}, p_sp(a2, and_left(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4),
+            Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))))),
+            and_right(Laws.all_ws(a1), Bool.and(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4),
+            Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))), h_ok)),
+            1n+dd, y2, e2), +y3 => e3 => tr("\"", a3 ++ ":" ++ a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7) ++ "}",
+            y3, SOut{LVal{}, 1n+dd}, SOut{LVal{}, dd}, p_ch('"', {==}, SIn{1n+dd}, y3, e3), +y4 => e4 => tr(a3,
+            ":" ++ a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7) ++ "}", y4, SOut{LVal{}, 1n+dd}, SOut{LVal{}, dd},
+            p_ws(a3, and_left(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))), and_right(Laws.spell_ok(a2),
+            Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))))), and_right(Laws.all_ws(a1),
+            Bool.and(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5,
+            Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))), h_ok))), LVal{}, 1n+dd, y4, e4),
+            +y5 => e5 => tr(":", a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7) ++ "}", y5, SOut{LSt{}, 1n+dd},
+            SOut{LVal{}, dd}, p_ch(':', {==}, SOut{LVal{}, 1n+dd}, y5, e5), +y6 => e6 => tr(a4,
+            Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7) ++ "}", y6, SOut{LSt{}, 1n+dd}, SOut{LVal{}, dd}, p_ws(a4,
+            and_left(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7,
+            Laws.GKObj{}))), and_right(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))), and_right(Laws.spell_ok(a2),
+            Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))))), and_right(Laws.all_ws(a1),
+            Bool.and(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5,
+            Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))), h_ok)))), LSt{}, 1n+dd, y6, e6),
+            +y7 => e7 => tr(Laws.g.text(a5), a6 ++ Laws.g.text(a7) ++ "}", y7, SOut{LVal{}, 1n+dd}, SOut{LVal{}, dd},
+            g1(a5, Laws.GKVal{}, and_left(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7,
+            Laws.GKObj{})), and_right(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6),
+            Laws.g.ok(a7, Laws.GKObj{}))), and_right(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5,
+            Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))), and_right(Laws.spell_ok(a2),
+            Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))))), and_right(Laws.all_ws(a1),
+            Bool.and(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5,
+            Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))), h_ok))))), LSt{}, 1n+dd, {==},
+            y7, e7), +y8 => e8 => tr(a6, Laws.g.text(a7) ++ "}", y8, SOut{LVal{}, 1n+dd}, SOut{LVal{}, dd}, p_ws(a6,
+            and_left(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}), and_right(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})), and_right(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5,
+            Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))), and_right(Laws.all_ws(a3),
+            Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7,
+            Laws.GKObj{})))), and_right(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4),
+            Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))))),
+            and_right(Laws.all_ws(a1), Bool.and(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4),
+            Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))),
+            h_ok)))))), LVal{}, 1n+dd, y8, e8), +y9 => e9 => tr(Laws.g.text(a7), "}", y9, SOut{LVal{}, 1n+dd},
+            SOut{LVal{}, dd}, g1(a7, Laws.GKObj{}, and_right(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}),
+            and_right(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})),
+            and_right(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7,
+            Laws.GKObj{}))), and_right(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))), and_right(Laws.spell_ok(a2),
+            Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))))), and_right(Laws.all_ws(a1),
+            Bool.and(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5,
+            Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))), h_ok)))))), LVal{}, 1n+dd, {==},
+            y9, e9), +y10 => e10 => p_ch('}', {==}, SOut{LVal{}, 1n+dd}, y10, e10))))))))))))
+        case Laws.GKArr{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GObj{a1, a2, a3, a4, a5, a6, a7}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+        case Laws.GKObj{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GObj{a1, a2, a3, a4, a5, a6, a7}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+    case Laws.GEnd{}:
+      match kk:
+        case Laws.GKVal{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GEnd{}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+        case Laws.GKArr{}:
+          hv = Equal.trans(Sc, sc.fin(yy), SOut{lt, dd}, SOut{LVal{}, dd}, hy, Equal.cong(Lt, Sc, zz => SOut{zz, dd},
+            lt, LVal{}, lv_eq(lt, h_lt)))
+          hv
+        case Laws.GKObj{}:
+          hv = Equal.trans(Sc, sc.fin(yy), SOut{lt, dd}, SOut{LVal{}, dd}, hy, Equal.cong(Lt, Sc, zz => SOut{zz, dd},
+            lt, LVal{}, lv_eq(lt, h_lt)))
+          hv
+    case Laws.GNext{+a1, +a2, +a3, +a4}:
+      match kk:
+        case Laws.GKVal{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GNext{a1, a2, a3, a4}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+        case Laws.GKArr{}:
+          hv = Equal.trans(Sc, sc.fin(yy), SOut{lt, dd}, SOut{LVal{}, dd}, hy, Equal.cong(Lt, Sc, zz => SOut{zz, dd},
+            lt, LVal{}, lv_eq(lt, h_lt)))
+          tr(",", a1 ++ Laws.g.text(a2) ++ a3 ++ Laws.g.text(a4), yy, SOut{LSt{}, dd}, SOut{LVal{}, dd}, p_ch(',',
+            {==}, SOut{LVal{}, dd}, yy, hv), +y0 => e0 => tr(a1, Laws.g.text(a2) ++ a3 ++ Laws.g.text(a4), y0,
+            SOut{LSt{}, dd}, SOut{LVal{}, dd}, p_ws(a1, and_left(Laws.all_ws(a1), Bool.and(Laws.g.ok(a2, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a3), Laws.g.ok(a4, Laws.GKArr{}))), h_ok), LSt{}, dd, y0, e0),
+            +y1 => e1 => tr(Laws.g.text(a2), a3 ++ Laws.g.text(a4), y1, SOut{LVal{}, dd}, SOut{LVal{}, dd}, g1(a2,
+            Laws.GKVal{}, and_left(Laws.g.ok(a2, Laws.GKVal{}), Bool.and(Laws.all_ws(a3), Laws.g.ok(a4, Laws.GKArr{})),
+            and_right(Laws.all_ws(a1), Bool.and(Laws.g.ok(a2, Laws.GKVal{}), Bool.and(Laws.all_ws(a3), Laws.g.ok(a4,
+            Laws.GKArr{}))), h_ok)), LSt{}, dd, {==}, y1, e1), +y2 => e2 => tr(a3, Laws.g.text(a4), y2, SOut{LVal{},
+            dd}, SOut{LVal{}, dd}, p_ws(a3, and_left(Laws.all_ws(a3), Laws.g.ok(a4, Laws.GKArr{}),
+            and_right(Laws.g.ok(a2, Laws.GKVal{}), Bool.and(Laws.all_ws(a3), Laws.g.ok(a4, Laws.GKArr{})),
+            and_right(Laws.all_ws(a1), Bool.and(Laws.g.ok(a2, Laws.GKVal{}), Bool.and(Laws.all_ws(a3), Laws.g.ok(a4,
+            Laws.GKArr{}))), h_ok))), LVal{}, dd, y2, e2), +y3 => e3 => g1(a4, Laws.GKArr{}, and_right(Laws.all_ws(a3),
+            Laws.g.ok(a4, Laws.GKArr{}), and_right(Laws.g.ok(a2, Laws.GKVal{}), Bool.and(Laws.all_ws(a3), Laws.g.ok(a4,
+            Laws.GKArr{})), and_right(Laws.all_ws(a1), Bool.and(Laws.g.ok(a2, Laws.GKVal{}), Bool.and(Laws.all_ws(a3),
+            Laws.g.ok(a4, Laws.GKArr{}))), h_ok))), LVal{}, dd, {==}, y3, e3)))))
+        case Laws.GKObj{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GNext{a1, a2, a3, a4}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+    case Laws.GNextM{+a1, +a2, +a3, +a4, +a5, +a6, +a7}:
+      match kk:
+        case Laws.GKVal{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GNextM{a1, a2, a3, a4, a5, a6, a7}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+        case Laws.GKArr{}:
+          no({sc.fin(sc.run(Laws.g.text(Laws.GNextM{a1, a2, a3, a4, a5, a6, a7}), yy)) == SOut{LVal{}, dd} : Sc}, h_ok)
+        case Laws.GKObj{}:
+          hv = Equal.trans(Sc, sc.fin(yy), SOut{lt, dd}, SOut{LVal{}, dd}, hy, Equal.cong(Lt, Sc, zz => SOut{zz, dd},
+            lt, LVal{}, lv_eq(lt, h_lt)))
+          tr(",", a1 ++ "\"" ++ Laws.spell(a2) ++ "\"" ++ a3 ++ ":" ++ a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7),
+            yy, SOut{LSt{}, dd}, SOut{LVal{}, dd}, p_ch(',', {==}, SOut{LVal{}, dd}, yy, hv), +y0 => e0 => tr(a1,
+            "\"" ++ Laws.spell(a2) ++ "\"" ++ a3 ++ ":" ++ a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7), y0,
+            SOut{LSt{}, dd}, SOut{LVal{}, dd}, p_ws(a1, and_left(Laws.all_ws(a1), Bool.and(Laws.spell_ok(a2),
+            Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))), h_ok), LSt{}, dd, y0, e0),
+            +y1 => e1 => tr("\"",
+            Laws.spell(a2) ++ "\"" ++ a3 ++ ":" ++ a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7), y1, SIn{dd},
+            SOut{LVal{}, dd}, p_ch('"', {==}, SOut{LSt{}, dd}, y1, e1), +y2 => e2 => tr(Laws.spell(a2),
+            "\"" ++ a3 ++ ":" ++ a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7), y2, SIn{dd}, SOut{LVal{}, dd},
+            p_sp(a2, and_left(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4),
+            Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))))),
+            and_right(Laws.all_ws(a1), Bool.and(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4),
+            Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))), h_ok)),
+            dd, y2, e2), +y3 => e3 => tr("\"", a3 ++ ":" ++ a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7), y3,
+            SOut{LVal{}, dd}, SOut{LVal{}, dd}, p_ch('"', {==}, SIn{dd}, y3, e3), +y4 => e4 => tr(a3,
+            ":" ++ a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7), y4, SOut{LVal{}, dd}, SOut{LVal{}, dd}, p_ws(a3,
+            and_left(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))), and_right(Laws.spell_ok(a2),
+            Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))))), and_right(Laws.all_ws(a1),
+            Bool.and(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5,
+            Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))), h_ok))), LVal{}, dd, y4, e4),
+            +y5 => e5 => tr(":", a4 ++ Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7), y5, SOut{LSt{}, dd}, SOut{LVal{}, dd},
+            p_ch(':', {==}, SOut{LVal{}, dd}, y5, e5), +y6 => e6 => tr(a4, Laws.g.text(a5) ++ a6 ++ Laws.g.text(a7),
+            y6, SOut{LSt{}, dd}, SOut{LVal{}, dd}, p_ws(a4, and_left(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5,
+            Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))), and_right(Laws.all_ws(a3),
+            Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7,
+            Laws.GKObj{})))), and_right(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4),
+            Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))))),
+            and_right(Laws.all_ws(a1), Bool.and(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4),
+            Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))), h_ok)))),
+            LSt{}, dd, y6, e6), +y7 => e7 => tr(Laws.g.text(a5), a6 ++ Laws.g.text(a7), y7, SOut{LVal{}, dd},
+            SOut{LVal{}, dd}, g1(a5, Laws.GKVal{}, and_left(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6),
+            Laws.g.ok(a7, Laws.GKObj{})), and_right(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))), and_right(Laws.all_ws(a3),
+            Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7,
+            Laws.GKObj{})))), and_right(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4),
+            Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))))),
+            and_right(Laws.all_ws(a1), Bool.and(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4),
+            Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))),
+            h_ok))))), LSt{}, dd, {==}, y7, e7), +y8 => e8 => tr(a6, Laws.g.text(a7), y8, SOut{LVal{}, dd},
+            SOut{LVal{}, dd}, p_ws(a6, and_left(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}), and_right(Laws.g.ok(a5,
+            Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})), and_right(Laws.all_ws(a4),
+            Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))),
+            and_right(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))), and_right(Laws.spell_ok(a2),
+            Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))))), and_right(Laws.all_ws(a1),
+            Bool.and(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5,
+            Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))), h_ok)))))), LVal{}, dd, y8, e8),
+            +y9 => e9 => g1(a7, Laws.GKObj{}, and_right(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}),
+            and_right(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})),
+            and_right(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7,
+            Laws.GKObj{}))), and_right(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))), and_right(Laws.spell_ok(a2),
+            Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5, Laws.GKVal{}),
+            Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{}))))), and_right(Laws.all_ws(a1),
+            Bool.and(Laws.spell_ok(a2), Bool.and(Laws.all_ws(a3), Bool.and(Laws.all_ws(a4), Bool.and(Laws.g.ok(a5,
+            Laws.GKVal{}), Bool.and(Laws.all_ws(a6), Laws.g.ok(a7, Laws.GKObj{})))))), h_ok)))))), LVal{}, dd, {==},
+            y9, e9)))))))))))
+
+# a text that is whitespace, a derivation and whitespace passes the scan
+law acc_der:
+  for +wa: String
+  for +gg: Laws.Gv
+  for +wb: String
+  for +h_d: {Laws.derived(wa, gg, wb) == True{} : Bool}
+  {sc.acc(sc.run(wa ++ Laws.g.text(gg) ++ wb, SOut{LSt{}, 0n})) == True{} : Bool}
+
+def acc_der(wa, gg, wb, h_d):
+  Equal.cong(Sc, Bool, zz => sc.top(zz), sc.fin(sc.run(wa ++ Laws.g.text(gg) ++ wb, SOut{LSt{}, 0n})), SOut{LVal{},
+    0n}, tr(wa, Laws.g.text(gg) ++ wb, SOut{LSt{}, 0n}, SOut{LSt{}, 0n}, SOut{LVal{}, 0n}, p_ws(wa,
+    and_left(Laws.all_ws(wa), Bool.and(Laws.g.ok(gg, Laws.GKVal{}), Laws.all_ws(wb)), h_d), LSt{}, 0n, SOut{LSt{}, 0n},
+    {==}), +y0 => e0 => tr(Laws.g.text(gg), wb, y0, SOut{LVal{}, 0n}, SOut{LVal{}, 0n}, g1(gg, Laws.GKVal{},
+    and_left(Laws.g.ok(gg, Laws.GKVal{}), Laws.all_ws(wb), and_right(Laws.all_ws(wa), Bool.and(Laws.g.ok(gg,
+    Laws.GKVal{}), Laws.all_ws(wb)), h_d)), LSt{}, 0n, {==}, y0, e0), +y1 => e1 => p_ws(wb, and_right(Laws.g.ok(gg,
+    Laws.GKVal{}), Laws.all_ws(wb), and_right(Laws.all_ws(wa), Bool.and(Laws.g.ok(gg, Laws.GKVal{}), Laws.all_ws(wb)),
+    h_d)), LVal{}, 0n, y1, e1))))
+
+
+# when both ways are false
+law when_ff:
+  for bv: Bool
+  {Laws.when(bv, False{}, False{}) == False{} : Bool}
+
+def when_ff(bv):
+  match bv:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+
+# RFC 8259 §6, digits_end: a text that ends in a character that is no digit fails
+law nf_digits_end:
+  for +xs: List<&2, Char>
+  for +cc: Char
+  for +hd: {Laws.digit(cc) == False{} : Bool}
+  for +h45: {Laws.is_cp(cc, 45) == False{} : Bool}
+  for +h48: {Laws.is_cp(cc, 48) == False{} : Bool}
+  for +h19: {Laws.digit19(cc) == False{} : Bool}
+  {Laws.digits_end(List.append(&2, Char, xs, [cc])) == False{} : Bool}
+
+def nf_digits_end(xs, cc, hd, h45, h48, h19):
+  match xs:
+    case Nil{}:
+      Equal.cong(Bool, Bool, zz => Laws.when(zz, True{}, False{}), Laws.digit(cc), False{}, hd)
+    case +x <> +tl:
+      Equal.trans(Bool, Laws.when(Laws.digit(x), Laws.digits_end(List.append(&2, Char, tl, [cc])), False{}),
+        Laws.when(Laws.digit(x), False{}, False{}), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.digit(x), zz,
+        False{}), Laws.digits_end(List.append(&2, Char, tl, [cc])), False{}, nf_digits_end(tl, cc, hd, h45, h48, h19)),
+        when_ff(Laws.digit(x)))
+
+# RFC 8259 §6, digits1_end: a text that ends in a character that is no digit fails
+law nf_digits1_end:
+  for +xs: List<&2, Char>
+  for +cc: Char
+  for +hd: {Laws.digit(cc) == False{} : Bool}
+  for +h45: {Laws.is_cp(cc, 45) == False{} : Bool}
+  for +h48: {Laws.is_cp(cc, 48) == False{} : Bool}
+  for +h19: {Laws.digit19(cc) == False{} : Bool}
+  {Laws.digits1_end(List.append(&2, Char, xs, [cc])) == False{} : Bool}
+
+def nf_digits1_end(xs, cc, hd, h45, h48, h19):
+  match xs:
+    case Nil{}:
+      Equal.cong(Bool, Bool, zz => Laws.when(zz, True{}, False{}), Laws.digit(cc), False{}, hd)
+    case +x <> +tl:
+      Equal.trans(Bool, Laws.when(Laws.digit(x), Laws.digits_end(List.append(&2, Char, tl, [cc])), False{}),
+        Laws.when(Laws.digit(x), False{}, False{}), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.digit(x), zz,
+        False{}), Laws.digits_end(List.append(&2, Char, tl, [cc])), False{}, nf_digits_end(tl, cc, hd, h45, h48, h19)),
+        when_ff(Laws.digit(x)))
+
+# RFC 8259 §6, exp_body: a text that ends in a character that is no digit fails
+law nf_exp_body:
+  for +xs: List<&2, Char>
+  for +cc: Char
+  for +hd: {Laws.digit(cc) == False{} : Bool}
+  for +h45: {Laws.is_cp(cc, 45) == False{} : Bool}
+  for +h48: {Laws.is_cp(cc, 48) == False{} : Bool}
+  for +h19: {Laws.digit19(cc) == False{} : Bool}
+  {Laws.exp_body(List.append(&2, Char, xs, [cc])) == False{} : Bool}
+
+def nf_exp_body(xs, cc, hd, h45, h48, h19):
+  match xs:
+    case Nil{}:
+      Equal.trans(Bool, Laws.when(Laws.is_cp(cc, 43), False{}, Laws.when(Laws.is_cp(cc, 45), False{},
+        Laws.when(Laws.digit(cc), True{}, False{}))), Laws.when(Laws.is_cp(cc, 43), False{}, False{}), False{},
+        Equal.cong(Bool, Bool, zz => Laws.when(Laws.is_cp(cc, 43), False{}, zz), Laws.when(Laws.is_cp(cc, 45), False{},
+        Laws.when(Laws.digit(cc), True{}, False{})), False{}, Equal.trans(Bool, Laws.when(Laws.is_cp(cc, 45), False{},
+        Laws.when(Laws.digit(cc), True{}, False{})), Laws.when(False{}, False{}, Laws.when(Laws.digit(cc), True{},
+        False{})), False{}, Equal.cong(Bool, Bool, zz => Laws.when(zz, False{}, Laws.when(Laws.digit(cc), True{},
+        False{})), Laws.is_cp(cc, 45), False{}, h45), Equal.cong(Bool, Bool, zz => Laws.when(zz, True{}, False{}),
+        Laws.digit(cc), False{}, hd))), when_ff(Laws.is_cp(cc, 43)))
+    case +x <> +tl:
+      Equal.trans(Bool, Laws.when(Laws.is_cp(x, 43), Laws.digits1_end(List.append(&2, Char, tl, [cc])),
+        Laws.when(Laws.is_cp(x, 45), Laws.digits1_end(List.append(&2, Char, tl, [cc])), Laws.when(Laws.digit(x),
+        Laws.digits_end(List.append(&2, Char, tl, [cc])), False{}))), Laws.when(Laws.is_cp(x, 43), False{},
+        Laws.when(Laws.is_cp(x, 45), Laws.digits1_end(List.append(&2, Char, tl, [cc])), Laws.when(Laws.digit(x),
+        Laws.digits_end(List.append(&2, Char, tl, [cc])), False{}))), False{}, Equal.cong(Bool, Bool,
+        zz => Laws.when(Laws.is_cp(x, 43), zz, Laws.when(Laws.is_cp(x, 45), Laws.digits1_end(List.append(&2, Char, tl,
+        [cc])), Laws.when(Laws.digit(x), Laws.digits_end(List.append(&2, Char, tl, [cc])), False{}))),
+        Laws.digits1_end(List.append(&2, Char, tl, [cc])), False{}, nf_digits1_end(tl, cc, hd, h45, h48, h19)),
+        Equal.trans(Bool, Laws.when(Laws.is_cp(x, 43), False{}, Laws.when(Laws.is_cp(x, 45),
+        Laws.digits1_end(List.append(&2, Char, tl, [cc])), Laws.when(Laws.digit(x), Laws.digits_end(List.append(&2,
+        Char, tl, [cc])), False{}))), Laws.when(Laws.is_cp(x, 43), False{}, False{}), False{}, Equal.cong(Bool, Bool,
+        zz => Laws.when(Laws.is_cp(x, 43), False{}, zz), Laws.when(Laws.is_cp(x, 45), Laws.digits1_end(List.append(&2,
+        Char, tl, [cc])), Laws.when(Laws.digit(x), Laws.digits_end(List.append(&2, Char, tl, [cc])), False{})),
+        False{}, Equal.trans(Bool, Laws.when(Laws.is_cp(x, 45), Laws.digits1_end(List.append(&2, Char, tl, [cc])),
+        Laws.when(Laws.digit(x), Laws.digits_end(List.append(&2, Char, tl, [cc])), False{})), Laws.when(Laws.is_cp(x,
+        45), False{}, Laws.when(Laws.digit(x), Laws.digits_end(List.append(&2, Char, tl, [cc])), False{})), False{},
+        Equal.cong(Bool, Bool, zz => Laws.when(Laws.is_cp(x, 45), zz, Laws.when(Laws.digit(x),
+        Laws.digits_end(List.append(&2, Char, tl, [cc])), False{})), Laws.digits1_end(List.append(&2, Char, tl, [cc])),
+        False{}, nf_digits1_end(tl, cc, hd, h45, h48, h19)), Equal.trans(Bool, Laws.when(Laws.is_cp(x, 45), False{},
+        Laws.when(Laws.digit(x), Laws.digits_end(List.append(&2, Char, tl, [cc])), False{})), Laws.when(Laws.is_cp(x,
+        45), False{}, False{}), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.is_cp(x, 45), False{}, zz),
+        Laws.when(Laws.digit(x), Laws.digits_end(List.append(&2, Char, tl, [cc])), False{}), False{}, Equal.trans(Bool,
+        Laws.when(Laws.digit(x), Laws.digits_end(List.append(&2, Char, tl, [cc])), False{}), Laws.when(Laws.digit(x),
+        False{}, False{}), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.digit(x), zz, False{}),
+        Laws.digits_end(List.append(&2, Char, tl, [cc])), False{}, nf_digits_end(tl, cc, hd, h45, h48, h19)),
+        when_ff(Laws.digit(x)))), when_ff(Laws.is_cp(x, 45))))), when_ff(Laws.is_cp(x, 43))))
+
+# RFC 8259 §6, digits_exp_end: a text that ends in a character that is no digit fails
+law nf_digits_exp_end:
+  for +xs: List<&2, Char>
+  for +cc: Char
+  for +hd: {Laws.digit(cc) == False{} : Bool}
+  for +h45: {Laws.is_cp(cc, 45) == False{} : Bool}
+  for +h48: {Laws.is_cp(cc, 48) == False{} : Bool}
+  for +h19: {Laws.digit19(cc) == False{} : Bool}
+  {Laws.digits_exp_end(List.append(&2, Char, xs, [cc])) == False{} : Bool}
+
+def nf_digits_exp_end(xs, cc, hd, h45, h48, h19):
+  match xs:
+    case Nil{}:
+      Equal.trans(Bool, Laws.when(Laws.digit(cc), True{}, Laws.when(Laws.is_e(cc), False{}, False{})),
+        Laws.when(False{}, True{}, Laws.when(Laws.is_e(cc), False{}, False{})), False{}, Equal.cong(Bool, Bool,
+        zz => Laws.when(zz, True{}, Laws.when(Laws.is_e(cc), False{}, False{})), Laws.digit(cc), False{}, hd),
+        when_ff(Laws.is_e(cc)))
+    case +x <> +tl:
+      Equal.trans(Bool, Laws.when(Laws.digit(x), Laws.digits_exp_end(List.append(&2, Char, tl, [cc])),
+        Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl, [cc])), False{})), Laws.when(Laws.digit(x),
+        False{}, Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl, [cc])), False{})), False{},
+        Equal.cong(Bool, Bool, zz => Laws.when(Laws.digit(x), zz, Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2,
+        Char, tl, [cc])), False{})), Laws.digits_exp_end(List.append(&2, Char, tl, [cc])), False{},
+        nf_digits_exp_end(tl, cc, hd, h45, h48, h19)), Equal.trans(Bool, Laws.when(Laws.digit(x), False{},
+        Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl, [cc])), False{})), Laws.when(Laws.digit(x),
+        False{}, False{}), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.digit(x), False{}, zz),
+        Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl, [cc])), False{}), False{}, Equal.trans(Bool,
+        Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl, [cc])), False{}), Laws.when(Laws.is_e(x),
+        False{}, False{}), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.is_e(x), zz, False{}),
+        Laws.exp_body(List.append(&2, Char, tl, [cc])), False{}, nf_exp_body(tl, cc, hd, h45, h48, h19)),
+        when_ff(Laws.is_e(x)))), when_ff(Laws.digit(x))))
+
+# RFC 8259 §6, frac_body: a text that ends in a character that is no digit fails
+law nf_frac_body:
+  for +xs: List<&2, Char>
+  for +cc: Char
+  for +hd: {Laws.digit(cc) == False{} : Bool}
+  for +h45: {Laws.is_cp(cc, 45) == False{} : Bool}
+  for +h48: {Laws.is_cp(cc, 48) == False{} : Bool}
+  for +h19: {Laws.digit19(cc) == False{} : Bool}
+  {Laws.frac_body(List.append(&2, Char, xs, [cc])) == False{} : Bool}
+
+def nf_frac_body(xs, cc, hd, h45, h48, h19):
+  match xs:
+    case Nil{}:
+      Equal.cong(Bool, Bool, zz => Laws.when(zz, True{}, False{}), Laws.digit(cc), False{}, hd)
+    case +x <> +tl:
+      Equal.trans(Bool, Laws.when(Laws.digit(x), Laws.digits_exp_end(List.append(&2, Char, tl, [cc])), False{}),
+        Laws.when(Laws.digit(x), False{}, False{}), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.digit(x), zz,
+        False{}), Laws.digits_exp_end(List.append(&2, Char, tl, [cc])), False{}, nf_digits_exp_end(tl, cc, hd, h45,
+        h48, h19)), when_ff(Laws.digit(x)))
+
+# RFC 8259 §6, zero_rest: a text that ends in a character that is no digit fails
+law nf_zero_rest:
+  for +xs: List<&2, Char>
+  for +cc: Char
+  for +hd: {Laws.digit(cc) == False{} : Bool}
+  for +h45: {Laws.is_cp(cc, 45) == False{} : Bool}
+  for +h48: {Laws.is_cp(cc, 48) == False{} : Bool}
+  for +h19: {Laws.digit19(cc) == False{} : Bool}
+  {Laws.zero_rest(List.append(&2, Char, xs, [cc])) == False{} : Bool}
+
+def nf_zero_rest(xs, cc, hd, h45, h48, h19):
+  match xs:
+    case Nil{}:
+      Equal.trans(Bool, Laws.when(Laws.digit(cc), False{}, Laws.when(Laws.is_cp(cc, 46), False{},
+        Laws.when(Laws.is_e(cc), False{}, False{}))), Laws.when(False{}, False{}, Laws.when(Laws.is_cp(cc, 46),
+        False{}, Laws.when(Laws.is_e(cc), False{}, False{}))), False{}, Equal.cong(Bool, Bool, zz => Laws.when(zz,
+        False{}, Laws.when(Laws.is_cp(cc, 46), False{}, Laws.when(Laws.is_e(cc), False{}, False{}))), Laws.digit(cc),
+        False{}, hd), Equal.trans(Bool, Laws.when(Laws.is_cp(cc, 46), False{}, Laws.when(Laws.is_e(cc), False{},
+        False{})), Laws.when(Laws.is_cp(cc, 46), False{}, False{}), False{}, Equal.cong(Bool, Bool,
+        zz => Laws.when(Laws.is_cp(cc, 46), False{}, zz), Laws.when(Laws.is_e(cc), False{}, False{}), False{},
+        when_ff(Laws.is_e(cc))), when_ff(Laws.is_cp(cc, 46))))
+    case +x <> +tl:
+      Equal.trans(Bool, Laws.when(Laws.digit(x), False{}, Laws.when(Laws.is_cp(x, 46), Laws.frac_body(List.append(&2,
+        Char, tl, [cc])), Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl, [cc])), False{}))),
+        Laws.when(Laws.digit(x), False{}, False{}), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.digit(x),
+        False{}, zz), Laws.when(Laws.is_cp(x, 46), Laws.frac_body(List.append(&2, Char, tl, [cc])),
+        Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl, [cc])), False{})), False{}, Equal.trans(Bool,
+        Laws.when(Laws.is_cp(x, 46), Laws.frac_body(List.append(&2, Char, tl, [cc])), Laws.when(Laws.is_e(x),
+        Laws.exp_body(List.append(&2, Char, tl, [cc])), False{})), Laws.when(Laws.is_cp(x, 46), False{},
+        Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl, [cc])), False{})), False{}, Equal.cong(Bool,
+        Bool, zz => Laws.when(Laws.is_cp(x, 46), zz, Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl,
+        [cc])), False{})), Laws.frac_body(List.append(&2, Char, tl, [cc])), False{}, nf_frac_body(tl, cc, hd, h45, h48,
+        h19)), Equal.trans(Bool, Laws.when(Laws.is_cp(x, 46), False{}, Laws.when(Laws.is_e(x),
+        Laws.exp_body(List.append(&2, Char, tl, [cc])), False{})), Laws.when(Laws.is_cp(x, 46), False{}, False{}),
+        False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.is_cp(x, 46), False{}, zz), Laws.when(Laws.is_e(x),
+        Laws.exp_body(List.append(&2, Char, tl, [cc])), False{}), False{}, Equal.trans(Bool, Laws.when(Laws.is_e(x),
+        Laws.exp_body(List.append(&2, Char, tl, [cc])), False{}), Laws.when(Laws.is_e(x), False{}, False{}), False{},
+        Equal.cong(Bool, Bool, zz => Laws.when(Laws.is_e(x), zz, False{}), Laws.exp_body(List.append(&2, Char, tl,
+        [cc])), False{}, nf_exp_body(tl, cc, hd, h45, h48, h19)), when_ff(Laws.is_e(x)))), when_ff(Laws.is_cp(x,
+        46))))), when_ff(Laws.digit(x)))
+
+# RFC 8259 §6, digits_rest: a text that ends in a character that is no digit fails
+law nf_digits_rest:
+  for +xs: List<&2, Char>
+  for +cc: Char
+  for +hd: {Laws.digit(cc) == False{} : Bool}
+  for +h45: {Laws.is_cp(cc, 45) == False{} : Bool}
+  for +h48: {Laws.is_cp(cc, 48) == False{} : Bool}
+  for +h19: {Laws.digit19(cc) == False{} : Bool}
+  {Laws.digits_rest(List.append(&2, Char, xs, [cc])) == False{} : Bool}
+
+def nf_digits_rest(xs, cc, hd, h45, h48, h19):
+  match xs:
+    case Nil{}:
+      Equal.trans(Bool, Laws.when(Laws.digit(cc), True{}, Laws.when(Laws.is_cp(cc, 46), False{},
+        Laws.when(Laws.is_e(cc), False{}, False{}))), Laws.when(False{}, True{}, Laws.when(Laws.is_cp(cc, 46), False{},
+        Laws.when(Laws.is_e(cc), False{}, False{}))), False{}, Equal.cong(Bool, Bool, zz => Laws.when(zz, True{},
+        Laws.when(Laws.is_cp(cc, 46), False{}, Laws.when(Laws.is_e(cc), False{}, False{}))), Laws.digit(cc), False{},
+        hd), Equal.trans(Bool, Laws.when(Laws.is_cp(cc, 46), False{}, Laws.when(Laws.is_e(cc), False{}, False{})),
+        Laws.when(Laws.is_cp(cc, 46), False{}, False{}), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.is_cp(cc,
+        46), False{}, zz), Laws.when(Laws.is_e(cc), False{}, False{}), False{}, when_ff(Laws.is_e(cc))),
+        when_ff(Laws.is_cp(cc, 46))))
+    case +x <> +tl:
+      Equal.trans(Bool, Laws.when(Laws.digit(x), Laws.digits_rest(List.append(&2, Char, tl, [cc])),
+        Laws.when(Laws.is_cp(x, 46), Laws.frac_body(List.append(&2, Char, tl, [cc])), Laws.when(Laws.is_e(x),
+        Laws.exp_body(List.append(&2, Char, tl, [cc])), False{}))), Laws.when(Laws.digit(x), False{},
+        Laws.when(Laws.is_cp(x, 46), Laws.frac_body(List.append(&2, Char, tl, [cc])), Laws.when(Laws.is_e(x),
+        Laws.exp_body(List.append(&2, Char, tl, [cc])), False{}))), False{}, Equal.cong(Bool, Bool,
+        zz => Laws.when(Laws.digit(x), zz, Laws.when(Laws.is_cp(x, 46), Laws.frac_body(List.append(&2, Char, tl,
+        [cc])), Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl, [cc])), False{}))),
+        Laws.digits_rest(List.append(&2, Char, tl, [cc])), False{}, nf_digits_rest(tl, cc, hd, h45, h48, h19)),
+        Equal.trans(Bool, Laws.when(Laws.digit(x), False{}, Laws.when(Laws.is_cp(x, 46), Laws.frac_body(List.append(&2,
+        Char, tl, [cc])), Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl, [cc])), False{}))),
+        Laws.when(Laws.digit(x), False{}, False{}), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.digit(x),
+        False{}, zz), Laws.when(Laws.is_cp(x, 46), Laws.frac_body(List.append(&2, Char, tl, [cc])),
+        Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl, [cc])), False{})), False{}, Equal.trans(Bool,
+        Laws.when(Laws.is_cp(x, 46), Laws.frac_body(List.append(&2, Char, tl, [cc])), Laws.when(Laws.is_e(x),
+        Laws.exp_body(List.append(&2, Char, tl, [cc])), False{})), Laws.when(Laws.is_cp(x, 46), False{},
+        Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl, [cc])), False{})), False{}, Equal.cong(Bool,
+        Bool, zz => Laws.when(Laws.is_cp(x, 46), zz, Laws.when(Laws.is_e(x), Laws.exp_body(List.append(&2, Char, tl,
+        [cc])), False{})), Laws.frac_body(List.append(&2, Char, tl, [cc])), False{}, nf_frac_body(tl, cc, hd, h45, h48,
+        h19)), Equal.trans(Bool, Laws.when(Laws.is_cp(x, 46), False{}, Laws.when(Laws.is_e(x),
+        Laws.exp_body(List.append(&2, Char, tl, [cc])), False{})), Laws.when(Laws.is_cp(x, 46), False{}, False{}),
+        False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.is_cp(x, 46), False{}, zz), Laws.when(Laws.is_e(x),
+        Laws.exp_body(List.append(&2, Char, tl, [cc])), False{}), False{}, Equal.trans(Bool, Laws.when(Laws.is_e(x),
+        Laws.exp_body(List.append(&2, Char, tl, [cc])), False{}), Laws.when(Laws.is_e(x), False{}, False{}), False{},
+        Equal.cong(Bool, Bool, zz => Laws.when(Laws.is_e(x), zz, False{}), Laws.exp_body(List.append(&2, Char, tl,
+        [cc])), False{}, nf_exp_body(tl, cc, hd, h45, h48, h19)), when_ff(Laws.is_e(x)))), when_ff(Laws.is_cp(x,
+        46))))), when_ff(Laws.digit(x))))
+
+# RFC 8259 §6, int_end: a text that ends in a character that is no digit fails
+law nf_int_end:
+  for +xs: List<&2, Char>
+  for +cc: Char
+  for +hd: {Laws.digit(cc) == False{} : Bool}
+  for +h45: {Laws.is_cp(cc, 45) == False{} : Bool}
+  for +h48: {Laws.is_cp(cc, 48) == False{} : Bool}
+  for +h19: {Laws.digit19(cc) == False{} : Bool}
+  {Laws.int_end(List.append(&2, Char, xs, [cc])) == False{} : Bool}
+
+def nf_int_end(xs, cc, hd, h45, h48, h19):
+  match xs:
+    case Nil{}:
+      Equal.trans(Bool, Laws.when(Laws.is_cp(cc, 48), True{}, Laws.when(Laws.digit19(cc), True{}, False{})),
+        Laws.when(False{}, True{}, Laws.when(Laws.digit19(cc), True{}, False{})), False{}, Equal.cong(Bool, Bool,
+        zz => Laws.when(zz, True{}, Laws.when(Laws.digit19(cc), True{}, False{})), Laws.is_cp(cc, 48), False{}, h48),
+        Equal.cong(Bool, Bool, zz => Laws.when(zz, True{}, False{}), Laws.digit19(cc), False{}, h19))
+    case +x <> +tl:
+      Equal.trans(Bool, Laws.when(Laws.is_cp(x, 48), Laws.zero_rest(List.append(&2, Char, tl, [cc])),
+        Laws.when(Laws.digit19(x), Laws.digits_rest(List.append(&2, Char, tl, [cc])), False{})),
+        Laws.when(Laws.is_cp(x, 48), False{}, Laws.when(Laws.digit19(x), Laws.digits_rest(List.append(&2, Char, tl,
+        [cc])), False{})), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.is_cp(x, 48), zz,
+        Laws.when(Laws.digit19(x), Laws.digits_rest(List.append(&2, Char, tl, [cc])), False{})),
+        Laws.zero_rest(List.append(&2, Char, tl, [cc])), False{}, nf_zero_rest(tl, cc, hd, h45, h48, h19)),
+        Equal.trans(Bool, Laws.when(Laws.is_cp(x, 48), False{}, Laws.when(Laws.digit19(x),
+        Laws.digits_rest(List.append(&2, Char, tl, [cc])), False{})), Laws.when(Laws.is_cp(x, 48), False{}, False{}),
+        False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.is_cp(x, 48), False{}, zz), Laws.when(Laws.digit19(x),
+        Laws.digits_rest(List.append(&2, Char, tl, [cc])), False{}), False{}, Equal.trans(Bool,
+        Laws.when(Laws.digit19(x), Laws.digits_rest(List.append(&2, Char, tl, [cc])), False{}),
+        Laws.when(Laws.digit19(x), False{}, False{}), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.digit19(x),
+        zz, False{}), Laws.digits_rest(List.append(&2, Char, tl, [cc])), False{}, nf_digits_rest(tl, cc, hd, h45, h48,
+        h19)), when_ff(Laws.digit19(x)))), when_ff(Laws.is_cp(x, 48))))
+
+# RFC 8259 §6, number: a text that ends in a character that is no digit fails
+law nf_number:
+  for +xs: List<&2, Char>
+  for +cc: Char
+  for +hd: {Laws.digit(cc) == False{} : Bool}
+  for +h45: {Laws.is_cp(cc, 45) == False{} : Bool}
+  for +h48: {Laws.is_cp(cc, 48) == False{} : Bool}
+  for +h19: {Laws.digit19(cc) == False{} : Bool}
+  {Laws.number(List.append(&2, Char, xs, [cc])) == False{} : Bool}
+
+def nf_number(xs, cc, hd, h45, h48, h19):
+  match xs:
+    case Nil{}:
+      Equal.trans(Bool, Laws.when(Laws.is_cp(cc, 45), False{}, Laws.int_end([cc])), Laws.when(False{}, False{},
+        Laws.int_end([cc])), False{}, Equal.cong(Bool, Bool, zz => Laws.when(zz, False{}, Laws.int_end([cc])),
+        Laws.is_cp(cc, 45), False{}, h45), nf_int_end([], cc, hd, h45, h48, h19))
+    case +x <> +tl:
+      Equal.trans(Bool, Laws.when(Laws.is_cp(x, 45), Laws.int_end(List.append(&2, Char, tl, [cc])),
+        Laws.int_end(x <> List.append(&2, Char, tl, [cc]))), Laws.when(Laws.is_cp(x, 45), False{},
+        Laws.int_end(x <> List.append(&2, Char, tl, [cc]))), False{}, Equal.cong(Bool, Bool,
+        zz => Laws.when(Laws.is_cp(x, 45), zz, Laws.int_end(x <> List.append(&2, Char, tl, [cc]))),
+        Laws.int_end(List.append(&2, Char, tl, [cc])), False{}, nf_int_end(tl, cc, hd, h45, h48, h19)),
+        Equal.trans(Bool, Laws.when(Laws.is_cp(x, 45), False{}, Laws.int_end(x <> List.append(&2, Char, tl, [cc]))),
+        Laws.when(Laws.is_cp(x, 45), False{}, False{}), False{}, Equal.cong(Bool, Bool, zz => Laws.when(Laws.is_cp(x,
+        45), False{}, zz), Laws.int_end(x <> List.append(&2, Char, tl, [cc])), False{}, nf_int_end(x <> tl, cc, hd,
+        h45, h48, h19)), when_ff(Laws.is_cp(x, 45))))
+
+# a code point 48, `0`, is a digit
+law c48.at:
+  for bv: Bool
+  for +cc: Char
+  for e: {Laws.is_cp(cc, 48) == bv : Bool}
+  for hd: {Laws.digit(cc) == False{} : Bool}
+  {Laws.is_cp(cc, 48) == False{} : Bool}
+
+def c48.at(bv, cc, e, hd):
+  match bv:
+    case False{}:
+      e
+    case True{}:
+      Empty.absurd({Laws.is_cp(cc, 48) == False{} : Bool}, true_false(Equal.trans(Bool, True{},
+        Bool.and(U32.is_ge(Char.to_u32(cc), 48), U32.is_le(Char.to_u32(cc), 57)), False{},
+        Equal.cong(U32, Bool, zz => Bool.and(U32.is_ge(zz, 48), U32.is_le(zz, 57)), 48, Char.to_u32(cc),
+          Equal.sym(U32, Char.to_u32(cc), 48, ueq(Char.to_u32(cc), 48, e))), hd)))
+
+law c48:
+  for +cc: Char
+  for hd: {Laws.digit(cc) == False{} : Bool}
+  {Laws.is_cp(cc, 48) == False{} : Bool}
+
+def c48(cc, hd):
+  c48.at(Laws.is_cp(cc, 48), cc, {==}, hd)
+
+# a word at least 49 is at least 48: the two differ in the lowest bit
+law ge_bit:
+  for kk: Cmp
+  for bv: Bool
+  for h: {Cmp.is_ge(Word.cmp.fin(bv, True{}, kk)) == True{} : Bool}
+  {Cmp.is_ge(Word.cmp.fin(bv, False{}, kk)) == True{} : Bool}
+
+def ge_bit(kk, bv, h):
+  match kk:
+    case LT{}:
+      no({Cmp.is_ge(Word.cmp.fin(bv, False{}, LT{})) == True{} : Bool}, h)
+    case EQ{}:
+      match bv:
+        case True{}:
+          {==}
+        case False{}:
+          no({Cmp.is_ge(Word.cmp.fin(False{}, False{}, EQ{})) == True{} : Bool}, h)
+    case GT{}:
+      {==}
+
+# the tail of a code point's bits
+def u_tl(uu: U32) -> Word(31n):
+  match uu:
+    case U32{WCon{_, tt}}:
+      tt
+
+# digit1-9 is a digit
+law d19:
+  for +cc: Char
+  for +h: {Laws.digit19(cc) == True{} : Bool}
+  {Laws.digit(cc) == True{} : Bool}
+
+def d19(cc, h):
+  match cc:
+    case Chr{U32{WCon{+bv, +tt}}}:
+      and2(U32.is_ge(U32{WCon{bv, tt}}, 48), U32.is_le(U32{WCon{bv, tt}}, 57), ge_bit(Word.cmp(31n, tt, u_tl(49)), bv,
+        and_left(U32.is_ge(U32{WCon{bv, tt}}, 49), U32.is_le(U32{WCon{bv, tt}}, 57), h)),
+        and_right(U32.is_ge(U32{WCon{bv, tt}}, 49), U32.is_le(U32{WCon{bv, tt}}, 57), h))
+
+law c19.at:
+  for bv: Bool
+  for +cc: Char
+  for e: {Laws.digit19(cc) == bv : Bool}
+  for hd: {Laws.digit(cc) == False{} : Bool}
+  {Laws.digit19(cc) == False{} : Bool}
+
+def c19.at(bv, cc, e, hd):
+  match bv:
+    case False{}:
+      e
+    case True{}:
+      Empty.absurd({Laws.digit19(cc) == False{} : Bool}, true_false(Equal.trans(Bool, True{}, Laws.digit(cc), False{},
+        Equal.sym(Bool, Laws.digit(cc), True{}, d19(cc, e)), hd)))
+
+law c19:
+  for +cc: Char
+  for hd: {Laws.digit(cc) == False{} : Bool}
+  {Laws.digit19(cc) == False{} : Bool}
+
+def c19(cc, hd):
+  c19.at(Laws.digit19(cc), cc, {==}, hd)
+
+# a number starts with `-` or a digit
+law num_first:
+  for +cc: Char
+  for +xs: List<&2, Char>
+  for h45: {Laws.is_cp(cc, 45) == False{} : Bool}
+  for h48: {Laws.is_cp(cc, 48) == False{} : Bool}
+  for h19: {Laws.digit19(cc) == False{} : Bool}
+  {Laws.number(cc <> xs) == False{} : Bool}
+
+def num_first(cc, xs, h45, h48, h19):
+  s45 = Equal.sym(Bool, Laws.is_cp(cc, 45), False{}, h45)
+  %s45 : {Laws.when(_, Laws.int_end(xs), Laws.int_end(cc <> xs)) == False{} : Bool}
+  s48 = Equal.sym(Bool, Laws.is_cp(cc, 48), False{}, h48)
+  %s48 : {Laws.when(_, Laws.zero_rest(xs), Laws.when(Laws.digit19(cc), Laws.digits_rest(xs),
+    False{})) == False{} : Bool}
+  s19 = Equal.sym(Bool, Laws.digit19(cc), False{}, h19)
+  %s19 : {Laws.when(_, Laws.digits_rest(xs), False{}) == False{} : Bool}
+  {==}
+
+# two strings that differ compare unequal
+law eq_f.at:
+  for bv: Bool
+  for +aa: String
+  for +bb: String
+  for e: {String.eq(aa, bb) == bv : Bool}
+  for kk: {aa == bb : String} -> Empty
+  {String.eq(aa, bb) == False{} : Bool}
+
+def eq_f.at(bv, aa, bb, e, kk):
+  match bv:
+    case False{}:
+      e
+    case True{}:
+      Empty.absurd({String.eq(aa, bb) == False{} : Bool}, kk(str_eq_sound(aa, bb, e)))
+
+law eq_f:
+  for +aa: String
+  for +bb: String
+  for kk: {aa == bb : String} -> Empty
+  {String.eq(aa, bb) == False{} : Bool}
+
+def eq_f(aa, bb, kk):
+  eq_f.at(String.eq(aa, bb), aa, bb, {==}, kk)
+
+# four alternatives, each false
+law or4f:
+  for aa: Bool
+  for bb: Bool
+  for cc: Bool
+  for dd: Bool
+  for ha: {aa == False{} : Bool}
+  for hb: {bb == False{} : Bool}
+  for hc: {cc == False{} : Bool}
+  for hd: {dd == False{} : Bool}
+  {Bool.or(aa, Bool.or(bb, Bool.or(cc, dd))) == False{} : Bool}
+
+def or4f(aa, bb, cc, dd, ha, hb, hc, hd):
+  sa = Equal.sym(Bool, aa, False{}, ha)
+  %sa : {Bool.or(_, Bool.or(bb, Bool.or(cc, dd))) == False{} : Bool}
+  sb = Equal.sym(Bool, bb, False{}, hb)
+  %sb : {Bool.or(_, Bool.or(cc, dd)) == False{} : Bool}
+  sc = Equal.sym(Bool, cc, False{}, hc)
+  %sc : {Bool.or(_, dd) == False{} : Bool}
+  hd
+
+# the first character and the rest of a string
+def s_hd(txt: String) -> Char:
+  match txt:
+    case SNil{}:
+      Char.from_u32(0)
+    case SCon{hd, _}:
+      hd
+
+def s_tl(txt: String) -> String:
+  match txt:
+    case SNil{}:
+      SNil{}
+    case SCon{_, tl}:
+      tl
+
+# a character that is no digit or `-` put in front of a text that is no
+# rest of a literal name is no literal name or number
+law lon_front:
+  for +cc: Char
+  for +w: String
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for k1: {w == "ull" : String} -> Empty
+  for k2: {w == "rue" : String} -> Empty
+  for k3: {w == "alse" : String} -> Empty
+  {Laws.lit_or_num(SCon{cc, w}) == False{} : Bool}
+
+def lon_front(cc, w, hn, k1, k2, k3):
+  +hd = or_false_l(Laws.digit(cc), Laws.is_cp(cc, 45), hn)
+  or4f(String.eq(SCon{cc, w}, "null"), String.eq(SCon{cc, w}, "true"), String.eq(SCon{cc, w}, "false"),
+    Laws.number(cc <> String.to_list(w)),
+    eq_f(SCon{cc, w}, "null", ee => k1(Equal.cong(String, String, zz => s_tl(zz), SCon{cc, w}, "null", ee))),
+    eq_f(SCon{cc, w}, "true", ee => k2(Equal.cong(String, String, zz => s_tl(zz), SCon{cc, w}, "true", ee))),
+    eq_f(SCon{cc, w}, "false", ee => k3(Equal.cong(String, String, zz => s_tl(zz), SCon{cc, w}, "false", ee))),
+    num_first(cc, String.to_list(w), or_false_r(Laws.digit(cc), Laws.is_cp(cc, 45), hn), c48(cc, hd), c19(cc, hd)))
+
+# a string that is empty is not one that is not
+def s_nil(txt: String) -> Bool:
+  match txt:
+    case SNil{}:
+      True{}
+    case SCon{_, _}:
+      False{}
+
+law nil_ne:
+  for +bb: String
+  for hb: {s_nil(bb) == False{} : Bool}
+  for ee: {"" == bb : String}
+  Empty
+
+def nil_ne(bb, hb, ee):
+  true_false(Equal.trans(Bool, True{}, s_nil(bb), False{}, Equal.cong(String, Bool, zz => s_nil(zz), "", bb, ee), hb))
+
+# one character, no digit or `-`, is no literal name or number
+law lon1:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  {Laws.lit_or_num(Lex.text([cc])) == False{} : Bool}
+
+def lon1(cc, hn):
+  lon_front(cc, "", hn, ee => nil_ne("ull", {==}, ee), ee => nil_ne("rue", {==}, ee), ee => nil_ne("alse", {==}, ee))
+
+# a literal name or a number with a character that is no digit or `-` in
+# front is neither
+law lon_cons:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +w: String
+  for +h: {Laws.lit_or_num(w) == True{} : Bool}
+  {Laws.lit_or_num(SCon{cc, w}) == False{} : Bool}
+
+def lon_cons(cc, hn, w, h):
+  lon_front(cc, w, hn,
+    ee => true_false(Equal.trans(Bool, True{}, Laws.lit_or_num(w), False{}, Equal.sym(Bool, Laws.lit_or_num(w), True{},
+      h),
+      Equal.cong(String, Bool, zz => Laws.lit_or_num(zz), w, "ull", ee))),
+    ee => true_false(Equal.trans(Bool, True{}, Laws.lit_or_num(w), False{}, Equal.sym(Bool, Laws.lit_or_num(w), True{},
+      h),
+      Equal.cong(String, Bool, zz => Laws.lit_or_num(zz), w, "rue", ee))),
+    ee => true_false(Equal.trans(Bool, True{}, Laws.lit_or_num(w), False{}, Equal.sym(Bool, Laws.lit_or_num(w), True{},
+      h),
+      Equal.cong(String, Bool, zz => Laws.lit_or_num(zz), w, "alse", ee))))
+
+# a buffer with one more character read first
+law bx_app:
+  for +ba: List<&2, Char>
+  for +cc: Char
+  for +acc: String
+  {Lex.text.go(List.append(&2, Char, ba, [cc]), acc) == SCon{cc, Lex.text.go(ba, acc)} : String}
+
+def bx_app(ba, cc, acc):
+  match ba:
+    case Nil{}:
+      {==}
+    case +x <> +tl:
+      bx_app(tl, cc, SCon{x, acc})
+
+law lon_app:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +ba: List<&2, Char>
+  for +h: {Laws.lit_or_num(Lex.text(ba)) == True{} : Bool}
+  {Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))) == False{} : Bool}
+
+def lon_app(cc, hn, ba, h):
+  Equal.trans(Bool, Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))), Laws.lit_or_num(SCon{cc, Lex.text(ba)}),
+    False{}, Equal.cong(String, Bool, zz => Laws.lit_or_num(zz), Lex.text(List.append(&2, Char, ba, [cc])),
+    SCon{cc, Lex.text(ba)}, bx_app(ba, cc, "")), lon_cons(cc, hn, Lex.text(ba), h))
+
+# a buffer read onto a text
+law tg:
+  for +buf: List<&2, Char>
+  for +acc: String
+  for +bb: String
+  {Lex.text.go(buf, acc ++ bb) == Lex.text.go(buf, acc) ++ bb : String}
+
+def tg(buf, acc, bb):
+  match buf:
+    case Nil{}:
+      {==}
+    case +x <> +tl:
+      tg(tl, SCon{x, acc}, bb)
+
+# a string's characters, one more at the end
+law tl_app:
+  for +w: String
+  for +cc: Char
+  {String.to_list(w ++ SCon{cc, ""}) == List.append(&2, Char, String.to_list(w), [cc]) : List<&2, Char>}
+
+def tl_app(w, cc):
+  match w:
+    case SNil{}:
+      {==}
+    case SCon{+x, +tl}:
+      Equal.cong(List<&2, Char>, List<&2, Char>, zz => x <> zz, String.to_list(tl ++ SCon{cc, ""}),
+        List.append(&2, Char, String.to_list(tl), [cc]), tl_app(tl, cc))
+
+# a number's first character, named, is not `n`, `t` or `f`
+law num_hd:
+  for +x: Char
+  for +xs: List<&2, Char>
+  for +h: {Laws.number(x <> xs) == True{} : Bool}
+  for +l0: Char
+  for +hl: {Laws.number(l0 <> xs) == False{} : Bool}
+  for ee: {x == l0 : Char}
+  Empty
+
+def num_hd(x, xs, h, l0, hl, ee):
+  true_false(Equal.trans(Bool, True{}, Laws.number(x <> xs), False{}, Equal.sym(Bool, Laws.number(x <> xs), True{}, h),
+    Equal.trans(Bool, Laws.number(x <> xs), Laws.number(l0 <> xs), False{}, Equal.cong(Char, Bool,
+    zz => Laws.number(zz <> xs), x, l0, ee), hl)))
+
+law lon_snoc.n:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +w: String
+  for +h: {Laws.number(String.to_list(w)) == True{} : Bool}
+  {Laws.lit_or_num(w ++ SCon{cc, ""}) == False{} : Bool}
+
+def lon_snoc.n(cc, hn, w, h):
+  match w:
+    case SNil{}:
+      no({Laws.lit_or_num("" ++ SCon{cc, ""}) == False{} : Bool}, h)
+    case SCon{+x, +t}:
+      +aa = SCon{x, t} ++ SCon{cc, ""}
+      +xs = String.to_list(t)
+      +hd = or_false_l(Laws.digit(cc), Laws.is_cp(cc, 45), hn)
+      or4f(String.eq(aa, "null"), String.eq(aa, "true"), String.eq(aa, "false"), Laws.number(String.to_list(aa)),
+        eq_f(aa, "null", ee => num_hd(x, xs, h, 'n', {==}, Equal.cong(String, Char, zz => s_hd(zz), aa, "null", ee))),
+        eq_f(aa, "true", ee => num_hd(x, xs, h, 't', {==}, Equal.cong(String, Char, zz => s_hd(zz), aa, "true", ee))),
+        eq_f(aa, "false", ee => num_hd(x, xs, h, 'f', {==}, Equal.cong(String, Char, zz => s_hd(zz), aa, "false", ee))),
+        Equal.trans(Bool, Laws.number(String.to_list(aa)), Laws.number(List.append(&2, Char, String.to_list(SCon{x, t}),
+          [cc])), False{}, Equal.cong(List<&2, Char>, Bool, zz => Laws.number(zz), String.to_list(aa),
+          List.append(&2, Char, String.to_list(SCon{x, t}), [cc]), tl_app(SCon{x, t}, cc)),
+          nf_number(String.to_list(SCon{x, t}), cc, hd, or_false_r(Laws.digit(cc), Laws.is_cp(cc, 45), hn), c48(cc,
+          hd), c19(cc, hd))))
+
+# a literal name or a number with a character that is no digit after it is
+# neither
+law lon_snoc.at:
+  for b1: Bool
+  for b2: Bool
+  for b3: Bool
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +w: String
+  for e1: {String.eq(w, "null") == b1 : Bool}
+  for e2: {String.eq(w, "true") == b2 : Bool}
+  for e3: {String.eq(w, "false") == b3 : Bool}
+  for +h: {Bool.or(b1, Bool.or(b2, Bool.or(b3, Laws.number(String.to_list(w))))) == True{} : Bool}
+  {Laws.lit_or_num(w ++ SCon{cc, ""}) == False{} : Bool}
+
+def lon_snoc.at(b1, b2, b3, cc, hn, w, e1, e2, e3, h):
+  match b1:
+    case True{}:
+      ek = Equal.sym(String, w, "null", str_eq_sound(w, "null", e1))
+      %ek : {Laws.lit_or_num(_ ++ SCon{cc, ""}) == False{} : Bool}
+      {==}
+    case False{}:
+      match b2:
+        case True{}:
+          ek = Equal.sym(String, w, "true", str_eq_sound(w, "true", e2))
+          %ek : {Laws.lit_or_num(_ ++ SCon{cc, ""}) == False{} : Bool}
+          {==}
+        case False{}:
+          match b3:
+            case True{}:
+              ek = Equal.sym(String, w, "false", str_eq_sound(w, "false", e3))
+              %ek : {Laws.lit_or_num(_ ++ SCon{cc, ""}) == False{} : Bool}
+              {==}
+            case False{}:
+              lon_snoc.n(cc, hn, w, h)
+
+law lon_snoc:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +w: String
+  for +h: {Laws.lit_or_num(w) == True{} : Bool}
+  {Laws.lit_or_num(w ++ SCon{cc, ""}) == False{} : Bool}
+
+def lon_snoc(cc, hn, w, h):
+  lon_snoc.at(String.eq(w, "null"), String.eq(w, "true"), String.eq(w, "false"), cc, hn, w, {==}, {==}, {==}, h)
+
+# a word with one more character at its end
+law lon_cns:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +ba: List<&2, Char>
+  for +h: {Laws.lit_or_num(Lex.text(ba)) == True{} : Bool}
+  {Laws.lit_or_num(Lex.text(cc <> ba)) == False{} : Bool}
+
+def lon_cns(cc, hn, ba, h):
+  Equal.trans(Bool, Laws.lit_or_num(Lex.text.go(ba, "" ++ SCon{cc, ""})), Laws.lit_or_num(Lex.text(ba) ++ SCon{cc, ""}),
+    False{}, Equal.cong(String, Bool, zz => Laws.lit_or_num(zz), Lex.text.go(ba, "" ++ SCon{cc, ""}),
+    Lex.text(ba) ++ SCon{cc, ""}, tg(ba, "", SCon{cc, ""})), lon_snoc(cc, hn, Lex.text(ba), h))
+
+# JSON-TEXT-2: an open bracket put between tokens. The scan with it is the
+# scan without it one level deeper, the last token the bracket where it was
+# not a value's, or it has met a fault
+
+# what may come next, without and with the bracket
+def lto(la: Lt, lb: Lt) -> Type:
+  match la lb:
+    case LSt{} LSt{}:
+      Unit
+    case LSt{} LOp{}:
+      Unit
+    case LSt{} LVal{}:
+      Empty
+    case LOp{} LSt{}:
+      Empty
+    case LOp{} LOp{}:
+      Unit
+    case LOp{} LVal{}:
+      Empty
+    case LVal{} LSt{}:
+      Empty
+    case LVal{} LOp{}:
+      Empty
+    case LVal{} LVal{}:
+      Unit
+
+# the scans without and with an open bracket
+def rel_o(aa: Sc, bb: Sc) -> Type:
+  match aa:
+    case SOut{la, da}:
+      match bb:
+        case SOut{lb, db}:
+          ({db == 1n+da : Nat} & lto(la, lb))
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SWord{ba, da}:
+      match bb:
+        case SWord{b2, db}:
+          ({db == 1n+da : Nat} & {b2 == ba : List<&2, Char>})
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SIn{da}:
+      match bb:
+        case SIn{db}:
+          {db == 1n+da : Nat}
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SEsc{da}:
+      match bb:
+        case SEsc{db}:
+          {db == 1n+da : Nat}
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SBad{}:
+      Unit
+
+
+# a word's end on the left, on the right, or on both
+law rel_bad_o:
+  for +xx: Sc
+  rel_o(xx, SBad{})
+
+def rel_bad_o(xx):
+  match xx:
+    case SOut{_l, _d}:
+      Unit{}
+    case SWord{_b, _d}:
+      Unit{}
+    case SIn{_d}:
+      Unit{}
+    case SEsc{_d}:
+      Unit{}
+    case SBad{}:
+      Unit{}
+
+law pick_l_o:
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_o(xx, yy)
+  rel_o(Bool.pick(Sc, bv, xx, SBad{}), yy)
+
+def pick_l_o(bv, _xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      Unit{}
+
+law pick_r_o:
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_o(xx, yy)
+  rel_o(xx, Bool.pick(Sc, bv, yy, SBad{}))
+
+def pick_r_o(bv, xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      rel_bad_o(xx)
+
+law pick_lr_o:
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_o(xx, yy)
+  rel_o(Bool.pick(Sc, bv, xx, SBad{}), Bool.pick(Sc, bv, yy, SBad{}))
+
+def pick_lr_o(bv, _xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      Unit{}
+
+
+law cl_o_oo.s.1:
+  for +da: Nat
+  for +ch: Char
+  rel_o(sc.out(LOp{}, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LOp{}, 1n+da, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_o_oo.s.1(da, _ch):
+  match da:
+    case 0n:
+      Unit{}
+    case 1n+n0:
+      ({==}, Unit{})
+
+law cl_o_oo.s.2:
+  for +da: Nat
+  for +ch: Char
+  rel_o(sc.out(LOp{}, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LOp{}, 1n+da, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_o_oo.s.2(da, _ch):
+  match da:
+    case 0n:
+      Unit{}
+    case 1n+n0:
+      ({==}, Unit{})
+
+law cl_o_oo.s.3:
+  for +da: Nat
+  for +ch: Char
+  rel_o(sc.out(LVal{}, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LVal{}, 1n+da, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_o_oo.s.3(da, _ch):
+  match da:
+    case 0n:
+      Unit{}
+    case 1n+n0:
+      ({==}, Unit{})
+
+law cl_o_oo.s.4:
+  for +da: Nat
+  for +ch: Char
+  rel_o(sc.out(LVal{}, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LVal{}, 1n+da, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_o_oo.s.4(da, _ch):
+  match da:
+    case 0n:
+      Unit{}
+    case 1n+n0:
+      ({==}, Unit{})
+
+law cl_o_oo.s:
+  for +la: Lt
+  for +da: Nat
+  for +lb: Lt
+  for +cls: Lex.Class
+  for +ch: Char
+  for l: lto(la, lb)
+  rel_o(sc.out(la, da, cls, ch), sc.out(lb, 1n+da, cls, ch))
+
+def cl_o_oo.s(la, da, lb, cls, ch, l):
+  match la:
+    case LSt{}:
+      match lb:
+        case LSt{}:
+          match cls:
+            case Lex.CPunct{tk}:
+              match tk:
+                case Lex.TOpenArr{}:
+                  ({==}, Unit{})
+                case Lex.TCloseArr{}:
+                  Unit{}
+                case Lex.TOpenObj{}:
+                  ({==}, Unit{})
+                case Lex.TCloseObj{}:
+                  Unit{}
+                case Lex.TColon{}:
+                  Unit{}
+                case Lex.TComma{}:
+                  Unit{}
+                case Lex.TStr{_x0}:
+                  Unit{}
+                case Lex.TWord{_x0}:
+                  Unit{}
+                case Lex.TStrS{_x0, _x1}:
+                  Unit{}
+                case Lex.TWordS{_x0, _x1}:
+                  Unit{}
+                case Lex.TBad{}:
+                  Unit{}
+            case Lex.CQuote{}:
+              {==}
+            case Lex.CBack{}:
+              Unit{}
+            case Lex.CSpace{}:
+              ({==}, Unit{})
+            case Lex.COther{}:
+              ({==}, {==})
+        case LOp{}:
+          match cls:
+            case Lex.CPunct{tk}:
+              match tk:
+                case Lex.TOpenArr{}:
+                  ({==}, Unit{})
+                case Lex.TCloseArr{}:
+                  Unit{}
+                case Lex.TOpenObj{}:
+                  ({==}, Unit{})
+                case Lex.TCloseObj{}:
+                  Unit{}
+                case Lex.TColon{}:
+                  Unit{}
+                case Lex.TComma{}:
+                  Unit{}
+                case Lex.TStr{_x0}:
+                  Unit{}
+                case Lex.TWord{_x0}:
+                  Unit{}
+                case Lex.TStrS{_x0, _x1}:
+                  Unit{}
+                case Lex.TWordS{_x0, _x1}:
+                  Unit{}
+                case Lex.TBad{}:
+                  Unit{}
+            case Lex.CQuote{}:
+              {==}
+            case Lex.CBack{}:
+              Unit{}
+            case Lex.CSpace{}:
+              ({==}, Unit{})
+            case Lex.COther{}:
+              ({==}, {==})
+        case LVal{}:
+          Empty.absurd(rel_o(sc.out(LSt{}, da, cls, ch), sc.out(LVal{}, 1n+da, cls, ch)), l)
+    case LOp{}:
+      match lb:
+        case LSt{}:
+          Empty.absurd(rel_o(sc.out(LOp{}, da, cls, ch), sc.out(LSt{}, 1n+da, cls, ch)), l)
+        case LOp{}:
+          match cls:
+            case Lex.CPunct{tk}:
+              match tk:
+                case Lex.TOpenArr{}:
+                  ({==}, Unit{})
+                case Lex.TCloseArr{}:
+                  cl_o_oo.s.1(da, ch)
+                case Lex.TOpenObj{}:
+                  ({==}, Unit{})
+                case Lex.TCloseObj{}:
+                  cl_o_oo.s.2(da, ch)
+                case Lex.TColon{}:
+                  Unit{}
+                case Lex.TComma{}:
+                  Unit{}
+                case Lex.TStr{_x0}:
+                  Unit{}
+                case Lex.TWord{_x0}:
+                  Unit{}
+                case Lex.TStrS{_x0, _x1}:
+                  Unit{}
+                case Lex.TWordS{_x0, _x1}:
+                  Unit{}
+                case Lex.TBad{}:
+                  Unit{}
+            case Lex.CQuote{}:
+              {==}
+            case Lex.CBack{}:
+              Unit{}
+            case Lex.CSpace{}:
+              ({==}, Unit{})
+            case Lex.COther{}:
+              ({==}, {==})
+        case LVal{}:
+          Empty.absurd(rel_o(sc.out(LOp{}, da, cls, ch), sc.out(LVal{}, 1n+da, cls, ch)), l)
+    case LVal{}:
+      match lb:
+        case LSt{}:
+          Empty.absurd(rel_o(sc.out(LVal{}, da, cls, ch), sc.out(LSt{}, 1n+da, cls, ch)), l)
+        case LOp{}:
+          Empty.absurd(rel_o(sc.out(LVal{}, da, cls, ch), sc.out(LOp{}, 1n+da, cls, ch)), l)
+        case LVal{}:
+          match cls:
+            case Lex.CPunct{tk}:
+              match tk:
+                case Lex.TOpenArr{}:
+                  Unit{}
+                case Lex.TCloseArr{}:
+                  cl_o_oo.s.3(da, ch)
+                case Lex.TOpenObj{}:
+                  Unit{}
+                case Lex.TCloseObj{}:
+                  cl_o_oo.s.4(da, ch)
+                case Lex.TColon{}:
+                  ({==}, Unit{})
+                case Lex.TComma{}:
+                  ({==}, Unit{})
+                case Lex.TStr{_x0}:
+                  Unit{}
+                case Lex.TWord{_x0}:
+                  Unit{}
+                case Lex.TStrS{_x0, _x1}:
+                  Unit{}
+                case Lex.TWordS{_x0, _x1}:
+                  Unit{}
+                case Lex.TBad{}:
+                  Unit{}
+            case Lex.CQuote{}:
+              Unit{}
+            case Lex.CBack{}:
+              Unit{}
+            case Lex.CSpace{}:
+              ({==}, Unit{})
+            case Lex.COther{}:
+              Unit{}
+
+
+law cl_o_ww.s.1:
+  for +da: Nat
+  for +ba: List<&2, Char>
+  for +ch: Char
+  rel_o(sc.word(ba, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.word(ba, 1n+da, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_o_ww.s.1(da, ba, _ch):
+  match da:
+    case 0n:
+      pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SOut{LVal{}, 0n}, Unit{})
+    case 1n+n0:
+      pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, n0}, SOut{LVal{}, 1n+n0}, ({==}, Unit{}))
+
+law cl_o_ww.s.2:
+  for +da: Nat
+  for +ba: List<&2, Char>
+  for +ch: Char
+  rel_o(sc.word(ba, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.word(ba, 1n+da, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_o_ww.s.2(da, ba, _ch):
+  match da:
+    case 0n:
+      pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SOut{LVal{}, 0n}, Unit{})
+    case 1n+n0:
+      pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, n0}, SOut{LVal{}, 1n+n0}, ({==}, Unit{}))
+
+law cl_o_ww.s:
+  for +ba: List<&2, Char>
+  for +da: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  rel_o(sc.word(ba, da, cls, ch), sc.word(ba, 1n+da, cls, ch))
+
+def cl_o_ww.s(ba, da, cls, ch):
+  match cls:
+    case Lex.CPunct{tk}:
+      match tk:
+        case Lex.TOpenArr{}:
+          pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.TCloseArr{}:
+          cl_o_ww.s.1(da, ba, ch)
+        case Lex.TOpenObj{}:
+          pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.TCloseObj{}:
+          cl_o_ww.s.2(da, ba, ch)
+        case Lex.TColon{}:
+          pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, da}, SOut{LSt{}, 1n+da}, ({==}, Unit{}))
+        case Lex.TComma{}:
+          pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, da}, SOut{LSt{}, 1n+da}, ({==}, Unit{}))
+        case Lex.TStr{_x0}:
+          pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.TWord{_x0}:
+          pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.TStrS{_x0, _x1}:
+          pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.TWordS{_x0, _x1}:
+          pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.TBad{}:
+          pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+    case Lex.CQuote{}:
+      pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+    case Lex.CBack{}:
+      pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+    case Lex.CSpace{}:
+      pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, da}, SOut{LVal{}, 1n+da}, ({==}, Unit{}))
+    case Lex.COther{}:
+      ({==}, {==})
+
+
+law cl_o_ii.s:
+  for +da: Nat
+  for +cls: Lex.Class
+  rel_o(sc.in(da, cls), sc.in(1n+da, cls))
+
+def cl_o_ii.s(_da, cls):
+  match cls:
+    case Lex.CPunct{tk}:
+      {==}
+    case Lex.CQuote{}:
+      ({==}, Unit{})
+    case Lex.CBack{}:
+      {==}
+    case Lex.CSpace{}:
+      {==}
+    case Lex.COther{}:
+      {==}
+
+
+law cl_o_oo:
+  for +la: Lt
+  for +da: Nat
+  for +lb: Lt
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: rel_o(SOut{la, da}, SOut{lb, db})
+  rel_o(sc.out(la, da, cls, ch), sc.out(lb, db, cls, ch))
+
+def cl_o_oo(la, da, lb, db, cls, ch, h):
+  (e, l) = h
+  es = Equal.sym(Nat, db, 1n+da, e)
+  %es : rel_o(sc.out(la, da, cls, ch), sc.out(lb, _, cls, ch))
+  cl_o_oo.s(la, da, lb, cls, ch, l)
+
+law cl_o_ww:
+  for +ba: List<&2, Char>
+  for +da: Nat
+  for +b2: List<&2, Char>
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: rel_o(SWord{ba, da}, SWord{b2, db})
+  rel_o(sc.word(ba, da, cls, ch), sc.word(b2, db, cls, ch))
+
+def cl_o_ww(ba, da, b2, db, cls, ch, h):
+  (e1, e2) = h
+  es1 = Equal.sym(Nat, db, 1n+da, e1)
+  %es1 : rel_o(sc.word(ba, da, cls, ch), sc.word(b2, _, cls, ch))
+  es2 = Equal.sym(List<&2, Char>, b2, ba, e2)
+  %es2 : rel_o(sc.word(ba, da, cls, ch), sc.word(_, 1n+da, cls, ch))
+  cl_o_ww.s(ba, da, cls, ch)
+
+law cl_o_ii:
+  for +da: Nat
+  for +db: Nat
+  for +cls: Lex.Class
+  for h: rel_o(SIn{da}, SIn{db})
+  rel_o(sc.in(da, cls), sc.in(db, cls))
+
+def cl_o_ii(da, db, cls, h):
+  es = Equal.sym(Nat, db, 1n+da, h)
+  %es : rel_o(sc.in(da, cls), sc.in(_, cls))
+  cl_o_ii.s(da, cls)
+
+
+# one character keeps two scans related
+law cl_o:
+  for +aa: Sc
+  for +bb: Sc
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: rel_o(aa, bb)
+  rel_o(sc.stepc(aa, cls, ch), sc.stepc(bb, cls, ch))
+
+def cl_o(aa, bb, cls, ch, h):
+  match aa bb:
+    case SOut{a1, a2} SOut{b1, b2}:
+      cl_o_oo(a1, a2, b1, b2, cls, ch, h)
+    case SOut{a1, a2} SWord{b1, b2}:
+      Empty.absurd(rel_o(sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SOut{a1, a2} SIn{b1}:
+      Empty.absurd(rel_o(sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SOut{a1, a2} SEsc{b1}:
+      Empty.absurd(rel_o(sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SOut{+a1, +a2} SBad{}:
+      rel_bad_o(sc.stepc(SOut{a1, a2}, cls, ch))
+    case SWord{a1, a2} SOut{b1, b2}:
+      Empty.absurd(rel_o(sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SWord{a1, a2} SWord{b1, b2}:
+      cl_o_ww(a1, a2, b1, b2, cls, ch, h)
+    case SWord{a1, a2} SIn{b1}:
+      Empty.absurd(rel_o(sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SWord{a1, a2} SEsc{b1}:
+      Empty.absurd(rel_o(sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SWord{+a1, +a2} SBad{}:
+      rel_bad_o(sc.stepc(SWord{a1, a2}, cls, ch))
+    case SIn{a1} SOut{b1, b2}:
+      Empty.absurd(rel_o(sc.stepc(SIn{a1}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SIn{a1} SWord{b1, b2}:
+      Empty.absurd(rel_o(sc.stepc(SIn{a1}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SIn{a1} SIn{b1}:
+      cl_o_ii(a1, b1, cls, h)
+    case SIn{a1} SEsc{b1}:
+      Empty.absurd(rel_o(sc.stepc(SIn{a1}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SIn{+a1} SBad{}:
+      rel_bad_o(sc.stepc(SIn{a1}, cls, ch))
+    case SEsc{a1} SOut{b1, b2}:
+      Empty.absurd(rel_o(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SEsc{a1} SWord{b1, b2}:
+      Empty.absurd(rel_o(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SEsc{a1} SIn{b1}:
+      Empty.absurd(rel_o(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SEsc{a1} SEsc{b1}:
+      h
+    case SEsc{+a1} SBad{}:
+      rel_bad_o(sc.stepc(SEsc{a1}, cls, ch))
+    case SBad{} SOut{_b1, _b2}:
+      Unit{}
+    case SBad{} SWord{_b1, _b2}:
+      Unit{}
+    case SBad{} SIn{_b1}:
+      Unit{}
+    case SBad{} SEsc{_b1}:
+      Unit{}
+    case SBad{} SBad{}:
+      Unit{}
+
+
+law run_o:
+  for +txt: String
+  for +aa: Sc
+  for +bb: Sc
+  for h: rel_o(aa, bb)
+  rel_o(sc.run(txt, aa), sc.run(txt, bb))
+
+def run_o(txt, aa, bb, h):
+  match txt:
+    case SNil{}:
+      h
+    case SCon{+hd, +tl}:
+      run_o(tl, sc.step(aa, hd), sc.step(bb, hd), cl_o(aa, bb, Lex.classify(hd), hd, h))
+
+# JSON-TEXT-2: a close bracket put between tokens. The scan without it is
+# the scan with it one level deeper, the bracket where a value or a close
+# could come, or a word, or it has met a fault
+
+# what may come next, without and with the bracket
+def ltc(la: Lt, lb: Lt) -> Type:
+  match la lb:
+    case LSt{} LSt{}:
+      Unit
+    case LSt{} LOp{}:
+      Empty
+    case LSt{} LVal{}:
+      Empty
+    case LOp{} LSt{}:
+      Empty
+    case LOp{} LOp{}:
+      Unit
+    case LOp{} LVal{}:
+      Unit
+    case LVal{} LSt{}:
+      Empty
+    case LVal{} LOp{}:
+      Empty
+    case LVal{} LVal{}:
+      Unit
+
+# what may come next after the bracket and its word: a value's end
+def lv(lb: Lt) -> Type:
+  match lb:
+    case LVal{}:
+      Unit
+    case _:
+      Empty
+
+# the scans without and with a close bracket
+def rel_c(aa: Sc, bb: Sc) -> Type:
+  match aa:
+    case SOut{la, da}:
+      match bb:
+        case SOut{lb, db}:
+          ({da == 1n+db : Nat} & ltc(la, lb))
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SWord{ba, da}:
+      match bb:
+        case SWord{b2, db}:
+          ({da == 1n+db : Nat} & {b2 == ba : List<&2, Char>})
+        case SOut{lb, db}:
+          ({da == 1n+db : Nat} & lv(lb))
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SIn{da}:
+      match bb:
+        case SIn{db}:
+          {da == 1n+db : Nat}
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SEsc{da}:
+      match bb:
+        case SEsc{db}:
+          {da == 1n+db : Nat}
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SBad{}:
+      Unit
+
+
+# a word's end on the left, on the right, or on both
+law rel_bad_c:
+  for +xx: Sc
+  rel_c(xx, SBad{})
+
+def rel_bad_c(xx):
+  match xx:
+    case SOut{_l, _d}:
+      Unit{}
+    case SWord{_b, _d}:
+      Unit{}
+    case SIn{_d}:
+      Unit{}
+    case SEsc{_d}:
+      Unit{}
+    case SBad{}:
+      Unit{}
+
+law pick_l_c:
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_c(xx, yy)
+  rel_c(Bool.pick(Sc, bv, xx, SBad{}), yy)
+
+def pick_l_c(bv, _xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      Unit{}
+
+law pick_r_c:
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_c(xx, yy)
+  rel_c(xx, Bool.pick(Sc, bv, yy, SBad{}))
+
+def pick_r_c(bv, xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      rel_bad_c(xx)
+
+law pick_lr_c:
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_c(xx, yy)
+  rel_c(Bool.pick(Sc, bv, xx, SBad{}), Bool.pick(Sc, bv, yy, SBad{}))
+
+def pick_lr_c(bv, _xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      Unit{}
+
+
+law cl_c_oo.s.1:
+  for +db: Nat
+  for +ch: Char
+  rel_c(sc.out(LOp{}, 1n+db, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LOp{}, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_c_oo.s.1(db, _ch):
+  match db:
+    case 0n:
+      Unit{}
+    case 1n+n0:
+      ({==}, Unit{})
+
+law cl_c_oo.s.2:
+  for +db: Nat
+  for +ch: Char
+  rel_c(sc.out(LOp{}, 1n+db, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LOp{}, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_c_oo.s.2(db, _ch):
+  match db:
+    case 0n:
+      Unit{}
+    case 1n+n0:
+      ({==}, Unit{})
+
+law cl_c_oo.s.3:
+  for +db: Nat
+  for +ch: Char
+  rel_c(sc.out(LOp{}, 1n+db, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LVal{}, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_c_oo.s.3(db, _ch):
+  match db:
+    case 0n:
+      Unit{}
+    case 1n+n0:
+      ({==}, Unit{})
+
+law cl_c_oo.s.4:
+  for +db: Nat
+  for +ch: Char
+  rel_c(sc.out(LOp{}, 1n+db, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LVal{}, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_c_oo.s.4(db, _ch):
+  match db:
+    case 0n:
+      Unit{}
+    case 1n+n0:
+      ({==}, Unit{})
+
+law cl_c_oo.s.5:
+  for +db: Nat
+  for +ch: Char
+  rel_c(sc.out(LVal{}, 1n+db, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LVal{}, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_c_oo.s.5(db, _ch):
+  match db:
+    case 0n:
+      Unit{}
+    case 1n+n0:
+      ({==}, Unit{})
+
+law cl_c_oo.s.6:
+  for +db: Nat
+  for +ch: Char
+  rel_c(sc.out(LVal{}, 1n+db, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LVal{}, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_c_oo.s.6(db, _ch):
+  match db:
+    case 0n:
+      Unit{}
+    case 1n+n0:
+      ({==}, Unit{})
+
+law cl_c_oo.s:
+  for +la: Lt
+  for +lb: Lt
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for l: ltc(la, lb)
+  rel_c(sc.out(la, 1n+db, cls, ch), sc.out(lb, db, cls, ch))
+
+def cl_c_oo.s(la, lb, db, cls, ch, l):
+  match la:
+    case LSt{}:
+      match lb:
+        case LSt{}:
+          match cls:
+            case Lex.CPunct{tk}:
+              match tk:
+                case Lex.TOpenArr{}:
+                  ({==}, Unit{})
+                case Lex.TCloseArr{}:
+                  Unit{}
+                case Lex.TOpenObj{}:
+                  ({==}, Unit{})
+                case Lex.TCloseObj{}:
+                  Unit{}
+                case Lex.TColon{}:
+                  Unit{}
+                case Lex.TComma{}:
+                  Unit{}
+                case Lex.TStr{_x0}:
+                  Unit{}
+                case Lex.TWord{_x0}:
+                  Unit{}
+                case Lex.TStrS{_x0, _x1}:
+                  Unit{}
+                case Lex.TWordS{_x0, _x1}:
+                  Unit{}
+                case Lex.TBad{}:
+                  Unit{}
+            case Lex.CQuote{}:
+              {==}
+            case Lex.CBack{}:
+              Unit{}
+            case Lex.CSpace{}:
+              ({==}, Unit{})
+            case Lex.COther{}:
+              ({==}, {==})
+        case LOp{}:
+          Empty.absurd(rel_c(sc.out(LSt{}, 1n+db, cls, ch), sc.out(LOp{}, db, cls, ch)), l)
+        case LVal{}:
+          Empty.absurd(rel_c(sc.out(LSt{}, 1n+db, cls, ch), sc.out(LVal{}, db, cls, ch)), l)
+    case LOp{}:
+      match lb:
+        case LSt{}:
+          Empty.absurd(rel_c(sc.out(LOp{}, 1n+db, cls, ch), sc.out(LSt{}, db, cls, ch)), l)
+        case LOp{}:
+          match cls:
+            case Lex.CPunct{tk}:
+              match tk:
+                case Lex.TOpenArr{}:
+                  ({==}, Unit{})
+                case Lex.TCloseArr{}:
+                  cl_c_oo.s.1(db, ch)
+                case Lex.TOpenObj{}:
+                  ({==}, Unit{})
+                case Lex.TCloseObj{}:
+                  cl_c_oo.s.2(db, ch)
+                case Lex.TColon{}:
+                  Unit{}
+                case Lex.TComma{}:
+                  Unit{}
+                case Lex.TStr{_x0}:
+                  Unit{}
+                case Lex.TWord{_x0}:
+                  Unit{}
+                case Lex.TStrS{_x0, _x1}:
+                  Unit{}
+                case Lex.TWordS{_x0, _x1}:
+                  Unit{}
+                case Lex.TBad{}:
+                  Unit{}
+            case Lex.CQuote{}:
+              {==}
+            case Lex.CBack{}:
+              Unit{}
+            case Lex.CSpace{}:
+              ({==}, Unit{})
+            case Lex.COther{}:
+              ({==}, {==})
+        case LVal{}:
+          match cls:
+            case Lex.CPunct{tk}:
+              match tk:
+                case Lex.TOpenArr{}:
+                  Unit{}
+                case Lex.TCloseArr{}:
+                  cl_c_oo.s.3(db, ch)
+                case Lex.TOpenObj{}:
+                  Unit{}
+                case Lex.TCloseObj{}:
+                  cl_c_oo.s.4(db, ch)
+                case Lex.TColon{}:
+                  Unit{}
+                case Lex.TComma{}:
+                  Unit{}
+                case Lex.TStr{_x0}:
+                  Unit{}
+                case Lex.TWord{_x0}:
+                  Unit{}
+                case Lex.TStrS{_x0, _x1}:
+                  Unit{}
+                case Lex.TWordS{_x0, _x1}:
+                  Unit{}
+                case Lex.TBad{}:
+                  Unit{}
+            case Lex.CQuote{}:
+              Unit{}
+            case Lex.CBack{}:
+              Unit{}
+            case Lex.CSpace{}:
+              ({==}, Unit{})
+            case Lex.COther{}:
+              Unit{}
+    case LVal{}:
+      match lb:
+        case LSt{}:
+          Empty.absurd(rel_c(sc.out(LVal{}, 1n+db, cls, ch), sc.out(LSt{}, db, cls, ch)), l)
+        case LOp{}:
+          Empty.absurd(rel_c(sc.out(LVal{}, 1n+db, cls, ch), sc.out(LOp{}, db, cls, ch)), l)
+        case LVal{}:
+          match cls:
+            case Lex.CPunct{tk}:
+              match tk:
+                case Lex.TOpenArr{}:
+                  Unit{}
+                case Lex.TCloseArr{}:
+                  cl_c_oo.s.5(db, ch)
+                case Lex.TOpenObj{}:
+                  Unit{}
+                case Lex.TCloseObj{}:
+                  cl_c_oo.s.6(db, ch)
+                case Lex.TColon{}:
+                  ({==}, Unit{})
+                case Lex.TComma{}:
+                  ({==}, Unit{})
+                case Lex.TStr{_x0}:
+                  Unit{}
+                case Lex.TWord{_x0}:
+                  Unit{}
+                case Lex.TStrS{_x0, _x1}:
+                  Unit{}
+                case Lex.TWordS{_x0, _x1}:
+                  Unit{}
+                case Lex.TBad{}:
+                  Unit{}
+            case Lex.CQuote{}:
+              Unit{}
+            case Lex.CBack{}:
+              Unit{}
+            case Lex.CSpace{}:
+              ({==}, Unit{})
+            case Lex.COther{}:
+              Unit{}
+
+
+law cl_c_ww.s.1:
+  for +db: Nat
+  for +ba: List<&2, Char>
+  for +ch: Char
+  rel_c(sc.word(ba, 1n+db, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.word(ba, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_c_ww.s.1(db, ba, _ch):
+  match db:
+    case 0n:
+      pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 0n}, SBad{}, Unit{})
+    case 1n+n0:
+      pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 1n+n0}, SOut{LVal{}, n0}, ({==}, Unit{}))
+
+law cl_c_ww.s.2:
+  for +db: Nat
+  for +ba: List<&2, Char>
+  for +ch: Char
+  rel_c(sc.word(ba, 1n+db, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.word(ba, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_c_ww.s.2(db, ba, _ch):
+  match db:
+    case 0n:
+      pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 0n}, SBad{}, Unit{})
+    case 1n+n0:
+      pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 1n+n0}, SOut{LVal{}, n0}, ({==}, Unit{}))
+
+law cl_c_ww.s:
+  for +ba: List<&2, Char>
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  rel_c(sc.word(ba, 1n+db, cls, ch), sc.word(ba, db, cls, ch))
+
+def cl_c_ww.s(ba, db, cls, ch):
+  match cls:
+    case Lex.CPunct{tk}:
+      match tk:
+        case Lex.TOpenArr{}:
+          pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.TCloseArr{}:
+          cl_c_ww.s.1(db, ba, ch)
+        case Lex.TOpenObj{}:
+          pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.TCloseObj{}:
+          cl_c_ww.s.2(db, ba, ch)
+        case Lex.TColon{}:
+          pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, 1n+db}, SOut{LSt{}, db}, ({==}, Unit{}))
+        case Lex.TComma{}:
+          pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, 1n+db}, SOut{LSt{}, db}, ({==}, Unit{}))
+        case Lex.TStr{_x0}:
+          pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.TWord{_x0}:
+          pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.TStrS{_x0, _x1}:
+          pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.TWordS{_x0, _x1}:
+          pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.TBad{}:
+          pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+    case Lex.CQuote{}:
+      pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+    case Lex.CBack{}:
+      pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+    case Lex.CSpace{}:
+      pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 1n+db}, SOut{LVal{}, db}, ({==}, Unit{}))
+    case Lex.COther{}:
+      ({==}, {==})
+
+
+law cl_c_wo.s.1:
+  for +db: Nat
+  for +ba: List<&2, Char>
+  for +ch: Char
+  rel_c(sc.word(ba, 1n+db, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LVal{}, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_c_wo.s.1(db, ba, _ch):
+  match db:
+    case 0n:
+      pick_l_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 0n}, SBad{}, Unit{})
+    case 1n+n0:
+      pick_l_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 1n+n0}, SOut{LVal{}, n0}, ({==}, Unit{}))
+
+law cl_c_wo.s.2:
+  for +db: Nat
+  for +ba: List<&2, Char>
+  for +ch: Char
+  rel_c(sc.word(ba, 1n+db, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LVal{}, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_c_wo.s.2(db, ba, _ch):
+  match db:
+    case 0n:
+      pick_l_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 0n}, SBad{}, Unit{})
+    case 1n+n0:
+      pick_l_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 1n+n0}, SOut{LVal{}, n0}, ({==}, Unit{}))
+
+law cl_c_wo.s:
+  for +ba: List<&2, Char>
+  for +lb: Lt
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for l: lv(lb)
+  rel_c(sc.word(ba, 1n+db, cls, ch), sc.out(lb, db, cls, ch))
+
+def cl_c_wo.s(ba, lb, db, cls, ch, l):
+  match lb:
+    case LSt{}:
+      Empty.absurd(rel_c(sc.word(ba, 1n+db, cls, ch), sc.out(LSt{}, db, cls, ch)), l)
+    case LOp{}:
+      Empty.absurd(rel_c(sc.word(ba, 1n+db, cls, ch), sc.out(LOp{}, db, cls, ch)), l)
+    case LVal{}:
+      match cls:
+        case Lex.CPunct{tk}:
+          match tk:
+            case Lex.TOpenArr{}:
+              pick_l_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+            case Lex.TCloseArr{}:
+              cl_c_wo.s.1(db, ba, ch)
+            case Lex.TOpenObj{}:
+              pick_l_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+            case Lex.TCloseObj{}:
+              cl_c_wo.s.2(db, ba, ch)
+            case Lex.TColon{}:
+              pick_l_c(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, 1n+db}, SOut{LSt{}, db}, ({==}, Unit{}))
+            case Lex.TComma{}:
+              pick_l_c(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, 1n+db}, SOut{LSt{}, db}, ({==}, Unit{}))
+            case Lex.TStr{_x0}:
+              pick_l_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+            case Lex.TWord{_x0}:
+              pick_l_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+            case Lex.TStrS{_x0, _x1}:
+              pick_l_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+            case Lex.TWordS{_x0, _x1}:
+              pick_l_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+            case Lex.TBad{}:
+              pick_l_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.CQuote{}:
+          pick_l_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.CBack{}:
+          pick_l_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
+        case Lex.CSpace{}:
+          pick_l_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 1n+db}, SOut{LVal{}, db}, ({==}, Unit{}))
+        case Lex.COther{}:
+          Unit{}
+
+
+law cl_c_ii.s:
+  for +db: Nat
+  for +cls: Lex.Class
+  rel_c(sc.in(1n+db, cls), sc.in(db, cls))
+
+def cl_c_ii.s(_db, cls):
+  match cls:
+    case Lex.CPunct{tk}:
+      {==}
+    case Lex.CQuote{}:
+      ({==}, Unit{})
+    case Lex.CBack{}:
+      {==}
+    case Lex.CSpace{}:
+      {==}
+    case Lex.COther{}:
+      {==}
+
+
+law cl_c_oo:
+  for +la: Lt
+  for +da: Nat
+  for +lb: Lt
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: rel_c(SOut{la, da}, SOut{lb, db})
+  rel_c(sc.out(la, da, cls, ch), sc.out(lb, db, cls, ch))
+
+def cl_c_oo(la, da, lb, db, cls, ch, h):
+  (e, l) = h
+  es = Equal.sym(Nat, da, 1n+db, e)
+  %es : rel_c(sc.out(la, _, cls, ch), sc.out(lb, db, cls, ch))
+  cl_c_oo.s(la, lb, db, cls, ch, l)
+
+law cl_c_ww:
+  for +ba: List<&2, Char>
+  for +da: Nat
+  for +b2: List<&2, Char>
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: rel_c(SWord{ba, da}, SWord{b2, db})
+  rel_c(sc.word(ba, da, cls, ch), sc.word(b2, db, cls, ch))
+
+def cl_c_ww(ba, da, b2, db, cls, ch, h):
+  (e1, e2) = h
+  es1 = Equal.sym(Nat, da, 1n+db, e1)
+  %es1 : rel_c(sc.word(ba, _, cls, ch), sc.word(b2, db, cls, ch))
+  es2 = Equal.sym(List<&2, Char>, b2, ba, e2)
+  %es2 : rel_c(sc.word(ba, 1n+db, cls, ch), sc.word(_, db, cls, ch))
+  cl_c_ww.s(ba, db, cls, ch)
+
+law cl_c_wo:
+  for +ba: List<&2, Char>
+  for +da: Nat
+  for +lb: Lt
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: rel_c(SWord{ba, da}, SOut{lb, db})
+  rel_c(sc.word(ba, da, cls, ch), sc.out(lb, db, cls, ch))
+
+def cl_c_wo(ba, da, lb, db, cls, ch, h):
+  (e, l) = h
+  es = Equal.sym(Nat, da, 1n+db, e)
+  %es : rel_c(sc.word(ba, _, cls, ch), sc.out(lb, db, cls, ch))
+  cl_c_wo.s(ba, lb, db, cls, ch, l)
+
+law cl_c_ii:
+  for +da: Nat
+  for +db: Nat
+  for +cls: Lex.Class
+  for h: rel_c(SIn{da}, SIn{db})
+  rel_c(sc.in(da, cls), sc.in(db, cls))
+
+def cl_c_ii(da, db, cls, h):
+  es = Equal.sym(Nat, da, 1n+db, h)
+  %es : rel_c(sc.in(_, cls), sc.in(db, cls))
+  cl_c_ii.s(db, cls)
+
+
+# one character keeps two scans related
+law cl_c:
+  for +aa: Sc
+  for +bb: Sc
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: rel_c(aa, bb)
+  rel_c(sc.stepc(aa, cls, ch), sc.stepc(bb, cls, ch))
+
+def cl_c(aa, bb, cls, ch, h):
+  match aa bb:
+    case SOut{a1, a2} SOut{b1, b2}:
+      cl_c_oo(a1, a2, b1, b2, cls, ch, h)
+    case SOut{a1, a2} SWord{b1, b2}:
+      Empty.absurd(rel_c(sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SOut{a1, a2} SIn{b1}:
+      Empty.absurd(rel_c(sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SOut{a1, a2} SEsc{b1}:
+      Empty.absurd(rel_c(sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SOut{+a1, +a2} SBad{}:
+      rel_bad_c(sc.stepc(SOut{a1, a2}, cls, ch))
+    case SWord{a1, a2} SOut{b1, b2}:
+      cl_c_wo(a1, a2, b1, b2, cls, ch, h)
+    case SWord{a1, a2} SWord{b1, b2}:
+      cl_c_ww(a1, a2, b1, b2, cls, ch, h)
+    case SWord{a1, a2} SIn{b1}:
+      Empty.absurd(rel_c(sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SWord{a1, a2} SEsc{b1}:
+      Empty.absurd(rel_c(sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SWord{+a1, +a2} SBad{}:
+      rel_bad_c(sc.stepc(SWord{a1, a2}, cls, ch))
+    case SIn{a1} SOut{b1, b2}:
+      Empty.absurd(rel_c(sc.stepc(SIn{a1}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SIn{a1} SWord{b1, b2}:
+      Empty.absurd(rel_c(sc.stepc(SIn{a1}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SIn{a1} SIn{b1}:
+      cl_c_ii(a1, b1, cls, h)
+    case SIn{a1} SEsc{b1}:
+      Empty.absurd(rel_c(sc.stepc(SIn{a1}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SIn{+a1} SBad{}:
+      rel_bad_c(sc.stepc(SIn{a1}, cls, ch))
+    case SEsc{a1} SOut{b1, b2}:
+      Empty.absurd(rel_c(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SEsc{a1} SWord{b1, b2}:
+      Empty.absurd(rel_c(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SEsc{a1} SIn{b1}:
+      Empty.absurd(rel_c(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SEsc{a1} SEsc{b1}:
+      h
+    case SEsc{+a1} SBad{}:
+      rel_bad_c(sc.stepc(SEsc{a1}, cls, ch))
+    case SBad{} SOut{_b1, _b2}:
+      Unit{}
+    case SBad{} SWord{_b1, _b2}:
+      Unit{}
+    case SBad{} SIn{_b1}:
+      Unit{}
+    case SBad{} SEsc{_b1}:
+      Unit{}
+    case SBad{} SBad{}:
+      Unit{}
+
+
+law run_c:
+  for +txt: String
+  for +aa: Sc
+  for +bb: Sc
+  for h: rel_c(aa, bb)
+  rel_c(sc.run(txt, aa), sc.run(txt, bb))
+
+def run_c(txt, aa, bb, h):
+  match txt:
+    case SNil{}:
+      h
+    case SCon{+hd, +tl}:
+      run_c(tl, sc.step(aa, hd), sc.step(bb, hd), cl_c(aa, bb, Lex.classify(hd), hd, h))
+
+# JSON-TEXT-2: a comma or a colon put after a value, or anything put where
+# the scan meets a fault. The scan without it is after a value, the scan with
+# it waits for a value, or it has met a fault
+
+# what may come next, without and with the separator
+def lvs(la: Lt, lb: Lt) -> Type:
+  match la lb:
+    case LSt{} LSt{}:
+      Empty
+    case LSt{} LOp{}:
+      Empty
+    case LSt{} LVal{}:
+      Empty
+    case LOp{} LSt{}:
+      Empty
+    case LOp{} LOp{}:
+      Empty
+    case LOp{} LVal{}:
+      Empty
+    case LVal{} LSt{}:
+      Unit
+    case LVal{} LOp{}:
+      Empty
+    case LVal{} LVal{}:
+      Empty
+
+# the scans without and with a separator
+def rel_s(aa: Sc, bb: Sc) -> Type:
+  match aa:
+    case SOut{la, _}:
+      match bb:
+        case SOut{lb, _}:
+          lvs(la, lb)
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SBad{}:
+      Unit
+    case _:
+      match bb:
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+
+
+# a word's end on the left, on the right, or on both
+law rel_bad_s:
+  for +xx: Sc
+  rel_s(xx, SBad{})
+
+def rel_bad_s(xx):
+  match xx:
+    case SOut{_l, _d}:
+      Unit{}
+    case SWord{_b, _d}:
+      Unit{}
+    case SIn{_d}:
+      Unit{}
+    case SEsc{_d}:
+      Unit{}
+    case SBad{}:
+      Unit{}
+
+law pick_l_s:
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_s(xx, yy)
+  rel_s(Bool.pick(Sc, bv, xx, SBad{}), yy)
+
+def pick_l_s(bv, _xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      Unit{}
+
+law pick_r_s:
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_s(xx, yy)
+  rel_s(xx, Bool.pick(Sc, bv, yy, SBad{}))
+
+def pick_r_s(bv, xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      rel_bad_s(xx)
+
+law pick_lr_s:
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_s(xx, yy)
+  rel_s(Bool.pick(Sc, bv, xx, SBad{}), Bool.pick(Sc, bv, yy, SBad{}))
+
+def pick_lr_s(bv, _xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      Unit{}
+
+
+law cl_s_oo.s.1:
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_s(sc.out(LVal{}, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LSt{}, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_s_oo.s.1(da, _db, _ch):
+  match da:
+    case 0n:
+      Unit{}
+    case 1n+n0:
+      Unit{}
+
+law cl_s_oo.s.2:
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_s(sc.out(LVal{}, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LSt{}, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_s_oo.s.2(da, _db, _ch):
+  match da:
+    case 0n:
+      Unit{}
+    case 1n+n0:
+      Unit{}
+
+law cl_s_oo.s:
+  for +la: Lt
+  for +da: Nat
+  for +lb: Lt
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for l: lvs(la, lb)
+  rel_s(sc.out(la, da, cls, ch), sc.out(lb, db, cls, ch))
+
+def cl_s_oo.s(la, da, lb, db, cls, ch, l):
+  match la:
+    case LSt{}:
+      match lb:
+        case LSt{}:
+          Empty.absurd(rel_s(sc.out(LSt{}, da, cls, ch), sc.out(LSt{}, db, cls, ch)), l)
+        case LOp{}:
+          Empty.absurd(rel_s(sc.out(LSt{}, da, cls, ch), sc.out(LOp{}, db, cls, ch)), l)
+        case LVal{}:
+          Empty.absurd(rel_s(sc.out(LSt{}, da, cls, ch), sc.out(LVal{}, db, cls, ch)), l)
+    case LOp{}:
+      match lb:
+        case LSt{}:
+          Empty.absurd(rel_s(sc.out(LOp{}, da, cls, ch), sc.out(LSt{}, db, cls, ch)), l)
+        case LOp{}:
+          Empty.absurd(rel_s(sc.out(LOp{}, da, cls, ch), sc.out(LOp{}, db, cls, ch)), l)
+        case LVal{}:
+          Empty.absurd(rel_s(sc.out(LOp{}, da, cls, ch), sc.out(LVal{}, db, cls, ch)), l)
+    case LVal{}:
+      match lb:
+        case LSt{}:
+          match cls:
+            case Lex.CPunct{tk}:
+              match tk:
+                case Lex.TOpenArr{}:
+                  Unit{}
+                case Lex.TCloseArr{}:
+                  cl_s_oo.s.1(da, db, ch)
+                case Lex.TOpenObj{}:
+                  Unit{}
+                case Lex.TCloseObj{}:
+                  cl_s_oo.s.2(da, db, ch)
+                case Lex.TColon{}:
+                  Unit{}
+                case Lex.TComma{}:
+                  Unit{}
+                case Lex.TStr{_x0}:
+                  Unit{}
+                case Lex.TWord{_x0}:
+                  Unit{}
+                case Lex.TStrS{_x0, _x1}:
+                  Unit{}
+                case Lex.TWordS{_x0, _x1}:
+                  Unit{}
+                case Lex.TBad{}:
+                  Unit{}
+            case Lex.CQuote{}:
+              Unit{}
+            case Lex.CBack{}:
+              Unit{}
+            case Lex.CSpace{}:
+              Unit{}
+            case Lex.COther{}:
+              Unit{}
+        case LOp{}:
+          Empty.absurd(rel_s(sc.out(LVal{}, da, cls, ch), sc.out(LOp{}, db, cls, ch)), l)
+        case LVal{}:
+          Empty.absurd(rel_s(sc.out(LVal{}, da, cls, ch), sc.out(LVal{}, db, cls, ch)), l)
+
+
+# one character keeps two scans related
+law cl_s:
+  for +aa: Sc
+  for +bb: Sc
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: rel_s(aa, bb)
+  rel_s(sc.stepc(aa, cls, ch), sc.stepc(bb, cls, ch))
+
+def cl_s(aa, bb, cls, ch, h):
+  match aa bb:
+    case SOut{a1, a2} SOut{b1, b2}:
+      cl_s_oo.s(a1, a2, b1, b2, cls, ch, h)
+    case SOut{a1, a2} SWord{b1, b2}:
+      Empty.absurd(rel_s(sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SOut{a1, a2} SIn{b1}:
+      Empty.absurd(rel_s(sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SOut{a1, a2} SEsc{b1}:
+      Empty.absurd(rel_s(sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SOut{+a1, +a2} SBad{}:
+      rel_bad_s(sc.stepc(SOut{a1, a2}, cls, ch))
+    case SWord{a1, a2} SOut{b1, b2}:
+      Empty.absurd(rel_s(sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SWord{a1, a2} SWord{b1, b2}:
+      Empty.absurd(rel_s(sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SWord{a1, a2} SIn{b1}:
+      Empty.absurd(rel_s(sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SWord{a1, a2} SEsc{b1}:
+      Empty.absurd(rel_s(sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SWord{+a1, +a2} SBad{}:
+      rel_bad_s(sc.stepc(SWord{a1, a2}, cls, ch))
+    case SIn{a1} SOut{b1, b2}:
+      Empty.absurd(rel_s(sc.stepc(SIn{a1}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SIn{a1} SWord{b1, b2}:
+      Empty.absurd(rel_s(sc.stepc(SIn{a1}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SIn{a1} SIn{b1}:
+      Empty.absurd(rel_s(sc.stepc(SIn{a1}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SIn{a1} SEsc{b1}:
+      Empty.absurd(rel_s(sc.stepc(SIn{a1}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SIn{+a1} SBad{}:
+      rel_bad_s(sc.stepc(SIn{a1}, cls, ch))
+    case SEsc{a1} SOut{b1, b2}:
+      Empty.absurd(rel_s(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SEsc{a1} SWord{b1, b2}:
+      Empty.absurd(rel_s(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SEsc{a1} SIn{b1}:
+      Empty.absurd(rel_s(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SEsc{a1} SEsc{b1}:
+      Empty.absurd(rel_s(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SEsc{+a1} SBad{}:
+      rel_bad_s(sc.stepc(SEsc{a1}, cls, ch))
+    case SBad{} SOut{_b1, _b2}:
+      Unit{}
+    case SBad{} SWord{_b1, _b2}:
+      Unit{}
+    case SBad{} SIn{_b1}:
+      Unit{}
+    case SBad{} SEsc{_b1}:
+      Unit{}
+    case SBad{} SBad{}:
+      Unit{}
+
+
+law run_s:
+  for +txt: String
+  for +aa: Sc
+  for +bb: Sc
+  for h: rel_s(aa, bb)
+  rel_s(sc.run(txt, aa), sc.run(txt, bb))
+
+def run_s(txt, aa, bb, h):
+  match txt:
+    case SNil{}:
+      h
+    case SCon{+hd, +tl}:
+      run_s(tl, sc.step(aa, hd), sc.step(bb, hd), cl_s(aa, bb, Lex.classify(hd), hd, h))
+
+# JSON-TEXT-2: a word character, not a digit or `-`, put between tokens.
+# Where the scan without it waits for a value, the scan with it is in a word
+# of that character; in a word, the scan with it is in the same word with the
+# character in front, which no literal name or number starts with
+
+# what may come next is not a separator or a close
+def lnv(la: Lt) -> Type:
+  match la:
+    case LVal{}:
+      Empty
+    case _:
+      Unit
+
+# the scans without and with a word character cc
+def rel_w(cc: Char, aa: Sc, bb: Sc) -> Type:
+  match aa:
+    case SOut{la, _}:
+      match bb:
+        case SWord{b2, _}:
+          (lnv(la) & {b2 == [cc] : List<&2, Char>})
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SWord{ba, _}:
+      match bb:
+        case SWord{b2, _}:
+          {b2 == List.append(&2, Char, ba, [cc]) : List<&2, Char>}
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SBad{}:
+      Unit
+    case _:
+      match bb:
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+
+
+# a word's end on the left, on the right, or on both
+law rel_bad_w:
+  for +cc: Char
+  for +xx: Sc
+  rel_w(cc, xx, SBad{})
+
+def rel_bad_w(_cc, xx):
+  match xx:
+    case SOut{_l, _d}:
+      Unit{}
+    case SWord{_b, _d}:
+      Unit{}
+    case SIn{_d}:
+      Unit{}
+    case SEsc{_d}:
+      Unit{}
+    case SBad{}:
+      Unit{}
+
+law pick_l_w:
+  for +cc: Char
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_w(cc, xx, yy)
+  rel_w(cc, Bool.pick(Sc, bv, xx, SBad{}), yy)
+
+def pick_l_w(_cc, bv, _xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      Unit{}
+
+law pick_r_w:
+  for +cc: Char
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_w(cc, xx, yy)
+  rel_w(cc, xx, Bool.pick(Sc, bv, yy, SBad{}))
+
+def pick_r_w(cc, bv, xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      rel_bad_w(cc, xx)
+
+law pick_lr_w:
+  for +cc: Char
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_w(cc, xx, yy)
+  rel_w(cc, Bool.pick(Sc, bv, xx, SBad{}), Bool.pick(Sc, bv, yy, SBad{}))
+
+def pick_lr_w(_cc, bv, _xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      Unit{}
+
+
+# a word that is no literal name or number meets a fault at its end
+law pick_f_w:
+  for +cc: Char
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for hb: {bv == False{} : Bool}
+  rel_w(cc, xx, Bool.pick(Sc, bv, yy, SBad{}))
+
+def pick_f_w(cc, bv, xx, yy, hb):
+  es = Equal.sym(Bool, bv, False{}, hb)
+  %es : rel_w(cc, xx, Bool.pick(Sc, _, yy, SBad{}))
+  rel_bad_w(cc, xx)
+
+# of two words, the second is none when the first is one
+law pick2_w:
+  for +cc: Char
+  for b1: Bool
+  for b2: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for kk: {b1 == True{} : Bool} -> {b2 == False{} : Bool}
+  rel_w(cc, Bool.pick(Sc, b1, xx, SBad{}), Bool.pick(Sc, b2, yy, SBad{}))
+
+def pick2_w(cc, b1, b2, xx, yy, kk):
+  match b1:
+    case True{}:
+      pick_f_w(cc, b2, xx, yy, kk({==}))
+    case False{}:
+      Unit{}
+
+
+law cl_w_ow.s.1:
+  for +db: Nat
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +da: Nat
+  for +ch: Char
+  rel_w(cc, sc.out(LSt{}, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.word([cc], db, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_w_ow.s.1(db, cc, hn, _da, _ch):
+  match db:
+    case 0n:
+      pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+    case 1n+n0:
+      pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SOut{LVal{}, n0}, lon1(cc, hn))
+
+law cl_w_ow.s.2:
+  for +db: Nat
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +da: Nat
+  for +ch: Char
+  rel_w(cc, sc.out(LSt{}, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.word([cc], db, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_w_ow.s.2(db, cc, hn, _da, _ch):
+  match db:
+    case 0n:
+      pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+    case 1n+n0:
+      pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SOut{LVal{}, n0}, lon1(cc, hn))
+
+law cl_w_ow.s.3:
+  for +da: Nat
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +db: Nat
+  for +ch: Char
+  rel_w(cc, sc.out(LOp{}, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.word([cc], db, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_w_ow.s.3(da, cc, hn, db, _ch):
+  match da:
+    case 0n:
+      match db:
+        case 0n:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+        case 1n+n0:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SOut{LVal{}, n0}, lon1(cc, hn))
+    case 1n+n0:
+      match db:
+        case 0n:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LVal{}, n0}, SBad{}, lon1(cc, hn))
+        case 1n+n1:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LVal{}, n0}, SOut{LVal{}, n1}, lon1(cc, hn))
+
+law cl_w_ow.s.4:
+  for +da: Nat
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +db: Nat
+  for +ch: Char
+  rel_w(cc, sc.out(LOp{}, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.word([cc], db, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_w_ow.s.4(da, cc, hn, db, _ch):
+  match da:
+    case 0n:
+      match db:
+        case 0n:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+        case 1n+n0:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SOut{LVal{}, n0}, lon1(cc, hn))
+    case 1n+n0:
+      match db:
+        case 0n:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LVal{}, n0}, SBad{}, lon1(cc, hn))
+        case 1n+n1:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LVal{}, n0}, SOut{LVal{}, n1}, lon1(cc, hn))
+
+law cl_w_ow.s:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +la: Lt
+  for +da: Nat
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for l: lnv(la)
+  rel_w(cc, sc.out(la, da, cls, ch), sc.word([cc], db, cls, ch))
+
+def cl_w_ow.s(cc, hn, la, da, db, cls, ch, l):
+  match la:
+    case LSt{}:
+      match cls:
+        case Lex.CPunct{tk}:
+          match tk:
+            case Lex.TOpenArr{}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LOp{}, 1n+da}, SBad{}, lon1(cc, hn))
+            case Lex.TCloseArr{}:
+              cl_w_ow.s.1(db, cc, hn, da, ch)
+            case Lex.TOpenObj{}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LOp{}, 1n+da}, SBad{}, lon1(cc, hn))
+            case Lex.TCloseObj{}:
+              cl_w_ow.s.2(db, cc, hn, da, ch)
+            case Lex.TColon{}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SOut{LSt{}, db}, lon1(cc, hn))
+            case Lex.TComma{}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SOut{LSt{}, db}, lon1(cc, hn))
+            case Lex.TStr{_x0}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+            case Lex.TWord{_x0}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+            case Lex.TStrS{_x0, _x1}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+            case Lex.TWordS{_x0, _x1}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+            case Lex.TBad{}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+        case Lex.CQuote{}:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SIn{da}, SBad{}, lon1(cc, hn))
+        case Lex.CBack{}:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+        case Lex.CSpace{}:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LSt{}, da}, SOut{LVal{}, db}, lon1(cc, hn))
+        case Lex.COther{}:
+          {==}
+    case LOp{}:
+      match cls:
+        case Lex.CPunct{tk}:
+          match tk:
+            case Lex.TOpenArr{}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LOp{}, 1n+da}, SBad{}, lon1(cc, hn))
+            case Lex.TCloseArr{}:
+              cl_w_ow.s.3(da, cc, hn, db, ch)
+            case Lex.TOpenObj{}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LOp{}, 1n+da}, SBad{}, lon1(cc, hn))
+            case Lex.TCloseObj{}:
+              cl_w_ow.s.4(da, cc, hn, db, ch)
+            case Lex.TColon{}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SOut{LSt{}, db}, lon1(cc, hn))
+            case Lex.TComma{}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SOut{LSt{}, db}, lon1(cc, hn))
+            case Lex.TStr{_x0}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+            case Lex.TWord{_x0}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+            case Lex.TStrS{_x0, _x1}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+            case Lex.TWordS{_x0, _x1}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+            case Lex.TBad{}:
+              pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+        case Lex.CQuote{}:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SIn{da}, SBad{}, lon1(cc, hn))
+        case Lex.CBack{}:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
+        case Lex.CSpace{}:
+          pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LOp{}, da}, SOut{LVal{}, db}, lon1(cc, hn))
+        case Lex.COther{}:
+          {==}
+    case LVal{}:
+      Empty.absurd(rel_w(cc, sc.out(LVal{}, da, cls, ch), sc.word([cc], db, cls, ch)), l)
+
+
+law cl_w_ww.s.1:
+  for +da: Nat
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +ba: List<&2, Char>
+  for +db: Nat
+  for +ch: Char
+  rel_w(cc, sc.word(ba, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.word(List.append(&2, Char, ba, [cc]), db,
+    Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_w_ww.s.1(da, cc, hn, ba, db, _ch):
+  match da:
+    case 0n:
+      match db:
+        case 0n:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SBad{}, SBad{}, ee => lon_app(cc, hn, ba, ee))
+        case 1n+n0:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SBad{}, SOut{LVal{}, n0}, ee => lon_app(cc, hn, ba, ee))
+    case 1n+n0:
+      match db:
+        case 0n:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SOut{LVal{}, n0}, SBad{}, ee => lon_app(cc, hn, ba, ee))
+        case 1n+n1:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SOut{LVal{}, n0}, SOut{LVal{}, n1}, ee => lon_app(cc, hn, ba, ee))
+
+law cl_w_ww.s.2:
+  for +da: Nat
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +ba: List<&2, Char>
+  for +db: Nat
+  for +ch: Char
+  rel_w(cc, sc.word(ba, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.word(List.append(&2, Char, ba, [cc]), db,
+    Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_w_ww.s.2(da, cc, hn, ba, db, _ch):
+  match da:
+    case 0n:
+      match db:
+        case 0n:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SBad{}, SBad{}, ee => lon_app(cc, hn, ba, ee))
+        case 1n+n0:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SBad{}, SOut{LVal{}, n0}, ee => lon_app(cc, hn, ba, ee))
+    case 1n+n0:
+      match db:
+        case 0n:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SOut{LVal{}, n0}, SBad{}, ee => lon_app(cc, hn, ba, ee))
+        case 1n+n1:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SOut{LVal{}, n0}, SOut{LVal{}, n1}, ee => lon_app(cc, hn, ba, ee))
+
+law cl_w_ww.s:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +ba: List<&2, Char>
+  for +da: Nat
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  rel_w(cc, sc.word(ba, da, cls, ch), sc.word(List.append(&2, Char, ba, [cc]), db, cls, ch))
+
+def cl_w_ww.s(cc, hn, ba, da, db, cls, ch):
+  match cls:
+    case Lex.CPunct{tk}:
+      match tk:
+        case Lex.TOpenArr{}:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SBad{}, SBad{}, ee => lon_app(cc, hn, ba, ee))
+        case Lex.TCloseArr{}:
+          cl_w_ww.s.1(da, cc, hn, ba, db, ch)
+        case Lex.TOpenObj{}:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SBad{}, SBad{}, ee => lon_app(cc, hn, ba, ee))
+        case Lex.TCloseObj{}:
+          cl_w_ww.s.2(da, cc, hn, ba, db, ch)
+        case Lex.TColon{}:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SOut{LSt{}, da}, SOut{LSt{}, db}, ee => lon_app(cc, hn, ba, ee))
+        case Lex.TComma{}:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SOut{LSt{}, da}, SOut{LSt{}, db}, ee => lon_app(cc, hn, ba, ee))
+        case Lex.TStr{_x0}:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SBad{}, SBad{}, ee => lon_app(cc, hn, ba, ee))
+        case Lex.TWord{_x0}:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SBad{}, SBad{}, ee => lon_app(cc, hn, ba, ee))
+        case Lex.TStrS{_x0, _x1}:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SBad{}, SBad{}, ee => lon_app(cc, hn, ba, ee))
+        case Lex.TWordS{_x0, _x1}:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SBad{}, SBad{}, ee => lon_app(cc, hn, ba, ee))
+        case Lex.TBad{}:
+          pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+            SBad{}, SBad{}, ee => lon_app(cc, hn, ba, ee))
+    case Lex.CQuote{}:
+      pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))), SBad{},
+        SBad{}, ee => lon_app(cc, hn, ba, ee))
+    case Lex.CBack{}:
+      pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))), SBad{},
+        SBad{}, ee => lon_app(cc, hn, ba, ee))
+    case Lex.CSpace{}:
+      pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
+        SOut{LVal{}, da}, SOut{LVal{}, db}, ee => lon_app(cc, hn, ba, ee))
+    case Lex.COther{}:
+      {==}
+
+
+law cl_w_ow:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +la: Lt
+  for +da: Nat
+  for +b2: List<&2, Char>
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: rel_w(cc, SOut{la, da}, SWord{b2, db})
+  rel_w(cc, sc.out(la, da, cls, ch), sc.word(b2, db, cls, ch))
+
+def cl_w_ow(cc, hn, la, da, b2, db, cls, ch, h):
+  (l, e) = h
+  es = Equal.sym(List<&2, Char>, b2, [cc], e)
+  %es : rel_w(cc, sc.out(la, da, cls, ch), sc.word(_, db, cls, ch))
+  cl_w_ow.s(cc, hn, la, da, db, cls, ch, l)
+
+law cl_w_ww:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +ba: List<&2, Char>
+  for +da: Nat
+  for +b2: List<&2, Char>
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: rel_w(cc, SWord{ba, da}, SWord{b2, db})
+  rel_w(cc, sc.word(ba, da, cls, ch), sc.word(b2, db, cls, ch))
+
+def cl_w_ww(cc, hn, ba, da, b2, db, cls, ch, h):
+  es = Equal.sym(List<&2, Char>, b2, List.append(&2, Char, ba, [cc]), h)
+  %es : rel_w(cc, sc.word(ba, da, cls, ch), sc.word(_, db, cls, ch))
+  cl_w_ww.s(cc, hn, ba, da, db, cls, ch)
+
+
+# one character keeps two scans related
+law cl_w:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +aa: Sc
+  for +bb: Sc
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: rel_w(cc, aa, bb)
+  rel_w(cc, sc.stepc(aa, cls, ch), sc.stepc(bb, cls, ch))
+
+def cl_w(cc, hn, aa, bb, cls, ch, h):
+  match aa bb:
+    case SOut{a1, a2} SOut{b1, b2}:
+      Empty.absurd(rel_w(cc, sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SOut{a1, a2} SWord{b1, b2}:
+      cl_w_ow(cc, hn, a1, a2, b1, b2, cls, ch, h)
+    case SOut{a1, a2} SIn{b1}:
+      Empty.absurd(rel_w(cc, sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SOut{a1, a2} SEsc{b1}:
+      Empty.absurd(rel_w(cc, sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SOut{+a1, +a2} SBad{}:
+      rel_bad_w(cc, sc.stepc(SOut{a1, a2}, cls, ch))
+    case SWord{a1, a2} SOut{b1, b2}:
+      Empty.absurd(rel_w(cc, sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SWord{a1, a2} SWord{b1, b2}:
+      cl_w_ww(cc, hn, a1, a2, b1, b2, cls, ch, h)
+    case SWord{a1, a2} SIn{b1}:
+      Empty.absurd(rel_w(cc, sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SWord{a1, a2} SEsc{b1}:
+      Empty.absurd(rel_w(cc, sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SWord{+a1, +a2} SBad{}:
+      rel_bad_w(cc, sc.stepc(SWord{a1, a2}, cls, ch))
+    case SIn{a1} SOut{b1, b2}:
+      Empty.absurd(rel_w(cc, sc.stepc(SIn{a1}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SIn{a1} SWord{b1, b2}:
+      Empty.absurd(rel_w(cc, sc.stepc(SIn{a1}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SIn{a1} SIn{b1}:
+      Empty.absurd(rel_w(cc, sc.stepc(SIn{a1}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SIn{a1} SEsc{b1}:
+      Empty.absurd(rel_w(cc, sc.stepc(SIn{a1}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SIn{+a1} SBad{}:
+      rel_bad_w(cc, sc.stepc(SIn{a1}, cls, ch))
+    case SEsc{a1} SOut{b1, b2}:
+      Empty.absurd(rel_w(cc, sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SEsc{a1} SWord{b1, b2}:
+      Empty.absurd(rel_w(cc, sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SEsc{a1} SIn{b1}:
+      Empty.absurd(rel_w(cc, sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SEsc{a1} SEsc{b1}:
+      Empty.absurd(rel_w(cc, sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SEsc{+a1} SBad{}:
+      rel_bad_w(cc, sc.stepc(SEsc{a1}, cls, ch))
+    case SBad{} SOut{_b1, _b2}:
+      Unit{}
+    case SBad{} SWord{_b1, _b2}:
+      Unit{}
+    case SBad{} SIn{_b1}:
+      Unit{}
+    case SBad{} SEsc{_b1}:
+      Unit{}
+    case SBad{} SBad{}:
+      Unit{}
+
+
+law run_w:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +txt: String
+  for +aa: Sc
+  for +bb: Sc
+  for h: rel_w(cc, aa, bb)
+  rel_w(cc, sc.run(txt, aa), sc.run(txt, bb))
+
+def run_w(cc, hn, txt, aa, bb, h):
+  match txt:
+    case SNil{}:
+      h
+    case SCon{+hd, +tl}:
+      run_w(cc, hn, tl, sc.step(aa, hd), sc.step(bb, hd), cl_w(cc, hn, aa, bb, Lex.classify(hd), hd, h))
+
+# JSON-TEXT-2: a quotation mark put between tokens. Where one scan is outside
+# strings the other is in one, or it has met a fault: the two cannot both
+# end outside strings
+
+# the scans without and with a quotation mark
+def rel_q(aa: Sc, bb: Sc) -> Type:
+  match aa:
+    case SOut{_, _}:
+      match bb:
+        case SIn{_}:
+          Unit
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SWord{_, _}:
+      match bb:
+        case SIn{_}:
+          Unit
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SIn{_}:
+      match bb:
+        case SOut{_, _}:
+          Unit
+        case SWord{_, _}:
+          Unit
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SEsc{_}:
+      match bb:
+        case SBad{}:
+          Unit
+        case _:
+          Empty
+    case SBad{}:
+      Unit
+
+
+# a word's end on the left, on the right, or on both
+law rel_bad_q:
+  for +xx: Sc
+  rel_q(xx, SBad{})
+
+def rel_bad_q(xx):
+  match xx:
+    case SOut{_l, _d}:
+      Unit{}
+    case SWord{_b, _d}:
+      Unit{}
+    case SIn{_d}:
+      Unit{}
+    case SEsc{_d}:
+      Unit{}
+    case SBad{}:
+      Unit{}
+
+law pick_l_q:
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_q(xx, yy)
+  rel_q(Bool.pick(Sc, bv, xx, SBad{}), yy)
+
+def pick_l_q(bv, _xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      Unit{}
+
+law pick_r_q:
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_q(xx, yy)
+  rel_q(xx, Bool.pick(Sc, bv, yy, SBad{}))
+
+def pick_r_q(bv, xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      rel_bad_q(xx)
+
+law pick_lr_q:
+  for bv: Bool
+  for +xx: Sc
+  for +yy: Sc
+  for h: rel_q(xx, yy)
+  rel_q(Bool.pick(Sc, bv, xx, SBad{}), Bool.pick(Sc, bv, yy, SBad{}))
+
+def pick_lr_q(bv, _xx, _yy, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      Unit{}
+
+
+law cl_q_oi.s.1:
+  for +la: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.out(la, da, Lex.CPunct{Lex.TOpenArr{}}, ch), sc.in(db, Lex.CPunct{Lex.TOpenArr{}}))
+
+def cl_q_oi.s.1(la, _da, _db, _ch):
+  match la:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cl_q_oi.s.2:
+  for +la: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.out(la, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.in(db, Lex.CPunct{Lex.TCloseArr{}}))
+
+def cl_q_oi.s.2(la, da, _db, _ch):
+  match la:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      match da:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          Unit{}
+    case LVal{}:
+      match da:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          Unit{}
+
+law cl_q_oi.s.3:
+  for +la: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.out(la, da, Lex.CPunct{Lex.TOpenObj{}}, ch), sc.in(db, Lex.CPunct{Lex.TOpenObj{}}))
+
+def cl_q_oi.s.3(la, _da, _db, _ch):
+  match la:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cl_q_oi.s.4:
+  for +la: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.out(la, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.in(db, Lex.CPunct{Lex.TCloseObj{}}))
+
+def cl_q_oi.s.4(la, da, _db, _ch):
+  match la:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      match da:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          Unit{}
+    case LVal{}:
+      match da:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          Unit{}
+
+law cl_q_oi.s.5:
+  for +la: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.out(la, da, Lex.CPunct{Lex.TColon{}}, ch), sc.in(db, Lex.CPunct{Lex.TColon{}}))
+
+def cl_q_oi.s.5(la, _da, _db, _ch):
+  match la:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cl_q_oi.s.6:
+  for +la: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.out(la, da, Lex.CPunct{Lex.TComma{}}, ch), sc.in(db, Lex.CPunct{Lex.TComma{}}))
+
+def cl_q_oi.s.6(la, _da, _db, _ch):
+  match la:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cl_q_oi.s.7:
+  for +la: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.out(la, da, Lex.CQuote{}, ch), sc.in(db, Lex.CQuote{}))
+
+def cl_q_oi.s.7(la, _da, _db, _ch):
+  match la:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cl_q_oi.s.8:
+  for +la: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.out(la, da, Lex.COther{}, ch), sc.in(db, Lex.COther{}))
+
+def cl_q_oi.s.8(la, _da, _db, _ch):
+  match la:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cl_q_oi.s:
+  for +la: Lt
+  for +da: Nat
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  rel_q(sc.out(la, da, cls, ch), sc.in(db, cls))
+
+def cl_q_oi.s(la, da, db, cls, ch):
+  match cls:
+    case Lex.CPunct{tk}:
+      match tk:
+        case Lex.TOpenArr{}:
+          cl_q_oi.s.1(la, da, db, ch)
+        case Lex.TCloseArr{}:
+          cl_q_oi.s.2(la, da, db, ch)
+        case Lex.TOpenObj{}:
+          cl_q_oi.s.3(la, da, db, ch)
+        case Lex.TCloseObj{}:
+          cl_q_oi.s.4(la, da, db, ch)
+        case Lex.TColon{}:
+          cl_q_oi.s.5(la, da, db, ch)
+        case Lex.TComma{}:
+          cl_q_oi.s.6(la, da, db, ch)
+        case Lex.TStr{_x0}:
+          Unit{}
+        case Lex.TWord{_x0}:
+          Unit{}
+        case Lex.TStrS{_x0, _x1}:
+          Unit{}
+        case Lex.TWordS{_x0, _x1}:
+          Unit{}
+        case Lex.TBad{}:
+          Unit{}
+    case Lex.CQuote{}:
+      cl_q_oi.s.7(la, da, db, ch)
+    case Lex.CBack{}:
+      Unit{}
+    case Lex.CSpace{}:
+      Unit{}
+    case Lex.COther{}:
+      cl_q_oi.s.8(la, da, db, ch)
+
+
+law cl_q_wi.s.1:
+  for +da: Nat
+  for +ba: List<&2, Char>
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.word(ba, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.in(db, Lex.CPunct{Lex.TCloseArr{}}))
+
+def cl_q_wi.s.1(da, ba, db, _ch):
+  match da:
+    case 0n:
+      pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
+    case 1n+n0:
+      pick_l_q(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, n0}, SIn{db}, Unit{})
+
+law cl_q_wi.s.2:
+  for +da: Nat
+  for +ba: List<&2, Char>
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.word(ba, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.in(db, Lex.CPunct{Lex.TCloseObj{}}))
+
+def cl_q_wi.s.2(da, ba, db, _ch):
+  match da:
+    case 0n:
+      pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
+    case 1n+n0:
+      pick_l_q(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, n0}, SIn{db}, Unit{})
+
+law cl_q_wi.s:
+  for +ba: List<&2, Char>
+  for +da: Nat
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  rel_q(sc.word(ba, da, cls, ch), sc.in(db, cls))
+
+def cl_q_wi.s(ba, da, db, cls, ch):
+  match cls:
+    case Lex.CPunct{tk}:
+      match tk:
+        case Lex.TOpenArr{}:
+          pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
+        case Lex.TCloseArr{}:
+          cl_q_wi.s.1(da, ba, db, ch)
+        case Lex.TOpenObj{}:
+          pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
+        case Lex.TCloseObj{}:
+          cl_q_wi.s.2(da, ba, db, ch)
+        case Lex.TColon{}:
+          pick_l_q(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, da}, SIn{db}, Unit{})
+        case Lex.TComma{}:
+          pick_l_q(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, da}, SIn{db}, Unit{})
+        case Lex.TStr{_x0}:
+          pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
+        case Lex.TWord{_x0}:
+          pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
+        case Lex.TStrS{_x0, _x1}:
+          pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
+        case Lex.TWordS{_x0, _x1}:
+          pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
+        case Lex.TBad{}:
+          pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
+    case Lex.CQuote{}:
+      pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SOut{LVal{}, db}, Unit{})
+    case Lex.CBack{}:
+      pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SEsc{db}, Unit{})
+    case Lex.CSpace{}:
+      pick_l_q(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, da}, SIn{db}, Unit{})
+    case Lex.COther{}:
+      Unit{}
+
+
+law cl_q_io.s.1:
+  for +lb: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.in(da, Lex.CPunct{Lex.TOpenArr{}}), sc.out(lb, db, Lex.CPunct{Lex.TOpenArr{}}, ch))
+
+def cl_q_io.s.1(lb, _da, _db, _ch):
+  match lb:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cl_q_io.s.2:
+  for +lb: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.in(da, Lex.CPunct{Lex.TCloseArr{}}), sc.out(lb, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_q_io.s.2(lb, _da, db, _ch):
+  match lb:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      match db:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          Unit{}
+    case LVal{}:
+      match db:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          Unit{}
+
+law cl_q_io.s.3:
+  for +lb: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.in(da, Lex.CPunct{Lex.TOpenObj{}}), sc.out(lb, db, Lex.CPunct{Lex.TOpenObj{}}, ch))
+
+def cl_q_io.s.3(lb, _da, _db, _ch):
+  match lb:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cl_q_io.s.4:
+  for +lb: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.in(da, Lex.CPunct{Lex.TCloseObj{}}), sc.out(lb, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_q_io.s.4(lb, _da, db, _ch):
+  match lb:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      match db:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          Unit{}
+    case LVal{}:
+      match db:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          Unit{}
+
+law cl_q_io.s.5:
+  for +lb: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.in(da, Lex.CPunct{Lex.TColon{}}), sc.out(lb, db, Lex.CPunct{Lex.TColon{}}, ch))
+
+def cl_q_io.s.5(lb, _da, _db, _ch):
+  match lb:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cl_q_io.s.6:
+  for +lb: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.in(da, Lex.CPunct{Lex.TComma{}}), sc.out(lb, db, Lex.CPunct{Lex.TComma{}}, ch))
+
+def cl_q_io.s.6(lb, _da, _db, _ch):
+  match lb:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cl_q_io.s.7:
+  for +lb: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.in(da, Lex.CQuote{}), sc.out(lb, db, Lex.CQuote{}, ch))
+
+def cl_q_io.s.7(lb, _da, _db, _ch):
+  match lb:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cl_q_io.s.8:
+  for +lb: Lt
+  for +da: Nat
+  for +db: Nat
+  for +ch: Char
+  rel_q(sc.in(da, Lex.COther{}), sc.out(lb, db, Lex.COther{}, ch))
+
+def cl_q_io.s.8(lb, _da, _db, _ch):
+  match lb:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cl_q_io.s:
+  for +da: Nat
+  for +lb: Lt
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  rel_q(sc.in(da, cls), sc.out(lb, db, cls, ch))
+
+def cl_q_io.s(da, lb, db, cls, ch):
+  match cls:
+    case Lex.CPunct{tk}:
+      match tk:
+        case Lex.TOpenArr{}:
+          cl_q_io.s.1(lb, da, db, ch)
+        case Lex.TCloseArr{}:
+          cl_q_io.s.2(lb, da, db, ch)
+        case Lex.TOpenObj{}:
+          cl_q_io.s.3(lb, da, db, ch)
+        case Lex.TCloseObj{}:
+          cl_q_io.s.4(lb, da, db, ch)
+        case Lex.TColon{}:
+          cl_q_io.s.5(lb, da, db, ch)
+        case Lex.TComma{}:
+          cl_q_io.s.6(lb, da, db, ch)
+        case Lex.TStr{_x0}:
+          Unit{}
+        case Lex.TWord{_x0}:
+          Unit{}
+        case Lex.TStrS{_x0, _x1}:
+          Unit{}
+        case Lex.TWordS{_x0, _x1}:
+          Unit{}
+        case Lex.TBad{}:
+          Unit{}
+    case Lex.CQuote{}:
+      cl_q_io.s.7(lb, da, db, ch)
+    case Lex.CBack{}:
+      Unit{}
+    case Lex.CSpace{}:
+      Unit{}
+    case Lex.COther{}:
+      cl_q_io.s.8(lb, da, db, ch)
+
+
+law cl_q_iw.s.1:
+  for +db: Nat
+  for +da: Nat
+  for +b2: List<&2, Char>
+  for +ch: Char
+  rel_q(sc.in(da, Lex.CPunct{Lex.TCloseArr{}}), sc.word(b2, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
+
+def cl_q_iw.s.1(db, da, b2, _ch):
+  match db:
+    case 0n:
+      pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
+    case 1n+n0:
+      pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SOut{LVal{}, n0}, Unit{})
+
+law cl_q_iw.s.2:
+  for +db: Nat
+  for +da: Nat
+  for +b2: List<&2, Char>
+  for +ch: Char
+  rel_q(sc.in(da, Lex.CPunct{Lex.TCloseObj{}}), sc.word(b2, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
+
+def cl_q_iw.s.2(db, da, b2, _ch):
+  match db:
+    case 0n:
+      pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
+    case 1n+n0:
+      pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SOut{LVal{}, n0}, Unit{})
+
+law cl_q_iw.s:
+  for +da: Nat
+  for +b2: List<&2, Char>
+  for +db: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  rel_q(sc.in(da, cls), sc.word(b2, db, cls, ch))
+
+def cl_q_iw.s(da, b2, db, cls, ch):
+  match cls:
+    case Lex.CPunct{tk}:
+      match tk:
+        case Lex.TOpenArr{}:
+          pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
+        case Lex.TCloseArr{}:
+          cl_q_iw.s.1(db, da, b2, ch)
+        case Lex.TOpenObj{}:
+          pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
+        case Lex.TCloseObj{}:
+          cl_q_iw.s.2(db, da, b2, ch)
+        case Lex.TColon{}:
+          pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SOut{LSt{}, db}, Unit{})
+        case Lex.TComma{}:
+          pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SOut{LSt{}, db}, Unit{})
+        case Lex.TStr{_x0}:
+          pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
+        case Lex.TWord{_x0}:
+          pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
+        case Lex.TStrS{_x0, _x1}:
+          pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
+        case Lex.TWordS{_x0, _x1}:
+          pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
+        case Lex.TBad{}:
+          pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
+    case Lex.CQuote{}:
+      pick_r_q(Laws.lit_or_num(Lex.text(b2)), SOut{LVal{}, da}, SBad{}, Unit{})
+    case Lex.CBack{}:
+      pick_r_q(Laws.lit_or_num(Lex.text(b2)), SEsc{da}, SBad{}, Unit{})
+    case Lex.CSpace{}:
+      pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SOut{LVal{}, db}, Unit{})
+    case Lex.COther{}:
+      Unit{}
+
+
+# one character keeps two scans related
+law cl_q:
+  for +aa: Sc
+  for +bb: Sc
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: rel_q(aa, bb)
+  rel_q(sc.stepc(aa, cls, ch), sc.stepc(bb, cls, ch))
+
+def cl_q(aa, bb, cls, ch, h):
+  match aa bb:
+    case SOut{a1, a2} SOut{b1, b2}:
+      Empty.absurd(rel_q(sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SOut{a1, a2} SWord{b1, b2}:
+      Empty.absurd(rel_q(sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SOut{a1, a2} SIn{b1}:
+      cl_q_oi.s(a1, a2, b1, cls, ch)
+    case SOut{a1, a2} SEsc{b1}:
+      Empty.absurd(rel_q(sc.stepc(SOut{a1, a2}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SOut{+a1, +a2} SBad{}:
+      rel_bad_q(sc.stepc(SOut{a1, a2}, cls, ch))
+    case SWord{a1, a2} SOut{b1, b2}:
+      Empty.absurd(rel_q(sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SWord{a1, a2} SWord{b1, b2}:
+      Empty.absurd(rel_q(sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SWord{a1, a2} SIn{b1}:
+      cl_q_wi.s(a1, a2, b1, cls, ch)
+    case SWord{a1, a2} SEsc{b1}:
+      Empty.absurd(rel_q(sc.stepc(SWord{a1, a2}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SWord{+a1, +a2} SBad{}:
+      rel_bad_q(sc.stepc(SWord{a1, a2}, cls, ch))
+    case SIn{a1} SOut{b1, b2}:
+      cl_q_io.s(a1, b1, b2, cls, ch)
+    case SIn{a1} SWord{b1, b2}:
+      cl_q_iw.s(a1, b1, b2, cls, ch)
+    case SIn{a1} SIn{b1}:
+      Empty.absurd(rel_q(sc.stepc(SIn{a1}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SIn{a1} SEsc{b1}:
+      Empty.absurd(rel_q(sc.stepc(SIn{a1}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SIn{+a1} SBad{}:
+      rel_bad_q(sc.stepc(SIn{a1}, cls, ch))
+    case SEsc{a1} SOut{b1, b2}:
+      Empty.absurd(rel_q(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SOut{b1, b2}, cls, ch)), h)
+    case SEsc{a1} SWord{b1, b2}:
+      Empty.absurd(rel_q(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SWord{b1, b2}, cls, ch)), h)
+    case SEsc{a1} SIn{b1}:
+      Empty.absurd(rel_q(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SIn{b1}, cls, ch)), h)
+    case SEsc{a1} SEsc{b1}:
+      Empty.absurd(rel_q(sc.stepc(SEsc{a1}, cls, ch), sc.stepc(SEsc{b1}, cls, ch)), h)
+    case SEsc{+a1} SBad{}:
+      rel_bad_q(sc.stepc(SEsc{a1}, cls, ch))
+    case SBad{} SOut{_b1, _b2}:
+      Unit{}
+    case SBad{} SWord{_b1, _b2}:
+      Unit{}
+    case SBad{} SIn{_b1}:
+      Unit{}
+    case SBad{} SEsc{_b1}:
+      Unit{}
+    case SBad{} SBad{}:
+      Unit{}
+
+
+law run_q:
+  for +txt: String
+  for +aa: Sc
+  for +bb: Sc
+  for h: rel_q(aa, bb)
+  rel_q(sc.run(txt, aa), sc.run(txt, bb))
+
+def run_q(txt, aa, bb, h):
+  match txt:
+    case SNil{}:
+      h
+    case SCon{+hd, +tl}:
+      run_q(tl, sc.step(aa, hd), sc.step(bb, hd), cl_q(aa, bb, Lex.classify(hd), hd, h))
+
+# JSON-TEXT-2: where two related scans end
+
+# after a value one level deeper, the scan is not at the top level
+law topo_s:
+  for +lt: Lt
+  for +nn: Nat
+  {sc.top.o(lt, 1n+nn) == False{} : Bool}
+
+def topo_s(lt, _nn):
+  match lt:
+    case LSt{}:
+      {==}
+    case LOp{}:
+      {==}
+    case LVal{}:
+      {==}
+
+law top_pick_s:
+  for bv: Bool
+  for +nn: Nat
+  {sc.top(Bool.pick(Sc, bv, SOut{LVal{}, 1n+nn}, SBad{})) == False{} : Bool}
+
+def top_pick_s(bv, _nn):
+  match bv:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# a word the scan accepts at its end is a literal name or a number
+law tpt:
+  for bv: Bool
+  for +dd: Nat
+  for h: {sc.top(Bool.pick(Sc, bv, SOut{LVal{}, dd}, SBad{})) == True{} : Bool}
+  {bv == True{} : Bool}
+
+def tpt(bv, _dd, h):
+  match bv:
+    case True{}:
+      {==}
+    case False{}:
+      no({False{} == True{} : Bool}, h)
+
+# a scan waiting for a value is not accepted
+law acc_pst:
+  for bv: Bool
+  for +dd: Nat
+  {sc.acc(Bool.pick(Sc, bv, SOut{LSt{}, dd}, SBad{})) == False{} : Bool}
+
+def acc_pst(bv, _dd):
+  match bv:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# a scan outside strings, in a word or past a fault
+def bnd(st: Sc) -> Type:
+  match st:
+    case SIn{_}:
+      Empty
+    case SEsc{_}:
+      Empty
+    case _:
+      Unit
+
+# after a word, what follows it is no word character
+def gw(post: String) -> Type:
+  match post:
+    case SNil{}:
+      Unit
+    case SCon{hd, _}:
+      {is_oth(Lex.classify(hd)) == False{} : Bool}
+
+def gapw(st: Sc, post: String) -> Type:
+  match st:
+    case SWord{_, _}:
+      gw(post)
+    case _:
+      Unit
+
+
+law acc_o_oo:
+  for +la: Lt
+  for +da: Nat
+  for +lb: Lt
+  for +db: Nat
+  for h: rel_o(SOut{la, da}, SOut{lb, db})
+  {sc.top.o(lb, db) == False{} : Bool}
+
+def acc_o_oo(_la, da, lb, db, h):
+  (e, _l) = h
+  es = Equal.sym(Nat, db, 1n+da, e)
+  %es : {sc.top.o(lb, _) == False{} : Bool}
+  topo_s(lb, da)
+
+law acc_o_ww:
+  for +ba: List<&2, Char>
+  for +da: Nat
+  for +b2: List<&2, Char>
+  for +db: Nat
+  for h: rel_o(SWord{ba, da}, SWord{b2, db})
+  {sc.top(Bool.pick(Sc, Laws.lit_or_num(Lex.text(b2)), SOut{LVal{}, db}, SBad{})) == False{} : Bool}
+
+def acc_o_ww(_ba, da, b2, db, h):
+  (e, _e2) = h
+  es = Equal.sym(Nat, db, 1n+da, e)
+  %es : {sc.top(Bool.pick(Sc, Laws.lit_or_num(Lex.text(b2)), SOut{LVal{}, _}, SBad{})) == False{} : Bool}
+  top_pick_s(Laws.lit_or_num(Lex.text(b2)), da)
+
+
+# a scan related to one the scan accepts is not accepted
+law acc_o:
+  for +aa: Sc
+  for +bb: Sc
+  for h: rel_o(aa, bb)
+  for ha: {sc.acc(aa) == True{} : Bool}
+  {sc.acc(bb) == False{} : Bool}
+
+def acc_o(aa, bb, h, ha):
+  match aa bb:
+    case SOut{a1, a2} SOut{b1, b2}:
+      acc_o_oo(a1, a2, b1, b2, h)
+    case SOut{a1, a2} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SOut{a1, a2} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SOut{a1, a2} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SOut{_a1, _a2} SBad{}:
+      {==}
+    case SWord{a1, a2} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SWord{a1, a2} SWord{b1, b2}:
+      acc_o_ww(a1, a2, b1, b2, h)
+    case SWord{a1, a2} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SWord{a1, a2} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SWord{_a1, _a2} SBad{}:
+      {==}
+    case SIn{a1} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SIn{a1} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SIn{a1} SIn{b1}:
+      {==}
+    case SIn{a1} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SIn{_a1} SBad{}:
+      {==}
+    case SEsc{a1} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SEsc{a1} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SEsc{a1} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SEsc{a1} SEsc{b1}:
+      {==}
+    case SEsc{_a1} SBad{}:
+      {==}
+    case SBad{} SOut{b1, b2}:
+      no({sc.acc(SOut{b1, b2}) == False{} : Bool}, ha)
+    case SBad{} SWord{b1, b2}:
+      no({sc.acc(SWord{b1, b2}) == False{} : Bool}, ha)
+    case SBad{} SIn{b1}:
+      no({sc.acc(SIn{b1}) == False{} : Bool}, ha)
+    case SBad{} SEsc{b1}:
+      no({sc.acc(SEsc{b1}) == False{} : Bool}, ha)
+    case SBad{} SBad{}:
+      no({sc.acc(SBad{}) == False{} : Bool}, ha)
+
+
+law acc_c_o:
+  for +la: Lt
+  for +da: Nat
+  for +db: Nat
+  for e: {da == 1n+db : Nat}
+  for ha: {sc.top.o(la, da) == True{} : Bool}
+  Empty
+
+def acc_c_o(la, da, db, e, ha):
+  true_false(Equal.trans(Bool, True{}, sc.top.o(la, da), False{}, Equal.sym(Bool, sc.top.o(la, da), True{}, ha),
+    Equal.trans(Bool, sc.top.o(la, da), sc.top.o(la, 1n+db), False{}, Equal.cong(Nat, Bool, zz => sc.top.o(la, zz), da,
+    1n+db, e), topo_s(la, db))))
+
+law acc_c_w:
+  for bv: Bool
+  for +da: Nat
+  for +db: Nat
+  for e: {da == 1n+db : Nat}
+  for ha: {sc.top(Bool.pick(Sc, bv, SOut{LVal{}, da}, SBad{})) == True{} : Bool}
+  Empty
+
+def acc_c_w(bv, da, db, e, ha):
+  true_false(Equal.trans(Bool, True{}, sc.top(Bool.pick(Sc, bv, SOut{LVal{}, da}, SBad{})), False{}, Equal.sym(Bool,
+    sc.top(Bool.pick(Sc, bv, SOut{LVal{}, da}, SBad{})), True{}, ha), Equal.trans(Bool, sc.top(Bool.pick(Sc, bv,
+    SOut{LVal{}, da}, SBad{})), sc.top(Bool.pick(Sc, bv, SOut{LVal{}, 1n+db}, SBad{})), False{}, Equal.cong(Nat, Bool,
+    zz => sc.top(Bool.pick(Sc, bv, SOut{LVal{}, zz}, SBad{})), da, 1n+db, e), top_pick_s(bv, db))))
+
+law acc_c_oo:
+  for +la: Lt
+  for +da: Nat
+  for +lb: Lt
+  for +db: Nat
+  for h: rel_c(SOut{la, da}, SOut{lb, db})
+  for ha: {sc.top.o(la, da) == True{} : Bool}
+  Empty
+
+def acc_c_oo(la, da, _lb, db, h, ha):
+  (e, _l) = h
+  acc_c_o(la, da, db, e, ha)
+
+law acc_c_ww:
+  for +ba: List<&2, Char>
+  for +da: Nat
+  for +b2: List<&2, Char>
+  for +db: Nat
+  for h: rel_c(SWord{ba, da}, SWord{b2, db})
+  for ha: {sc.top(Bool.pick(Sc, Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, da}, SBad{})) == True{} : Bool}
+  Empty
+
+def acc_c_ww(ba, da, _b2, db, h, ha):
+  (e, _l) = h
+  acc_c_w(Laws.lit_or_num(Lex.text(ba)), da, db, e, ha)
+
+law acc_c_wo:
+  for +ba: List<&2, Char>
+  for +da: Nat
+  for +lb: Lt
+  for +db: Nat
+  for h: rel_c(SWord{ba, da}, SOut{lb, db})
+  for ha: {sc.top(Bool.pick(Sc, Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, da}, SBad{})) == True{} : Bool}
+  Empty
+
+def acc_c_wo(ba, da, _lb, db, h, ha):
+  (e, _l) = h
+  acc_c_w(Laws.lit_or_num(Lex.text(ba)), da, db, e, ha)
+
+
+# a scan related to one the scan accepts is not accepted
+law acc_c:
+  for +aa: Sc
+  for +bb: Sc
+  for h: rel_c(aa, bb)
+  for ha: {sc.acc(aa) == True{} : Bool}
+  {sc.acc(bb) == False{} : Bool}
+
+def acc_c(aa, bb, h, ha):
+  match aa bb:
+    case SOut{a1, a2} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, acc_c_oo(a1, a2, b1, b2, h, ha))
+    case SOut{a1, a2} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SOut{a1, a2} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SOut{a1, a2} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SOut{_a1, _a2} SBad{}:
+      {==}
+    case SWord{a1, a2} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, acc_c_wo(a1, a2, b1, b2, h, ha))
+    case SWord{a1, a2} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, acc_c_ww(a1, a2, b1, b2, h, ha))
+    case SWord{a1, a2} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SWord{a1, a2} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SWord{_a1, _a2} SBad{}:
+      {==}
+    case SIn{a1} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SIn{a1} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SIn{a1} SIn{b1}:
+      {==}
+    case SIn{a1} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SIn{_a1} SBad{}:
+      {==}
+    case SEsc{a1} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SEsc{a1} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SEsc{a1} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SEsc{a1} SEsc{b1}:
+      {==}
+    case SEsc{_a1} SBad{}:
+      {==}
+    case SBad{} SOut{b1, b2}:
+      no({sc.acc(SOut{b1, b2}) == False{} : Bool}, ha)
+    case SBad{} SWord{b1, b2}:
+      no({sc.acc(SWord{b1, b2}) == False{} : Bool}, ha)
+    case SBad{} SIn{b1}:
+      no({sc.acc(SIn{b1}) == False{} : Bool}, ha)
+    case SBad{} SEsc{b1}:
+      no({sc.acc(SEsc{b1}) == False{} : Bool}, ha)
+    case SBad{} SBad{}:
+      no({sc.acc(SBad{}) == False{} : Bool}, ha)
+
+
+law acc_s_oo:
+  for +la: Lt
+  for +lb: Lt
+  for +db: Nat
+  for l: lvs(la, lb)
+  {sc.top.o(lb, db) == False{} : Bool}
+
+def acc_s_oo(la, lb, db, l):
+  match la lb:
+    case LSt{} LSt{}:
+      Empty.absurd({sc.top.o(LSt{}, db) == False{} : Bool}, l)
+    case LSt{} LOp{}:
+      Empty.absurd({sc.top.o(LOp{}, db) == False{} : Bool}, l)
+    case LSt{} LVal{}:
+      Empty.absurd({sc.top.o(LVal{}, db) == False{} : Bool}, l)
+    case LOp{} LSt{}:
+      Empty.absurd({sc.top.o(LSt{}, db) == False{} : Bool}, l)
+    case LOp{} LOp{}:
+      Empty.absurd({sc.top.o(LOp{}, db) == False{} : Bool}, l)
+    case LOp{} LVal{}:
+      Empty.absurd({sc.top.o(LVal{}, db) == False{} : Bool}, l)
+    case LVal{} LSt{}:
+      {==}
+    case LVal{} LOp{}:
+      Empty.absurd({sc.top.o(LOp{}, db) == False{} : Bool}, l)
+    case LVal{} LVal{}:
+      Empty.absurd({sc.top.o(LVal{}, db) == False{} : Bool}, l)
+
+
+# a scan related to one the scan accepts is not accepted
+law acc_s:
+  for +aa: Sc
+  for +bb: Sc
+  for h: rel_s(aa, bb)
+  for ha: {sc.acc(aa) == True{} : Bool}
+  {sc.acc(bb) == False{} : Bool}
+
+def acc_s(aa, bb, h, ha):
+  match aa bb:
+    case SOut{a1, a2} SOut{b1, b2}:
+      acc_s_oo(a1, b1, b2, h)
+    case SOut{a1, a2} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SOut{a1, a2} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SOut{a1, a2} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SOut{_a1, _a2} SBad{}:
+      {==}
+    case SWord{a1, a2} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SWord{a1, a2} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SWord{a1, a2} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SWord{a1, a2} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SWord{_a1, _a2} SBad{}:
+      {==}
+    case SIn{a1} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SIn{a1} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SIn{a1} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SIn{a1} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SIn{_a1} SBad{}:
+      {==}
+    case SEsc{a1} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SEsc{a1} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SEsc{a1} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SEsc{a1} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SEsc{_a1} SBad{}:
+      {==}
+    case SBad{} SOut{b1, b2}:
+      no({sc.acc(SOut{b1, b2}) == False{} : Bool}, ha)
+    case SBad{} SWord{b1, b2}:
+      no({sc.acc(SWord{b1, b2}) == False{} : Bool}, ha)
+    case SBad{} SIn{b1}:
+      no({sc.acc(SIn{b1}) == False{} : Bool}, ha)
+    case SBad{} SEsc{b1}:
+      no({sc.acc(SEsc{b1}) == False{} : Bool}, ha)
+    case SBad{} SBad{}:
+      no({sc.acc(SBad{}) == False{} : Bool}, ha)
+
+
+law acc_w_o:
+  for +la: Lt
+  for +da: Nat
+  for l: lnv(la)
+  for ha: {sc.top.o(la, da) == True{} : Bool}
+  Empty
+
+def acc_w_o(la, _da, l, ha):
+  match la:
+    case LSt{}:
+      false_true(ha)
+    case LOp{}:
+      false_true(ha)
+    case LVal{}:
+      l
+
+law acc_w_ow:
+  for +la: Lt
+  for +da: Nat
+  for +b2: List<&2, Char>
+  for +db: Nat
+  for +cc: Char
+  for h: rel_w(cc, SOut{la, da}, SWord{b2, db})
+  for ha: {sc.top.o(la, da) == True{} : Bool}
+  Empty
+
+def acc_w_ow(la, da, _b2, _db, _cc, h, ha):
+  (l, _e) = h
+  acc_w_o(la, da, l, ha)
+
+law acc_w_ww:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +ba: List<&2, Char>
+  for +da: Nat
+  for +b2: List<&2, Char>
+  for +db: Nat
+  for h: {b2 == List.append(&2, Char, ba, [cc]) : List<&2, Char>}
+  for ha: {sc.top(Bool.pick(Sc, Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, da}, SBad{})) == True{} : Bool}
+  {sc.top(Bool.pick(Sc, Laws.lit_or_num(Lex.text(b2)), SOut{LVal{}, db}, SBad{})) == False{} : Bool}
+
+def acc_w_ww(cc, hn, ba, da, b2, db, h, ha):
+  hs = Equal.sym(List<&2, Char>, b2, List.append(&2, Char, ba, [cc]), h)
+  %hs : {sc.top(Bool.pick(Sc, Laws.lit_or_num(Lex.text(_)), SOut{LVal{}, db}, SBad{})) == False{} : Bool}
+  ls = Equal.sym(Bool, Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))), False{}, lon_app(cc, hn, ba,
+    tpt(Laws.lit_or_num(Lex.text(ba)), da, ha)))
+  %ls : {sc.top(Bool.pick(Sc, _, SOut{LVal{}, db}, SBad{})) == False{} : Bool}
+  {==}
+
+
+# a scan related to one the scan accepts is not accepted
+law acc_w:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +aa: Sc
+  for +bb: Sc
+  for h: rel_w(cc, aa, bb)
+  for ha: {sc.acc(aa) == True{} : Bool}
+  {sc.acc(bb) == False{} : Bool}
+
+def acc_w(cc, hn, aa, bb, h, ha):
+  match aa bb:
+    case SOut{a1, a2} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SOut{a1, a2} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, acc_w_ow(a1, a2, b1, b2, cc, h, ha))
+    case SOut{a1, a2} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SOut{a1, a2} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SOut{_a1, _a2} SBad{}:
+      {==}
+    case SWord{a1, a2} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SWord{a1, a2} SWord{b1, b2}:
+      acc_w_ww(cc, hn, a1, a2, b1, b2, h, ha)
+    case SWord{a1, a2} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SWord{a1, a2} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SWord{_a1, _a2} SBad{}:
+      {==}
+    case SIn{a1} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SIn{a1} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SIn{a1} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SIn{a1} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SIn{_a1} SBad{}:
+      {==}
+    case SEsc{a1} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SEsc{a1} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SEsc{a1} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SEsc{a1} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SEsc{_a1} SBad{}:
+      {==}
+    case SBad{} SOut{b1, b2}:
+      no({sc.acc(SOut{b1, b2}) == False{} : Bool}, ha)
+    case SBad{} SWord{b1, b2}:
+      no({sc.acc(SWord{b1, b2}) == False{} : Bool}, ha)
+    case SBad{} SIn{b1}:
+      no({sc.acc(SIn{b1}) == False{} : Bool}, ha)
+    case SBad{} SEsc{b1}:
+      no({sc.acc(SEsc{b1}) == False{} : Bool}, ha)
+    case SBad{} SBad{}:
+      no({sc.acc(SBad{}) == False{} : Bool}, ha)
+
+
+# a scan related to one the scan accepts is not accepted
+law acc_q:
+  for +aa: Sc
+  for +bb: Sc
+  for h: rel_q(aa, bb)
+  for ha: {sc.acc(aa) == True{} : Bool}
+  {sc.acc(bb) == False{} : Bool}
+
+def acc_q(aa, bb, h, ha):
+  match aa bb:
+    case SOut{a1, a2} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SOut{a1, a2} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SOut{a1, a2} SIn{b1}:
+      {==}
+    case SOut{a1, a2} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SOut{_a1, _a2} SBad{}:
+      {==}
+    case SWord{a1, a2} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SWord{a1, a2} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SWord{a1, a2} SIn{b1}:
+      {==}
+    case SWord{a1, a2} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SWord{_a1, _a2} SBad{}:
+      {==}
+    case SIn{a1} SOut{b1, b2}:
+      no({sc.acc(SOut{b1, b2}) == False{} : Bool}, ha)
+    case SIn{a1} SWord{b1, b2}:
+      no({sc.acc(SWord{b1, b2}) == False{} : Bool}, ha)
+    case SIn{a1} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SIn{a1} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SIn{_a1} SBad{}:
+      {==}
+    case SEsc{a1} SOut{b1, b2}:
+      Empty.absurd({sc.acc(SOut{b1, b2}) == False{} : Bool}, h)
+    case SEsc{a1} SWord{b1, b2}:
+      Empty.absurd({sc.acc(SWord{b1, b2}) == False{} : Bool}, h)
+    case SEsc{a1} SIn{b1}:
+      Empty.absurd({sc.acc(SIn{b1}) == False{} : Bool}, h)
+    case SEsc{a1} SEsc{b1}:
+      Empty.absurd({sc.acc(SEsc{b1}) == False{} : Bool}, h)
+    case SEsc{_a1} SBad{}:
+      {==}
+    case SBad{} SOut{b1, b2}:
+      no({sc.acc(SOut{b1, b2}) == False{} : Bool}, ha)
+    case SBad{} SWord{b1, b2}:
+      no({sc.acc(SWord{b1, b2}) == False{} : Bool}, ha)
+    case SBad{} SIn{b1}:
+      no({sc.acc(SIn{b1}) == False{} : Bool}, ha)
+    case SBad{} SEsc{b1}:
+      no({sc.acc(SEsc{b1}) == False{} : Bool}, ha)
+    case SBad{} SBad{}:
+      no({sc.acc(SBad{}) == False{} : Bool}, ha)
+
+
+law io_o_arr:
+  for +lt: Lt
+  for +dd: Nat
+  for +cc: Char
+  rel_o(SOut{lt, dd}, sc.out(lt, dd, Lex.CPunct{Lex.TOpenArr{}}, cc))
+
+def io_o_arr(lt, _dd, _cc):
+  match lt:
+    case LSt{}:
+      ({==}, Unit{})
+    case LOp{}:
+      ({==}, Unit{})
+    case LVal{}:
+      Unit{}
+
+
+law iw_o_arr:
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +cc: Char
+  rel_o(SWord{ba, dd}, sc.word(ba, dd, Lex.CPunct{Lex.TOpenArr{}}, cc))
+
+def iw_o_arr(ba, dd, _cc):
+  pick_r_o(Laws.lit_or_num(Lex.text(ba)), SWord{ba, dd}, SBad{}, Unit{})
+
+
+law init_o_arr:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +cc: Char
+  rel_o(yy, sc.stepc(yy, Lex.CPunct{Lex.TOpenArr{}}, cc))
+
+def init_o_arr(yy, hb, cc):
+  match yy:
+    case SOut{lt, dd}:
+      io_o_arr(lt, dd, cc)
+    case SWord{ba, dd}:
+      iw_o_arr(ba, dd, cc)
+    case SIn{dd}:
+      Empty.absurd(rel_o(SIn{dd}, sc.stepc(SIn{dd}, Lex.CPunct{Lex.TOpenArr{}}, cc)), hb)
+    case SEsc{dd}:
+      Empty.absurd(rel_o(SEsc{dd}, sc.stepc(SEsc{dd}, Lex.CPunct{Lex.TOpenArr{}}, cc)), hb)
+    case SBad{}:
+      Unit{}
+
+law cls_o_arr:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +post: String
+  for ha: {sc.acc(sc.run(post, yy)) == True{} : Bool}
+  for +cc: Char
+  {sc.acc(sc.run(post, sc.stepc(yy, Lex.CPunct{Lex.TOpenArr{}}, cc))) == False{} : Bool}
+
+def cls_o_arr(yy, hb, post, ha, cc):
+  acc_o(sc.run(post, yy), sc.run(post, sc.stepc(yy, Lex.CPunct{Lex.TOpenArr{}}, cc)), run_o(post, yy, sc.stepc(yy,
+    Lex.CPunct{Lex.TOpenArr{}}, cc),
+    init_o_arr(yy, hb, cc)), ha)
+
+
+law io_o_obj:
+  for +lt: Lt
+  for +dd: Nat
+  for +cc: Char
+  rel_o(SOut{lt, dd}, sc.out(lt, dd, Lex.CPunct{Lex.TOpenObj{}}, cc))
+
+def io_o_obj(lt, _dd, _cc):
+  match lt:
+    case LSt{}:
+      ({==}, Unit{})
+    case LOp{}:
+      ({==}, Unit{})
+    case LVal{}:
+      Unit{}
+
+
+law iw_o_obj:
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +cc: Char
+  rel_o(SWord{ba, dd}, sc.word(ba, dd, Lex.CPunct{Lex.TOpenObj{}}, cc))
+
+def iw_o_obj(ba, dd, _cc):
+  pick_r_o(Laws.lit_or_num(Lex.text(ba)), SWord{ba, dd}, SBad{}, Unit{})
+
+
+law init_o_obj:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +cc: Char
+  rel_o(yy, sc.stepc(yy, Lex.CPunct{Lex.TOpenObj{}}, cc))
+
+def init_o_obj(yy, hb, cc):
+  match yy:
+    case SOut{lt, dd}:
+      io_o_obj(lt, dd, cc)
+    case SWord{ba, dd}:
+      iw_o_obj(ba, dd, cc)
+    case SIn{dd}:
+      Empty.absurd(rel_o(SIn{dd}, sc.stepc(SIn{dd}, Lex.CPunct{Lex.TOpenObj{}}, cc)), hb)
+    case SEsc{dd}:
+      Empty.absurd(rel_o(SEsc{dd}, sc.stepc(SEsc{dd}, Lex.CPunct{Lex.TOpenObj{}}, cc)), hb)
+    case SBad{}:
+      Unit{}
+
+law cls_o_obj:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +post: String
+  for ha: {sc.acc(sc.run(post, yy)) == True{} : Bool}
+  for +cc: Char
+  {sc.acc(sc.run(post, sc.stepc(yy, Lex.CPunct{Lex.TOpenObj{}}, cc))) == False{} : Bool}
+
+def cls_o_obj(yy, hb, post, ha, cc):
+  acc_o(sc.run(post, yy), sc.run(post, sc.stepc(yy, Lex.CPunct{Lex.TOpenObj{}}, cc)), run_o(post, yy, sc.stepc(yy,
+    Lex.CPunct{Lex.TOpenObj{}}, cc),
+    init_o_obj(yy, hb, cc)), ha)
+
+
+law io_c_arr:
+  for +lt: Lt
+  for +dd: Nat
+  for +cc: Char
+  rel_c(SOut{lt, dd}, sc.out(lt, dd, Lex.CPunct{Lex.TCloseArr{}}, cc))
+
+def io_c_arr(lt, dd, _cc):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      match dd:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          ({==}, Unit{})
+    case LVal{}:
+      match dd:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          ({==}, Unit{})
+
+
+law iw_c_arr:
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +cc: Char
+  rel_c(SWord{ba, dd}, sc.word(ba, dd, Lex.CPunct{Lex.TCloseArr{}}, cc))
+
+def iw_c_arr(ba, dd, _cc):
+  match dd:
+    case 0n:
+      pick_r_c(Laws.lit_or_num(Lex.text(ba)), SWord{ba, 0n}, SBad{}, Unit{})
+    case 1n+n0:
+      pick_r_c(Laws.lit_or_num(Lex.text(ba)), SWord{ba, 1n+n0}, SOut{LVal{}, n0}, ({==}, Unit{}))
+
+
+law init_c_arr:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +cc: Char
+  rel_c(yy, sc.stepc(yy, Lex.CPunct{Lex.TCloseArr{}}, cc))
+
+def init_c_arr(yy, hb, cc):
+  match yy:
+    case SOut{lt, dd}:
+      io_c_arr(lt, dd, cc)
+    case SWord{ba, dd}:
+      iw_c_arr(ba, dd, cc)
+    case SIn{dd}:
+      Empty.absurd(rel_c(SIn{dd}, sc.stepc(SIn{dd}, Lex.CPunct{Lex.TCloseArr{}}, cc)), hb)
+    case SEsc{dd}:
+      Empty.absurd(rel_c(SEsc{dd}, sc.stepc(SEsc{dd}, Lex.CPunct{Lex.TCloseArr{}}, cc)), hb)
+    case SBad{}:
+      Unit{}
+
+law cls_c_arr:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +post: String
+  for ha: {sc.acc(sc.run(post, yy)) == True{} : Bool}
+  for +cc: Char
+  {sc.acc(sc.run(post, sc.stepc(yy, Lex.CPunct{Lex.TCloseArr{}}, cc))) == False{} : Bool}
+
+def cls_c_arr(yy, hb, post, ha, cc):
+  acc_c(sc.run(post, yy), sc.run(post, sc.stepc(yy, Lex.CPunct{Lex.TCloseArr{}}, cc)), run_c(post, yy, sc.stepc(yy,
+    Lex.CPunct{Lex.TCloseArr{}}, cc),
+    init_c_arr(yy, hb, cc)), ha)
+
+
+law io_c_obj:
+  for +lt: Lt
+  for +dd: Nat
+  for +cc: Char
+  rel_c(SOut{lt, dd}, sc.out(lt, dd, Lex.CPunct{Lex.TCloseObj{}}, cc))
+
+def io_c_obj(lt, dd, _cc):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      match dd:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          ({==}, Unit{})
+    case LVal{}:
+      match dd:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          ({==}, Unit{})
+
+
+law iw_c_obj:
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +cc: Char
+  rel_c(SWord{ba, dd}, sc.word(ba, dd, Lex.CPunct{Lex.TCloseObj{}}, cc))
+
+def iw_c_obj(ba, dd, _cc):
+  match dd:
+    case 0n:
+      pick_r_c(Laws.lit_or_num(Lex.text(ba)), SWord{ba, 0n}, SBad{}, Unit{})
+    case 1n+n0:
+      pick_r_c(Laws.lit_or_num(Lex.text(ba)), SWord{ba, 1n+n0}, SOut{LVal{}, n0}, ({==}, Unit{}))
+
+
+law init_c_obj:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +cc: Char
+  rel_c(yy, sc.stepc(yy, Lex.CPunct{Lex.TCloseObj{}}, cc))
+
+def init_c_obj(yy, hb, cc):
+  match yy:
+    case SOut{lt, dd}:
+      io_c_obj(lt, dd, cc)
+    case SWord{ba, dd}:
+      iw_c_obj(ba, dd, cc)
+    case SIn{dd}:
+      Empty.absurd(rel_c(SIn{dd}, sc.stepc(SIn{dd}, Lex.CPunct{Lex.TCloseObj{}}, cc)), hb)
+    case SEsc{dd}:
+      Empty.absurd(rel_c(SEsc{dd}, sc.stepc(SEsc{dd}, Lex.CPunct{Lex.TCloseObj{}}, cc)), hb)
+    case SBad{}:
+      Unit{}
+
+law cls_c_obj:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +post: String
+  for ha: {sc.acc(sc.run(post, yy)) == True{} : Bool}
+  for +cc: Char
+  {sc.acc(sc.run(post, sc.stepc(yy, Lex.CPunct{Lex.TCloseObj{}}, cc))) == False{} : Bool}
+
+def cls_c_obj(yy, hb, post, ha, cc):
+  acc_c(sc.run(post, yy), sc.run(post, sc.stepc(yy, Lex.CPunct{Lex.TCloseObj{}}, cc)), run_c(post, yy, sc.stepc(yy,
+    Lex.CPunct{Lex.TCloseObj{}}, cc),
+    init_c_obj(yy, hb, cc)), ha)
+
+
+law io_q:
+  for +lt: Lt
+  for +dd: Nat
+  for +cc: Char
+  rel_q(SOut{lt, dd}, sc.out(lt, dd, Lex.CQuote{}, cc))
+
+def io_q(lt, _dd, _cc):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+
+law iw_q:
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +cc: Char
+  rel_q(SWord{ba, dd}, sc.word(ba, dd, Lex.CQuote{}, cc))
+
+def iw_q(ba, dd, _cc):
+  pick_r_q(Laws.lit_or_num(Lex.text(ba)), SWord{ba, dd}, SBad{}, Unit{})
+
+
+law init_q:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +cc: Char
+  rel_q(yy, sc.stepc(yy, Lex.CQuote{}, cc))
+
+def init_q(yy, hb, cc):
+  match yy:
+    case SOut{lt, dd}:
+      io_q(lt, dd, cc)
+    case SWord{ba, dd}:
+      iw_q(ba, dd, cc)
+    case SIn{dd}:
+      Empty.absurd(rel_q(SIn{dd}, sc.stepc(SIn{dd}, Lex.CQuote{}, cc)), hb)
+    case SEsc{dd}:
+      Empty.absurd(rel_q(SEsc{dd}, sc.stepc(SEsc{dd}, Lex.CQuote{}, cc)), hb)
+    case SBad{}:
+      Unit{}
+
+law cls_q:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +post: String
+  for ha: {sc.acc(sc.run(post, yy)) == True{} : Bool}
+  for +cc: Char
+  {sc.acc(sc.run(post, sc.stepc(yy, Lex.CQuote{}, cc))) == False{} : Bool}
+
+def cls_q(yy, hb, post, ha, cc):
+  acc_q(sc.run(post, yy), sc.run(post, sc.stepc(yy, Lex.CQuote{}, cc)), run_q(post, yy, sc.stepc(yy, Lex.CQuote{}, cc),
+    init_q(yy, hb, cc)), ha)
+
+
+# JSON-TEXT-2: the scan for places between tokens against the character
+# classes the scan of texts reads
+
+# classify, its twelve tests named
+def clb(
+  b91: Bool,
+  b93: Bool,
+  b123: Bool,
+  b125: Bool,
+  b58: Bool,
+  b44: Bool,
+  b34: Bool,
+  b92: Bool,
+  b32: Bool,
+  b10: Bool,
+  b13: Bool,
+  b9: Bool
+) -> Lex.Class:
+  Bool.pick(Lex.Class, b91, Lex.CPunct{Lex.TOpenArr{}}, Bool.pick(Lex.Class, b93, Lex.CPunct{Lex.TCloseArr{}},
+    Bool.pick(Lex.Class, b123, Lex.CPunct{Lex.TOpenObj{}}, Bool.pick(Lex.Class, b125, Lex.CPunct{Lex.TCloseObj{}},
+    Bool.pick(Lex.Class, b58, Lex.CPunct{Lex.TColon{}}, Bool.pick(Lex.Class, b44, Lex.CPunct{Lex.TComma{}},
+    Bool.pick(Lex.Class, b34, Lex.CQuote{}, Bool.pick(Lex.Class, b92, Lex.CBack{}, Bool.pick(Lex.Class, b32,
+    Lex.CSpace{}, Bool.pick(Lex.Class, b10, Lex.CSpace{}, Bool.pick(Lex.Class, b13, Lex.CSpace{}, Bool.pick(Lex.Class,
+    b9, Lex.CSpace{}, Lex.COther{}))))))))))))
+
+# word_char, the same tests named
+def wcb(
+  b91: Bool,
+  b93: Bool,
+  b123: Bool,
+  b125: Bool,
+  b58: Bool,
+  b44: Bool,
+  b34: Bool,
+  b92: Bool,
+  b32: Bool,
+  b10: Bool,
+  b13: Bool,
+  b9: Bool
+) -> Bool:
+  Bool.not(Bool.or(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13))), Bool.or(b91, Bool.or(b93, Bool.or(b123, Bool.or(b125,
+    Bool.or(b58, Bool.or(b44, Bool.or(b34, b92)))))))))
+
+# a word character is one classify calls one
+law cwb:
+  for +b91: Bool
+  for +b93: Bool
+  for +b123: Bool
+  for +b125: Bool
+  for +b58: Bool
+  for +b44: Bool
+  for +b34: Bool
+  for +b92: Bool
+  for +b32: Bool
+  for +b10: Bool
+  for +b13: Bool
+  for +b9: Bool
+  {wcb(b91, b93, b123, b125, b58, b44, b34, b92, b32, b10, b13, b9) == is_oth(clb(b91, b93, b123, b125, b58, b44, b34,
+    b92, b32, b10, b13, b9)) : Bool}
+
+def cwb(b91, b93, b123, b125, b58, b44, b34, b92, b32, b10, b13, b9):
+  match b91:
+    case True{}:
+      Equal.cong(Bool, Bool, zz => Bool.not(zz), Bool.or(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13))), True{}), True{},
+        or_true_r(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13)))))
+    case False{}:
+      match b93:
+        case True{}:
+          Equal.cong(Bool, Bool, zz => Bool.not(zz), Bool.or(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13))), True{}),
+            True{}, or_true_r(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13)))))
+        case False{}:
+          match b123:
+            case True{}:
+              Equal.cong(Bool, Bool, zz => Bool.not(zz), Bool.or(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13))), True{}),
+                True{}, or_true_r(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13)))))
+            case False{}:
+              match b125:
+                case True{}:
+                  Equal.cong(Bool, Bool, zz => Bool.not(zz), Bool.or(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13))),
+                    True{}), True{}, or_true_r(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13)))))
+                case False{}:
+                  match b58:
+                    case True{}:
+                      Equal.cong(Bool, Bool, zz => Bool.not(zz), Bool.or(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13))),
+                        True{}), True{}, or_true_r(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13)))))
+                    case False{}:
+                      match b44:
+                        case True{}:
+                          Equal.cong(Bool, Bool, zz => Bool.not(zz), Bool.or(Bool.or(b32, Bool.or(b9, Bool.or(b10,
+                            b13))), True{}), True{}, or_true_r(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13)))))
+                        case False{}:
+                          match b34:
+                            case True{}:
+                              Equal.cong(Bool, Bool, zz => Bool.not(zz), Bool.or(Bool.or(b32, Bool.or(b9, Bool.or(b10,
+                                b13))), True{}), True{}, or_true_r(Bool.or(b32, Bool.or(b9, Bool.or(b10, b13)))))
+                            case False{}:
+                              match b92:
+                                case True{}:
+                                  Equal.cong(Bool, Bool, zz => Bool.not(zz), Bool.or(Bool.or(b32, Bool.or(b9,
+                                    Bool.or(b10, b13))), True{}), True{}, or_true_r(Bool.or(b32, Bool.or(b9,
+                                    Bool.or(b10, b13)))))
+                                case False{}:
+                                  match b32:
+                                    case True{}:
+                                      {==}
+                                    case False{}:
+                                      match b10:
+                                        case True{}:
+                                          Equal.cong(Bool, Bool, zz => Bool.not(Bool.or(zz, Bool.or(False{},
+                                            Bool.or(False{}, Bool.or(False{}, Bool.or(False{}, Bool.or(False{},
+                                            Bool.or(False{}, Bool.or(False{}, False{}))))))))), Bool.or(b9, True{}),
+                                            True{}, or_true_r(b9))
+                                        case False{}:
+                                          match b13:
+                                            case True{}:
+                                              Equal.cong(Bool, Bool, zz => Bool.not(Bool.or(zz, Bool.or(False{},
+                                                Bool.or(False{}, Bool.or(False{}, Bool.or(False{}, Bool.or(False{},
+                                                Bool.or(False{}, Bool.or(False{}, False{}))))))))), Bool.or(b9,
+                                                True{}), True{}, or_true_r(b9))
+                                            case False{}:
+                                              match b9:
+                                                case True{}:
+                                                  {==}
+                                                case False{}:
+                                                  {==}
+
+
+# word_char and classify agree
+law cw:
+  for +ch: Char
+  {Laws.word_char(ch) == is_oth(Lex.classify(ch)) : Bool}
+
+def cw(ch):
+  match ch:
+    case Chr{+uu}:
+      cwb(U32.is_eq(uu, 91), U32.is_eq(uu, 93), U32.is_eq(uu, 123), U32.is_eq(uu, 125), U32.is_eq(uu, 58),
+        U32.is_eq(uu, 44), U32.is_eq(uu, 34), U32.is_eq(uu, 92), U32.is_eq(uu, 32), U32.is_eq(uu, 10), U32.is_eq(uu,
+        13), U32.is_eq(uu, 9))
+
+
+# the gap scan, a character's class given
+def gps(gg: Laws.Gp, +cls: Lex.Class) -> Laws.Gp:
+  match gg:
+    case Laws.GpOut{_}:
+      Bool.pick(Laws.Gp, is_quote(cls), Laws.GpIn{}, Laws.GpOut{is_oth(cls)})
+    case Laws.GpIn{}:
+      Bool.pick(Laws.Gp, is_back(cls), Laws.GpEsc{}, Bool.pick(Laws.Gp, is_quote(cls), Laws.GpOut{False{}},
+        Laws.GpIn{}))
+    case Laws.GpEsc{}:
+      Laws.GpIn{}
+
+# a word's end on the left
+def wt(ww: Bool) -> Type:
+  match ww:
+    case True{}:
+      Unit
+    case False{}:
+      Empty
+
+# what the two scans have in common: outside strings, in a word only after a
+# word character, in a string, after a backslash in one; or a fault
+def cpt(st: Sc, gg: Laws.Gp) -> Type:
+  match st:
+    case SOut{_, _}:
+      match gg:
+        case Laws.GpOut{_}:
+          Unit
+        case _:
+          Empty
+    case SWord{_, _}:
+      match gg:
+        case Laws.GpOut{ww}:
+          wt(ww)
+        case _:
+          Empty
+    case SIn{_}:
+      match gg:
+        case Laws.GpIn{}:
+          Unit
+        case _:
+          Empty
+    case SEsc{_}:
+      match gg:
+        case Laws.GpEsc{}:
+          Unit
+        case _:
+          Empty
+    case SBad{}:
+      Unit
+
+law pick_cp:
+  for bv: Bool
+  for +xx: Sc
+  for +gg: Laws.Gp
+  for h: cpt(xx, gg)
+  cpt(Bool.pick(Sc, bv, xx, SBad{}), gg)
+
+def pick_cp(bv, _xx, _gg, h):
+  match bv:
+    case True{}:
+      h
+    case False{}:
+      Unit{}
+
+
+law cpo.1:
+  for +lt: Lt
+  for +dd: Nat
+  for +ww: Bool
+  for +ch: Char
+  cpt(sc.out(lt, dd, Lex.CPunct{Lex.TOpenArr{}}, ch), gps(Laws.GpOut{ww}, Lex.CPunct{Lex.TOpenArr{}}))
+
+def cpo.1(lt, _dd, _ww, _ch):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cpo.2:
+  for +lt: Lt
+  for +dd: Nat
+  for +ww: Bool
+  for +ch: Char
+  cpt(sc.out(lt, dd, Lex.CPunct{Lex.TCloseArr{}}, ch), gps(Laws.GpOut{ww}, Lex.CPunct{Lex.TCloseArr{}}))
+
+def cpo.2(lt, dd, _ww, _ch):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      match dd:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          Unit{}
+    case LVal{}:
+      match dd:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          Unit{}
+
+law cpo.3:
+  for +lt: Lt
+  for +dd: Nat
+  for +ww: Bool
+  for +ch: Char
+  cpt(sc.out(lt, dd, Lex.CPunct{Lex.TOpenObj{}}, ch), gps(Laws.GpOut{ww}, Lex.CPunct{Lex.TOpenObj{}}))
+
+def cpo.3(lt, _dd, _ww, _ch):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cpo.4:
+  for +lt: Lt
+  for +dd: Nat
+  for +ww: Bool
+  for +ch: Char
+  cpt(sc.out(lt, dd, Lex.CPunct{Lex.TCloseObj{}}, ch), gps(Laws.GpOut{ww}, Lex.CPunct{Lex.TCloseObj{}}))
+
+def cpo.4(lt, dd, _ww, _ch):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      match dd:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          Unit{}
+    case LVal{}:
+      match dd:
+        case 0n:
+          Unit{}
+        case 1n+n0:
+          Unit{}
+
+law cpo.5:
+  for +lt: Lt
+  for +dd: Nat
+  for +ww: Bool
+  for +ch: Char
+  cpt(sc.out(lt, dd, Lex.CPunct{Lex.TColon{}}, ch), gps(Laws.GpOut{ww}, Lex.CPunct{Lex.TColon{}}))
+
+def cpo.5(lt, _dd, _ww, _ch):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cpo.6:
+  for +lt: Lt
+  for +dd: Nat
+  for +ww: Bool
+  for +ch: Char
+  cpt(sc.out(lt, dd, Lex.CPunct{Lex.TComma{}}, ch), gps(Laws.GpOut{ww}, Lex.CPunct{Lex.TComma{}}))
+
+def cpo.6(lt, _dd, _ww, _ch):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cpo.7:
+  for +lt: Lt
+  for +dd: Nat
+  for +ww: Bool
+  for +ch: Char
+  cpt(sc.out(lt, dd, Lex.CQuote{}, ch), gps(Laws.GpOut{ww}, Lex.CQuote{}))
+
+def cpo.7(lt, _dd, _ww, _ch):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cpo.8:
+  for +lt: Lt
+  for +dd: Nat
+  for +ww: Bool
+  for +ch: Char
+  cpt(sc.out(lt, dd, Lex.COther{}, ch), gps(Laws.GpOut{ww}, Lex.COther{}))
+
+def cpo.8(lt, _dd, _ww, _ch):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+law cpo:
+  for +lt: Lt
+  for +dd: Nat
+  for +ww: Bool
+  for +cls: Lex.Class
+  for +ch: Char
+  cpt(sc.out(lt, dd, cls, ch), gps(Laws.GpOut{ww}, cls))
+
+def cpo(lt, dd, ww, cls, ch):
+  match cls:
+    case Lex.CPunct{tk}:
+      match tk:
+        case Lex.TOpenArr{}:
+          cpo.1(lt, dd, ww, ch)
+        case Lex.TCloseArr{}:
+          cpo.2(lt, dd, ww, ch)
+        case Lex.TOpenObj{}:
+          cpo.3(lt, dd, ww, ch)
+        case Lex.TCloseObj{}:
+          cpo.4(lt, dd, ww, ch)
+        case Lex.TColon{}:
+          cpo.5(lt, dd, ww, ch)
+        case Lex.TComma{}:
+          cpo.6(lt, dd, ww, ch)
+        case Lex.TStr{_x0}:
+          Unit{}
+        case Lex.TWord{_x0}:
+          Unit{}
+        case Lex.TStrS{_x0, _x1}:
+          Unit{}
+        case Lex.TWordS{_x0, _x1}:
+          Unit{}
+        case Lex.TBad{}:
+          Unit{}
+    case Lex.CQuote{}:
+      cpo.7(lt, dd, ww, ch)
+    case Lex.CBack{}:
+      Unit{}
+    case Lex.CSpace{}:
+      Unit{}
+    case Lex.COther{}:
+      cpo.8(lt, dd, ww, ch)
+
+
+law cpw.t.1:
+  for +dd: Nat
+  for +ba: List<&2, Char>
+  for +ch: Char
+  cpt(sc.word(ba, dd, Lex.CPunct{Lex.TCloseArr{}}, ch), gps(Laws.GpOut{True{}}, Lex.CPunct{Lex.TCloseArr{}}))
+
+def cpw.t.1(dd, ba, _ch):
+  match dd:
+    case 0n:
+      pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
+    case 1n+n0:
+      pick_cp(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, n0}, Laws.GpOut{False{}}, Unit{})
+
+law cpw.t.2:
+  for +dd: Nat
+  for +ba: List<&2, Char>
+  for +ch: Char
+  cpt(sc.word(ba, dd, Lex.CPunct{Lex.TCloseObj{}}, ch), gps(Laws.GpOut{True{}}, Lex.CPunct{Lex.TCloseObj{}}))
+
+def cpw.t.2(dd, ba, _ch):
+  match dd:
+    case 0n:
+      pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
+    case 1n+n0:
+      pick_cp(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, n0}, Laws.GpOut{False{}}, Unit{})
+
+law cpw.t:
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  cpt(sc.word(ba, dd, cls, ch), gps(Laws.GpOut{True{}}, cls))
+
+def cpw.t(ba, dd, cls, ch):
+  match cls:
+    case Lex.CPunct{tk}:
+      match tk:
+        case Lex.TOpenArr{}:
+          pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
+        case Lex.TCloseArr{}:
+          cpw.t.1(dd, ba, ch)
+        case Lex.TOpenObj{}:
+          pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
+        case Lex.TCloseObj{}:
+          cpw.t.2(dd, ba, ch)
+        case Lex.TColon{}:
+          pick_cp(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, dd}, Laws.GpOut{False{}}, Unit{})
+        case Lex.TComma{}:
+          pick_cp(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, dd}, Laws.GpOut{False{}}, Unit{})
+        case Lex.TStr{_x0}:
+          pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
+        case Lex.TWord{_x0}:
+          pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
+        case Lex.TStrS{_x0, _x1}:
+          pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
+        case Lex.TWordS{_x0, _x1}:
+          pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
+        case Lex.TBad{}:
+          pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
+    case Lex.CQuote{}:
+      pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpIn{}, Unit{})
+    case Lex.CBack{}:
+      pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
+    case Lex.CSpace{}:
+      pick_cp(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, dd}, Laws.GpOut{False{}}, Unit{})
+    case Lex.COther{}:
+      Unit{}
+
+
+law cpi:
+  for +dd: Nat
+  for +cls: Lex.Class
+  cpt(sc.in(dd, cls), gps(Laws.GpIn{}, cls))
+
+def cpi(_dd, cls):
+  match cls:
+    case Lex.CPunct{tk}:
+      Unit{}
+    case Lex.CQuote{}:
+      Unit{}
+    case Lex.CBack{}:
+      Unit{}
+    case Lex.CSpace{}:
+      Unit{}
+    case Lex.COther{}:
+      Unit{}
+
+
+# is_cp 34 is classify's quotation mark
+law cq.at:
+  for +uu: U32
+  for cls: Lex.Class
+  for e: {Lex.classify(Chr{uu}) == cls : Lex.Class}
+  {U32.is_eq(uu, 34) == is_quote(cls) : Bool}
+
+def cq.at(uu, cls, e):
+  match cls:
+    case Lex.CPunct{+tk}:
+      nq(U32.is_eq(uu, 34), uu, Lex.CPunct{tk}, {==}, e, {==})
+    case Lex.CQuote{}:
+      Equal.cong(U32, Bool, zz => U32.is_eq(zz, 34), uu, 34, cls_quote(Chr{uu}, e))
+    case Lex.CBack{}:
+      nq(U32.is_eq(uu, 34), uu, Lex.CBack{}, {==}, e, {==})
+    case Lex.CSpace{}:
+      nq(U32.is_eq(uu, 34), uu, Lex.CSpace{}, {==}, e, {==})
+    case Lex.COther{}:
+      nq(U32.is_eq(uu, 34), uu, Lex.COther{}, {==}, e, {==})
+
+law cq:
+  for +ch: Char
+  {Laws.is_cp(ch, 34) == is_quote(Lex.classify(ch)) : Bool}
+
+def cq(ch):
+  match ch:
+    case Chr{+uu}:
+      cq.at(uu, Lex.classify(Chr{uu}), {==})
+
+# is_cp 92 is classify's reverse solidus
+law cb.at:
+  for +uu: U32
+  for cls: Lex.Class
+  for e: {Lex.classify(Chr{uu}) == cls : Lex.Class}
+  {U32.is_eq(uu, 92) == is_back(cls) : Bool}
+
+def cb.at(uu, cls, e):
+  match cls:
+    case Lex.CPunct{+tk}:
+      nb(U32.is_eq(uu, 92), uu, Lex.CPunct{tk}, {==}, e, {==})
+    case Lex.CQuote{}:
+      nb(U32.is_eq(uu, 92), uu, Lex.CQuote{}, {==}, e, {==})
+    case Lex.CBack{}:
+      Equal.cong(U32, Bool, zz => U32.is_eq(zz, 92), uu, 92, cls_back(Chr{uu}, e))
+    case Lex.CSpace{}:
+      nb(U32.is_eq(uu, 92), uu, Lex.CSpace{}, {==}, e, {==})
+    case Lex.COther{}:
+      nb(U32.is_eq(uu, 92), uu, Lex.COther{}, {==}, e, {==})
+
+law cb:
+  for +ch: Char
+  {Laws.is_cp(ch, 92) == is_back(Lex.classify(ch)) : Bool}
+
+def cb(ch):
+  match ch:
+    case Chr{+uu}:
+      cb.at(uu, Lex.classify(Chr{uu}), {==})
+
+# the gap scan's step reads only the character's class
+law gp_eq:
+  for +gg: Laws.Gp
+  for +ch: Char
+  {Laws.gp.step(gg, ch) == gps(gg, Lex.classify(ch)) : Laws.Gp}
+
+def gp_eq(gg, ch):
+  match gg:
+    case Laws.GpOut{_ww}:
+      e1 = cq(ch)
+      %e1 : {Bool.pick(Laws.Gp, Laws.is_cp(ch, 34), Laws.GpIn{}, Laws.GpOut{Laws.word_char(ch)}) == Bool.pick(Laws.Gp,
+        _,
+        Laws.GpIn{}, Laws.GpOut{is_oth(Lex.classify(ch))}) : Laws.Gp}
+      e2 = cw(ch)
+      %e2 : {Bool.pick(Laws.Gp, Laws.is_cp(ch, 34), Laws.GpIn{}, Laws.GpOut{Laws.word_char(ch)}) == Bool.pick(Laws.Gp,
+        Laws.is_cp(ch, 34), Laws.GpIn{}, Laws.GpOut{_}) : Laws.Gp}
+      {==}
+    case Laws.GpIn{}:
+      e1 = cb(ch)
+      %e1 : {Bool.pick(Laws.Gp, Laws.is_cp(ch, 92), Laws.GpEsc{}, Bool.pick(Laws.Gp, Laws.is_cp(ch, 34),
+        Laws.GpOut{False{}},
+        Laws.GpIn{})) == Bool.pick(Laws.Gp, _, Laws.GpEsc{}, Bool.pick(Laws.Gp, is_quote(Lex.classify(ch)),
+        Laws.GpOut{False{}}, Laws.GpIn{})) : Laws.Gp}
+      e2 = cq(ch)
+      %e2 : {Bool.pick(Laws.Gp, Laws.is_cp(ch, 92), Laws.GpEsc{}, Bool.pick(Laws.Gp, Laws.is_cp(ch, 34),
+        Laws.GpOut{False{}},
+        Laws.GpIn{})) == Bool.pick(Laws.Gp, Laws.is_cp(ch, 92), Laws.GpEsc{}, Bool.pick(Laws.Gp, _, Laws.GpOut{False{}},
+        Laws.GpIn{})) : Laws.Gp}
+      {==}
+    case Laws.GpEsc{}:
+      {==}
+
+# a word on the left needs a word character before it
+law cpw:
+  for +ww: Bool
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: wt(ww)
+  cpt(sc.word(ba, dd, cls, ch), gps(Laws.GpOut{ww}, cls))
+
+def cpw(ww, ba, dd, cls, ch, h):
+  match ww:
+    case True{}:
+      cpw.t(ba, dd, cls, ch)
+    case False{}:
+      Empty.absurd(cpt(sc.word(ba, dd, cls, ch), gps(Laws.GpOut{False{}}, cls)), h)
+
+# one character keeps the two scans agreeing
+law cps:
+  for +st: Sc
+  for +gg: Laws.Gp
+  for +cls: Lex.Class
+  for +ch: Char
+  for h: cpt(st, gg)
+  cpt(sc.stepc(st, cls, ch), gps(gg, cls))
+
+def cps(st, gg, cls, ch, h):
+  match st gg:
+    case SOut{lt, dd} Laws.GpOut{ww}:
+      cpo(lt, dd, ww, cls, ch)
+    case SOut{lt, dd} Laws.GpIn{}:
+      Empty.absurd(cpt(sc.stepc(SOut{lt, dd}, cls, ch), gps(Laws.GpIn{}, cls)), h)
+    case SOut{lt, dd} Laws.GpEsc{}:
+      Empty.absurd(cpt(sc.stepc(SOut{lt, dd}, cls, ch), gps(Laws.GpEsc{}, cls)), h)
+    case SWord{ba, dd} Laws.GpOut{ww}:
+      cpw(ww, ba, dd, cls, ch, h)
+    case SWord{ba, dd} Laws.GpIn{}:
+      Empty.absurd(cpt(sc.stepc(SWord{ba, dd}, cls, ch), gps(Laws.GpIn{}, cls)), h)
+    case SWord{ba, dd} Laws.GpEsc{}:
+      Empty.absurd(cpt(sc.stepc(SWord{ba, dd}, cls, ch), gps(Laws.GpEsc{}, cls)), h)
+    case SIn{dd} Laws.GpOut{ww}:
+      Empty.absurd(cpt(sc.stepc(SIn{dd}, cls, ch), gps(Laws.GpOut{ww}, cls)), h)
+    case SIn{dd} Laws.GpIn{}:
+      cpi(dd, cls)
+    case SIn{dd} Laws.GpEsc{}:
+      Empty.absurd(cpt(sc.stepc(SIn{dd}, cls, ch), gps(Laws.GpEsc{}, cls)), h)
+    case SEsc{dd} Laws.GpOut{ww}:
+      Empty.absurd(cpt(sc.stepc(SEsc{dd}, cls, ch), gps(Laws.GpOut{ww}, cls)), h)
+    case SEsc{dd} Laws.GpIn{}:
+      Empty.absurd(cpt(sc.stepc(SEsc{dd}, cls, ch), gps(Laws.GpIn{}, cls)), h)
+    case SEsc{_dd} Laws.GpEsc{}:
+      Unit{}
+    case SBad{} _gg:
+      Unit{}
+
+law cp1:
+  for +st: Sc
+  for +gg: Laws.Gp
+  for +hd: Char
+  for h: cpt(st, gg)
+  cpt(sc.step(st, hd), Laws.gp.step(gg, hd))
+
+def cp1(st, gg, hd, h):
+  ge = Equal.sym(Laws.Gp, Laws.gp.step(gg, hd), gps(gg, Lex.classify(hd)), gp_eq(gg, hd))
+  %ge : cpt(sc.step(st, hd), _)
+  cps(st, gg, Lex.classify(hd), hd, h)
+
+# the two scans agree over any text
+law cp_run:
+  for +txt: String
+  for +st: Sc
+  for +gg: Laws.Gp
+  for h: cpt(st, gg)
+  cpt(sc.run(txt, st), Laws.gp.run(txt, gg))
+
+def cp_run(txt, st, gg, h):
+  match txt:
+    case SNil{}:
+      h
+    case SCon{+hd, +tl}:
+      cp_run(tl, sc.step(st, hd), Laws.gp.step(gg, hd), cp1(st, gg, hd, h))
+
+# JSON-TEXT-2: the classes of character put between tokens
+
+# a word's end and a step, in either order
+law pick_step2:
+  for bv: Bool
+  for +yy: Sc
+  for +cls: Lex.Class
+  for +ch: Char
+  {Bool.pick(Sc, bv, sc.stepc(yy, cls, ch), SBad{}) == sc.stepc(Bool.pick(Sc, bv, yy, SBad{}), cls, ch) : Sc}
+
+def pick_step2(bv, _yy, _cls, _ch):
+  match bv:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# a separator right after a word, then no word character
+law sep_w.k:
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  rel_s(Bool.pick(Sc, Laws.lit_or_num(Lex.text(ba)), sc.out(LVal{}, dd, cls, ch), SBad{}),
+    sc.stepc(Bool.pick(Sc, Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, dd}, SBad{}), cls, ch))
+
+def sep_w.k(ba, dd, cls, ch):
+  ps = pick_step2(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, dd}, cls, ch)
+  %ps : rel_s(Bool.pick(Sc, Laws.lit_or_num(Lex.text(ba)), sc.out(LVal{}, dd, cls, ch), SBad{}), _)
+  pick_lr_s(Laws.lit_or_num(Lex.text(ba)), sc.out(LVal{}, dd, cls, ch), sc.stepc(SOut{LSt{}, dd}, cls, ch),
+    cl_s_oo.s(LVal{}, dd, LSt{}, dd, cls, ch, Unit{}))
+
+law sep_w:
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for hn: {is_oth(cls) == False{} : Bool}
+  rel_s(sc.word(ba, dd, cls, ch), sc.stepc(Bool.pick(Sc, Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, dd}, SBad{}), cls,
+    ch))
+
+def sep_w(ba, dd, cls, ch, hn):
+  match cls:
+    case Lex.CPunct{+tk}:
+      sep_w.k(ba, dd, Lex.CPunct{tk}, ch)
+    case Lex.CQuote{}:
+      sep_w.k(ba, dd, Lex.CQuote{}, ch)
+    case Lex.CBack{}:
+      sep_w.k(ba, dd, Lex.CBack{}, ch)
+    case Lex.CSpace{}:
+      sep_w.k(ba, dd, Lex.CSpace{}, ch)
+    case Lex.COther{}:
+      Empty.absurd(rel_s(sc.word(ba, dd, Lex.COther{}, ch), sc.stepc(Bool.pick(Sc, Laws.lit_or_num(Lex.text(ba)),
+        SOut{LSt{}, dd}, SBad{}), Lex.COther{}, ch)), true_false(hn))
+
+# a separator right after a word
+law sep_word:
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +post: String
+  for hg: gw(post)
+  for ha: {sc.acc(sc.run(post, SWord{ba, dd})) == True{} : Bool}
+  {sc.acc(sc.run(post, Bool.pick(Sc, Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, dd}, SBad{}))) == False{} : Bool}
+
+def sep_word(ba, dd, post, hg, ha):
+  match post:
+    case SNil{}:
+      acc_pst(Laws.lit_or_num(Lex.text(ba)), dd)
+    case SCon{+hd, +tl}:
+      +bb = Bool.pick(Sc, Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, dd}, SBad{})
+      acc_s(sc.run(tl, sc.step(SWord{ba, dd}, hd)), sc.run(tl, sc.step(bb, hd)), run_s(tl, sc.step(SWord{ba, dd}, hd),
+        sc.step(bb, hd), sep_w(ba, dd, Lex.classify(hd), hd, hg)), ha)
+
+
+law io_s_col:
+  for +lt: Lt
+  for +dd: Nat
+  for +cc: Char
+  rel_s(SOut{lt, dd}, sc.out(lt, dd, Lex.CPunct{Lex.TColon{}}, cc))
+
+def io_s_col(lt, _dd, _cc):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+
+law cls_s_col:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +post: String
+  for hg: gapw(yy, post)
+  for ha: {sc.acc(sc.run(post, yy)) == True{} : Bool}
+  for +cc: Char
+  {sc.acc(sc.run(post, sc.stepc(yy, Lex.CPunct{Lex.TColon{}}, cc))) == False{} : Bool}
+
+def cls_s_col(yy, hb, post, hg, ha, cc):
+  match yy:
+    case SOut{+lt, +dd}:
+      acc_s(sc.run(post, SOut{lt, dd}), sc.run(post, sc.out(lt, dd, Lex.CPunct{Lex.TColon{}}, cc)), run_s(post,
+        SOut{lt, dd}, sc.out(lt, dd,
+        Lex.CPunct{Lex.TColon{}}, cc), io_s_col(lt, dd, cc)), ha)
+    case SWord{+ba, +dd}:
+      sep_word(ba, dd, post, hg, ha)
+    case SIn{dd}:
+      Empty.absurd({sc.acc(sc.run(post, sc.stepc(SIn{dd}, Lex.CPunct{Lex.TColon{}}, cc))) == False{} : Bool}, hb)
+    case SEsc{dd}:
+      Empty.absurd({sc.acc(sc.run(post, sc.stepc(SEsc{dd}, Lex.CPunct{Lex.TColon{}}, cc))) == False{} : Bool}, hb)
+    case SBad{}:
+      Equal.cong(Sc, Bool, zz => sc.acc(zz), sc.run(post, SBad{}), SBad{}, sc_bad(post))
+
+
+law io_s_com:
+  for +lt: Lt
+  for +dd: Nat
+  for +cc: Char
+  rel_s(SOut{lt, dd}, sc.out(lt, dd, Lex.CPunct{Lex.TComma{}}, cc))
+
+def io_s_com(lt, _dd, _cc):
+  match lt:
+    case LSt{}:
+      Unit{}
+    case LOp{}:
+      Unit{}
+    case LVal{}:
+      Unit{}
+
+
+law cls_s_com:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +post: String
+  for hg: gapw(yy, post)
+  for ha: {sc.acc(sc.run(post, yy)) == True{} : Bool}
+  for +cc: Char
+  {sc.acc(sc.run(post, sc.stepc(yy, Lex.CPunct{Lex.TComma{}}, cc))) == False{} : Bool}
+
+def cls_s_com(yy, hb, post, hg, ha, cc):
+  match yy:
+    case SOut{+lt, +dd}:
+      acc_s(sc.run(post, SOut{lt, dd}), sc.run(post, sc.out(lt, dd, Lex.CPunct{Lex.TComma{}}, cc)), run_s(post,
+        SOut{lt, dd}, sc.out(lt, dd,
+        Lex.CPunct{Lex.TComma{}}, cc), io_s_com(lt, dd, cc)), ha)
+    case SWord{+ba, +dd}:
+      sep_word(ba, dd, post, hg, ha)
+    case SIn{dd}:
+      Empty.absurd({sc.acc(sc.run(post, sc.stepc(SIn{dd}, Lex.CPunct{Lex.TComma{}}, cc))) == False{} : Bool}, hb)
+    case SEsc{dd}:
+      Empty.absurd({sc.acc(sc.run(post, sc.stepc(SEsc{dd}, Lex.CPunct{Lex.TComma{}}, cc))) == False{} : Bool}, hb)
+    case SBad{}:
+      Equal.cong(Sc, Bool, zz => sc.acc(zz), sc.run(post, SBad{}), SBad{}, sc_bad(post))
+
+# a word character where a value may come
+law iw0:
+  for +cc: Char
+  for +lt: Lt
+  for +dd: Nat
+  rel_w(cc, SOut{lt, dd}, sc.wstart(lt, dd, cc))
+
+def iw0(_cc, lt, _dd):
+  match lt:
+    case LSt{}:
+      (Unit{}, {==})
+    case LOp{}:
+      (Unit{}, {==})
+    case LVal{}:
+      Unit{}
+
+# a word character right after a word, then no word character
+law ww1:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +cls: Lex.Class
+  for +ch: Char
+  for hc: {is_oth(cls) == False{} : Bool}
+  rel_w(cc, sc.word(ba, dd, cls, ch), sc.word(cc <> ba, dd, cls, ch))
+
+def ww1(cc, hn, ba, dd, cls, ch, hc):
+  match cls:
+    case Lex.CPunct{+tk}:
+      pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(cc <> ba)), sc.out(LVal{}, dd, Lex.CPunct{tk},
+        ch), sc.out(LVal{}, dd, Lex.CPunct{tk}, ch), ee => lon_cns(cc, hn, ba, ee))
+    case Lex.CQuote{}:
+      pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(cc <> ba)), sc.out(LVal{}, dd, Lex.CQuote{},
+        ch), sc.out(LVal{}, dd, Lex.CQuote{}, ch), ee => lon_cns(cc, hn, ba, ee))
+    case Lex.CBack{}:
+      pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(cc <> ba)), sc.out(LVal{}, dd, Lex.CBack{},
+        ch), sc.out(LVal{}, dd, Lex.CBack{}, ch), ee => lon_cns(cc, hn, ba, ee))
+    case Lex.CSpace{}:
+      pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(cc <> ba)), sc.out(LVal{}, dd, Lex.CSpace{},
+        ch), sc.out(LVal{}, dd, Lex.CSpace{}, ch), ee => lon_cns(cc, hn, ba, ee))
+    case Lex.COther{}:
+      Empty.absurd(rel_w(cc, sc.word(ba, dd, Lex.COther{}, ch), sc.word(cc <> ba, dd, Lex.COther{}, ch)),
+        true_false(hc))
+
+# a word character right after a word
+law word_word:
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +post: String
+  for hg: gw(post)
+  for ha: {sc.acc(sc.run(post, SWord{ba, dd})) == True{} : Bool}
+  {sc.acc(sc.run(post, SWord{cc <> ba, dd})) == False{} : Bool}
+
+def word_word(cc, hn, ba, dd, post, hg, ha):
+  match post:
+    case SNil{}:
+      ls = Equal.sym(Bool, Laws.lit_or_num(Lex.text(cc <> ba)), False{}, lon_cns(cc, hn, ba,
+        tpt(Laws.lit_or_num(Lex.text(ba)), dd, ha)))
+      %ls : {sc.top(Bool.pick(Sc, _, SOut{LVal{}, dd}, SBad{})) == False{} : Bool}
+      {==}
+    case SCon{+hd, +tl}:
+      acc_w(cc, hn, sc.run(tl, sc.step(SWord{ba, dd}, hd)), sc.run(tl, sc.step(SWord{cc <> ba, dd}, hd)), run_w(cc, hn,
+        tl, sc.step(SWord{ba, dd}, hd), sc.step(SWord{cc <> ba, dd}, hd), ww1(cc, hn, ba, dd, Lex.classify(hd), hd,
+          hg)),
+        ha)
+
+law cls_w:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +post: String
+  for hg: gapw(yy, post)
+  for ha: {sc.acc(sc.run(post, yy)) == True{} : Bool}
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  {sc.acc(sc.run(post, sc.stepc(yy, Lex.COther{}, cc))) == False{} : Bool}
+
+def cls_w(yy, hb, post, hg, ha, cc, hn):
+  match yy:
+    case SOut{+lt, +dd}:
+      acc_w(cc, hn, sc.run(post, SOut{lt, dd}), sc.run(post, sc.wstart(lt, dd, cc)), run_w(cc, hn, post, SOut{lt, dd},
+        sc.wstart(lt, dd, cc), iw0(cc, lt, dd)), ha)
+    case SWord{+ba, +dd}:
+      word_word(cc, hn, ba, dd, post, hg, ha)
+    case SIn{dd}:
+      Empty.absurd({sc.acc(sc.run(post, sc.stepc(SIn{dd}, Lex.COther{}, cc))) == False{} : Bool}, hb)
+    case SEsc{dd}:
+      Empty.absurd({sc.acc(sc.run(post, sc.stepc(SEsc{dd}, Lex.COther{}, cc))) == False{} : Bool}, hb)
+    case SBad{}:
+      Equal.cong(Sc, Bool, zz => sc.acc(zz), sc.run(post, SBad{}), SBad{}, sc_bad(post))
+
+# a character the scan faults on outside strings
+def tbad(tk: Lex.Tok) -> Bool:
+  match tk:
+    case Lex.TStr{_}:
+      True{}
+    case Lex.TWord{_}:
+      True{}
+    case Lex.TStrS{_, _}:
+      True{}
+    case Lex.TWordS{_, _}:
+      True{}
+    case Lex.TBad{}:
+      True{}
+    case _:
+      False{}
+
+def cbad(cls: Lex.Class) -> Bool:
+  match cls:
+    case Lex.CPunct{tk}:
+      tbad(tk)
+    case Lex.CBack{}:
+      True{}
+    case _:
+      False{}
+
+law ib_o:
+  for +cls: Lex.Class
+  for +cc: Char
+  for +lt: Lt
+  for +dd: Nat
+  for hbad: {cbad(cls) == True{} : Bool}
+  rel_s(SOut{lt, dd}, sc.out(lt, dd, cls, cc))
+
+def ib_o(cls, cc, lt, dd, hbad):
+  match cls:
+    case Lex.CPunct{tk}:
+      match tk:
+        case Lex.TOpenArr{}:
+          no(rel_s(SOut{lt, dd}, sc.out(lt, dd, Lex.CPunct{Lex.TOpenArr{}}, cc)), hbad)
+        case Lex.TCloseArr{}:
+          no(rel_s(SOut{lt, dd}, sc.out(lt, dd, Lex.CPunct{Lex.TCloseArr{}}, cc)), hbad)
+        case Lex.TOpenObj{}:
+          no(rel_s(SOut{lt, dd}, sc.out(lt, dd, Lex.CPunct{Lex.TOpenObj{}}, cc)), hbad)
+        case Lex.TCloseObj{}:
+          no(rel_s(SOut{lt, dd}, sc.out(lt, dd, Lex.CPunct{Lex.TCloseObj{}}, cc)), hbad)
+        case Lex.TColon{}:
+          no(rel_s(SOut{lt, dd}, sc.out(lt, dd, Lex.CPunct{Lex.TColon{}}, cc)), hbad)
+        case Lex.TComma{}:
+          no(rel_s(SOut{lt, dd}, sc.out(lt, dd, Lex.CPunct{Lex.TComma{}}, cc)), hbad)
+        case Lex.TStr{_x0}:
+          Unit{}
+        case Lex.TWord{_x0}:
+          Unit{}
+        case Lex.TStrS{_x0, _x1}:
+          Unit{}
+        case Lex.TWordS{_x0, _x1}:
+          Unit{}
+        case Lex.TBad{}:
+          Unit{}
+    case Lex.CQuote{}:
+      no(rel_s(SOut{lt, dd}, sc.out(lt, dd, Lex.CQuote{}, cc)), hbad)
+    case Lex.CBack{}:
+      Unit{}
+    case Lex.CSpace{}:
+      no(rel_s(SOut{lt, dd}, sc.out(lt, dd, Lex.CSpace{}, cc)), hbad)
+    case Lex.COther{}:
+      no(rel_s(SOut{lt, dd}, sc.out(lt, dd, Lex.COther{}, cc)), hbad)
+
+law ib_w:
+  for +cls: Lex.Class
+  for +cc: Char
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for hbad: {cbad(cls) == True{} : Bool}
+  rel_s(SWord{ba, dd}, sc.word(ba, dd, cls, cc))
+
+def ib_w(cls, cc, ba, dd, hbad):
+  match cls:
+    case Lex.CPunct{tk}:
+      match tk:
+        case Lex.TOpenArr{}:
+          no(rel_s(SWord{ba, dd}, sc.word(ba, dd, Lex.CPunct{Lex.TOpenArr{}}, cc)), hbad)
+        case Lex.TCloseArr{}:
+          no(rel_s(SWord{ba, dd}, sc.word(ba, dd, Lex.CPunct{Lex.TCloseArr{}}, cc)), hbad)
+        case Lex.TOpenObj{}:
+          no(rel_s(SWord{ba, dd}, sc.word(ba, dd, Lex.CPunct{Lex.TOpenObj{}}, cc)), hbad)
+        case Lex.TCloseObj{}:
+          no(rel_s(SWord{ba, dd}, sc.word(ba, dd, Lex.CPunct{Lex.TCloseObj{}}, cc)), hbad)
+        case Lex.TColon{}:
+          no(rel_s(SWord{ba, dd}, sc.word(ba, dd, Lex.CPunct{Lex.TColon{}}, cc)), hbad)
+        case Lex.TComma{}:
+          no(rel_s(SWord{ba, dd}, sc.word(ba, dd, Lex.CPunct{Lex.TComma{}}, cc)), hbad)
+        case Lex.TStr{_x0}:
+          pick_r_s(Laws.lit_or_num(Lex.text(ba)), SWord{ba, dd}, SBad{}, Unit{})
+        case Lex.TWord{_x0}:
+          pick_r_s(Laws.lit_or_num(Lex.text(ba)), SWord{ba, dd}, SBad{}, Unit{})
+        case Lex.TStrS{_x0, _x1}:
+          pick_r_s(Laws.lit_or_num(Lex.text(ba)), SWord{ba, dd}, SBad{}, Unit{})
+        case Lex.TWordS{_x0, _x1}:
+          pick_r_s(Laws.lit_or_num(Lex.text(ba)), SWord{ba, dd}, SBad{}, Unit{})
+        case Lex.TBad{}:
+          pick_r_s(Laws.lit_or_num(Lex.text(ba)), SWord{ba, dd}, SBad{}, Unit{})
+    case Lex.CQuote{}:
+      no(rel_s(SWord{ba, dd}, sc.word(ba, dd, Lex.CQuote{}, cc)), hbad)
+    case Lex.CBack{}:
+      pick_r_s(Laws.lit_or_num(Lex.text(ba)), SWord{ba, dd}, SBad{}, Unit{})
+    case Lex.CSpace{}:
+      no(rel_s(SWord{ba, dd}, sc.word(ba, dd, Lex.CSpace{}, cc)), hbad)
+    case Lex.COther{}:
+      no(rel_s(SWord{ba, dd}, sc.word(ba, dd, Lex.COther{}, cc)), hbad)
+
+law init_b:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +cls: Lex.Class
+  for +cc: Char
+  for +hbad: {cbad(cls) == True{} : Bool}
+  rel_s(yy, sc.stepc(yy, cls, cc))
+
+def init_b(yy, hb, cls, cc, hbad):
+  match yy:
+    case SOut{lt, dd}:
+      ib_o(cls, cc, lt, dd, hbad)
+    case SWord{ba, dd}:
+      ib_w(cls, cc, ba, dd, hbad)
+    case SIn{dd}:
+      Empty.absurd(rel_s(SIn{dd}, sc.stepc(SIn{dd}, cls, cc)), hb)
+    case SEsc{dd}:
+      Empty.absurd(rel_s(SEsc{dd}, sc.stepc(SEsc{dd}, cls, cc)), hb)
+    case SBad{}:
+      Unit{}
+
+law cls_b:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +post: String
+  for ha: {sc.acc(sc.run(post, yy)) == True{} : Bool}
+  for +cc: Char
+  for +cls: Lex.Class
+  for hbad: {cbad(cls) == True{} : Bool}
+  {sc.acc(sc.run(post, sc.stepc(yy, cls, cc))) == False{} : Bool}
+
+def cls_b(yy, hb, post, ha, cc, cls, hbad):
+  acc_s(sc.run(post, yy), sc.run(post, sc.stepc(yy, cls, cc)), run_s(post, yy, sc.stepc(yy, cls, cc), init_b(yy, hb,
+    cls, cc, hbad)), ha)
+
+# JSON-TEXT-2: any character but whitespace, a digit or `-` put at a place
+# between tokens: the scan without it accepts, with it it does not
+law by_cls.at:
+  for +yy: Sc
+  for hb: bnd(yy)
+  for +post: String
+  for hg: gapw(yy, post)
+  for ha: {sc.acc(sc.run(post, yy)) == True{} : Bool}
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +hw: {Laws.is_ws(cc) == False{} : Bool}
+  for +cls: Lex.Class
+  for +e: {Lex.classify(cc) == cls : Lex.Class}
+  {sc.acc(sc.run(post, sc.stepc(yy, cls, cc))) == False{} : Bool}
+
+def by_cls.at(yy, hb, post, hg, ha, cc, hn, hw, cls, e):
+  match cls:
+    case Lex.CPunct{tk}:
+      match tk:
+        case Lex.TOpenArr{}:
+          cls_o_arr(yy, hb, post, ha, cc)
+        case Lex.TCloseArr{}:
+          cls_c_arr(yy, hb, post, ha, cc)
+        case Lex.TOpenObj{}:
+          cls_o_obj(yy, hb, post, ha, cc)
+        case Lex.TCloseObj{}:
+          cls_c_obj(yy, hb, post, ha, cc)
+        case Lex.TColon{}:
+          cls_s_col(yy, hb, post, hg, ha, cc)
+        case Lex.TComma{}:
+          cls_s_com(yy, hb, post, hg, ha, cc)
+        case Lex.TStr{x0}:
+          cls_b(yy, hb, post, ha, cc, Lex.CPunct{Lex.TStr{x0}}, {==})
+        case Lex.TWord{x0}:
+          cls_b(yy, hb, post, ha, cc, Lex.CPunct{Lex.TWord{x0}}, {==})
+        case Lex.TStrS{x0, x1}:
+          cls_b(yy, hb, post, ha, cc, Lex.CPunct{Lex.TStrS{x0, x1}}, {==})
+        case Lex.TWordS{x0, x1}:
+          cls_b(yy, hb, post, ha, cc, Lex.CPunct{Lex.TWordS{x0, x1}}, {==})
+        case Lex.TBad{}:
+          cls_b(yy, hb, post, ha, cc, Lex.CPunct{Lex.TBad{}}, {==})
+    case Lex.CQuote{}:
+      cls_q(yy, hb, post, ha, cc)
+    case Lex.CBack{}:
+      cls_b(yy, hb, post, ha, cc, Lex.CBack{}, {==})
+    case Lex.CSpace{}:
+      Empty.absurd({sc.acc(sc.run(post, sc.stepc(yy, Lex.CSpace{}, cc))) == False{} : Bool},
+        true_false(Equal.trans(Bool, True{}, Laws.is_ws(cc), False{}, Equal.sym(Bool, Laws.is_ws(cc), True{},
+        cls_space(cc, e)), hw)))
+    case Lex.COther{}:
+      cls_w(yy, hb, post, hg, ha, cc, hn)
+
+# after a word, the text after the place starts with no word character
+law gw_of:
+  for +post: String
+  for hg: {Laws.gap.at(Laws.GpOut{True{}}, post) == True{} : Bool}
+  gw(post)
+
+def gw_of(post, hg):
+  match post:
+    case SNil{}:
+      Unit{}
+    case SCon{+hd, _tl}:
+      Equal.trans(Bool, is_oth(Lex.classify(hd)), Laws.word_char(hd), False{}, Equal.sym(Bool, Laws.word_char(hd),
+        is_oth(Lex.classify(hd)), cw(hd)), not_true(Laws.word_char(hd), hg))
+
+law ins_w:
+  for +ww: Bool
+  for +ba: List<&2, Char>
+  for +dd: Nat
+  for +post: String
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +hw: {Laws.is_ws(cc) == False{} : Bool}
+  for hc: wt(ww)
+  for hg: {Laws.gap.at(Laws.GpOut{ww}, post) == True{} : Bool}
+  for ha: {sc.acc(sc.run(post, SWord{ba, dd})) == True{} : Bool}
+  {sc.acc(sc.run(post, sc.step(SWord{ba, dd}, cc))) == False{} : Bool}
+
+def ins_w(ww, ba, dd, post, cc, hn, hw, hc, hg, ha):
+  match ww:
+    case True{}:
+      by_cls.at(SWord{ba, dd}, Unit{}, post, gw_of(post, hg), ha, cc, hn, hw, Lex.classify(cc), {==})
+    case False{}:
+      Empty.absurd({sc.acc(sc.run(post, sc.step(SWord{ba, dd}, cc))) == False{} : Bool}, hc)
+
+# the place after the scan of pre: a character put there makes the scan fail
+law ins_at:
+  for +yy: Sc
+  for +gg: Laws.Gp
+  for +post: String
+  for +cc: Char
+  for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
+  for +hw: {Laws.is_ws(cc) == False{} : Bool}
+  for hc: cpt(yy, gg)
+  for hg: {Laws.gap.at(gg, post) == True{} : Bool}
+  for ha: {sc.acc(sc.run(post, yy)) == True{} : Bool}
+  {sc.acc(sc.run(post, sc.step(yy, cc))) == False{} : Bool}
+
+def ins_at(yy, gg, post, cc, hn, hw, hc, hg, ha):
+  match yy gg:
+    case SOut{+lt, +dd} Laws.GpOut{_ww}:
+      by_cls.at(SOut{lt, dd}, Unit{}, post, Unit{}, ha, cc, hn, hw, Lex.classify(cc), {==})
+    case SOut{lt, dd} Laws.GpIn{}:
+      Empty.absurd({sc.acc(sc.run(post, sc.step(SOut{lt, dd}, cc))) == False{} : Bool}, hc)
+    case SOut{lt, dd} Laws.GpEsc{}:
+      Empty.absurd({sc.acc(sc.run(post, sc.step(SOut{lt, dd}, cc))) == False{} : Bool}, hc)
+    case SWord{ba, dd} Laws.GpOut{ww}:
+      ins_w(ww, ba, dd, post, cc, hn, hw, hc, hg, ha)
+    case SWord{ba, dd} Laws.GpIn{}:
+      Empty.absurd({sc.acc(sc.run(post, sc.step(SWord{ba, dd}, cc))) == False{} : Bool}, hc)
+    case SWord{ba, dd} Laws.GpEsc{}:
+      Empty.absurd({sc.acc(sc.run(post, sc.step(SWord{ba, dd}, cc))) == False{} : Bool}, hc)
+    case SIn{dd} Laws.GpOut{ww}:
+      Empty.absurd({sc.acc(sc.run(post, sc.step(SIn{dd}, cc))) == False{} : Bool}, hc)
+    case SIn{dd} Laws.GpIn{}:
+      no({sc.acc(sc.run(post, sc.step(SIn{dd}, cc))) == False{} : Bool}, hg)
+    case SIn{dd} Laws.GpEsc{}:
+      Empty.absurd({sc.acc(sc.run(post, sc.step(SIn{dd}, cc))) == False{} : Bool}, hc)
+    case SEsc{dd} Laws.GpOut{ww}:
+      Empty.absurd({sc.acc(sc.run(post, sc.step(SEsc{dd}, cc))) == False{} : Bool}, hc)
+    case SEsc{dd} Laws.GpIn{}:
+      Empty.absurd({sc.acc(sc.run(post, sc.step(SEsc{dd}, cc))) == False{} : Bool}, hc)
+    case SEsc{dd} Laws.GpEsc{}:
+      no({sc.acc(sc.run(post, sc.step(SEsc{dd}, cc))) == False{} : Bool}, hg)
+    case SBad{} _gg:
+      no({sc.acc(sc.run(post, sc.step(SBad{}, cc))) == False{} : Bool}, Equal.trans(Bool, False{},
+        sc.acc(sc.run(post, SBad{})), True{}, Equal.sym(Bool, sc.acc(sc.run(post, SBad{})), False{}, Equal.cong(Sc,
+          Bool,
+        zz => sc.acc(zz), sc.run(post, SBad{}), SBad{}, sc_bad(post))), ha))
+
+# a text that parses passes the scan
+law acc_td2:
+  for +txt: String
+  for +wa: String
+  for +gg: Laws.Gv
+  for +wb: String
+  for e: {txt == wa ++ Laws.g.text(gg) ++ wb : String}
+  for d: {Laws.derived(wa, gg, wb) == True{} : Bool}
+  {sc.acc(sc.run(txt, SOut{LSt{}, 0n})) == True{} : Bool}
+
+def acc_td2(txt, wa, gg, wb, e, d):
+  Equal.trans(Bool, sc.acc(sc.run(txt, SOut{LSt{}, 0n})), sc.acc(sc.run(wa ++ Laws.g.text(gg) ++ wb, SOut{LSt{}, 0n})),
+    True{}, Equal.cong(String, Bool, zz => sc.acc(sc.run(zz, SOut{LSt{}, 0n})), txt, wa ++ Laws.g.text(gg) ++ wb, e),
+    acc_der(wa, gg, wb, d))
+
+law acc_td:
+  for +txt: String
+  for r: (&wa: String -> &gg: Laws.Gv -> &wb: String -> ({txt == wa ++ Laws.g.text(gg) ++ wb : String} &
+    {Laws.derived(wa, gg, wb) == True{} : Bool}))
+  {sc.acc(sc.run(txt, SOut{LSt{}, 0n})) == True{} : Bool}
+
+def acc_td(txt, r):
+  (wa, (gg, (wb, (e, d)))) = r
+  acc_td2(txt, wa, gg, wb, e, d)
+
+law acc_txt:
+  for +txt: String
+  for h_s: {Laws.short(txt) == True{} : Bool}
+  for h_p: {Laws.is_some(Ezjson.parse(txt)) == True{} : Bool}
+  {sc.acc(sc.run(txt, SOut{LSt{}, 0n})) == True{} : Bool}
+
+def acc_txt(txt, h_s, h_p):
+  acc_td(txt, Laws.text_derives(txt, h_s, h_p))
+
+# a parse result that is not Some is None
+law none_of:
+  for +mb: Maybe<&2, V.Json>
+  for h: {Laws.is_some(mb) == False{} : Bool}
+  {mb == None{} : Maybe<&2, V.Json>}
+
+def none_of(mb, h):
+  match mb:
+    case None{}:
+      {==}
+    case Some{_jj}:
+      Empty.absurd({Some{_jj} == None{} : Maybe<&2, V.Json>}, true_false(h))
+
+# a text the scan does not accept does not parse
+law none_by.at:
+  for bv: Bool
+  for +txt: String
+  for e: {Laws.is_some(Ezjson.parse(txt)) == bv : Bool}
+  for h_t: {Laws.short(txt) == True{} : Bool}
+  for k: {sc.acc(sc.run(txt, SOut{LSt{}, 0n})) == False{} : Bool}
+  {Ezjson.parse(txt) == None{} : Maybe<&2, V.Json>}
+
+def none_by.at(bv, txt, e, h_t, k):
+  match bv:
+    case True{}:
+      Empty.absurd({Ezjson.parse(txt) == None{} : Maybe<&2, V.Json>}, true_false(Equal.trans(Bool, True{},
+        sc.acc(sc.run(txt, SOut{LSt{}, 0n})), False{}, Equal.sym(Bool, sc.acc(sc.run(txt, SOut{LSt{}, 0n})), True{},
+        acc_txt(txt, h_t, e)), k)))
+    case False{}:
+      none_of(Ezjson.parse(txt), e)
+
+def Laws.ins_none(pre, post, ch, h_p, h_g, h_w, h_n, h_s, h_t):
+  k2 = Equal.trans(Bool, sc.acc(sc.run(post, sc.run(pre, SOut{LSt{}, 0n}))), sc.acc(sc.run(pre ++ post, SOut{LSt{},
+    0n})), True{}, Equal.cong(Sc, Bool,
+    zz => sc.acc(zz), sc.run(post, sc.run(pre, SOut{LSt{}, 0n})), sc.run(pre ++ post, SOut{LSt{}, 0n}), Equal.sym(Sc,
+      sc.run(pre ++ post, SOut{LSt{}, 0n}), sc.run(post, sc.run(pre, SOut{LSt{}, 0n})),
+    sc_app(pre, post, SOut{LSt{}, 0n}))), acc_txt(pre ++ post, h_s, h_p))
+  k3 = ins_at(sc.run(pre, SOut{LSt{}, 0n}), Laws.gp.run(pre, Laws.GpOut{False{}}), post, ch, h_n, h_w, cp_run(pre,
+    SOut{LSt{}, 0n}, Laws.GpOut{False{}},
+    Unit{}), h_g, k2)
+  k4 = Equal.trans(Bool, sc.acc(sc.run(pre ++ SCon{ch, post}, SOut{LSt{}, 0n})), sc.acc(sc.run(SCon{ch, post},
+    sc.run(pre, SOut{LSt{}, 0n}))), False{},
+    Equal.cong(Sc, Bool, zz => sc.acc(zz), sc.run(pre ++ SCon{ch, post}, SOut{LSt{}, 0n}), sc.run(SCon{ch, post},
+      sc.run(pre, SOut{LSt{}, 0n})), sc_app(pre,
+    SCon{ch, post}, SOut{LSt{}, 0n})), k3)
+  none_by.at(Laws.is_some(Ezjson.parse(pre ++ SCon{ch, post})), pre ++ SCon{ch, post}, {==}, h_t, k4)
+
 # JSON-TREE-6: Nat arithmetic, for as_u32's U32 steps
 
 # the predecessor of a Nat
