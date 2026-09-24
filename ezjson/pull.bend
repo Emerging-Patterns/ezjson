@@ -175,6 +175,15 @@ def expect.str(stack: List<&2, Frame>, done: Bool) -> Bool:
     case False{}:
       expect.str.go(stack)
 
+# a string can start here for this goal. A skip of one whole value must
+# start a value, so a key there fails at once, as it would once read
+def expect.str.for(stack: List<&2, Frame>, goal: Goal, done: Bool) -> Bool:
+  match goal:
+    case GSkip{0n}:
+      expect.val(stack, done)
+    case _:
+      expect.str(stack, done)
+
 # the stack after a value, and whether that value was the root
 def place.spot(stack: List<&2, Frame>) -> Spot:
   match stack:
@@ -513,7 +522,7 @@ def look.word(+ch: Char, stack: List<&2, Frame>, goal: Goal, done: Bool, ok: Boo
 def look.plan(
   ch: Char,
   +stack: List<&2, Frame>,
-  goal: Goal,
+  +goal: Goal,
   +done: Bool,
   cls: Lex.Class
 ) -> St:
@@ -523,7 +532,7 @@ def look.plan(
     case Lex.CPunct{tok}:
       punct.on(tok, stack, goal, done)
     case Lex.CQuote{}:
-      look.quote(stack, goal, done, expect.str(stack, done))
+      look.quote(stack, goal, done, expect.str.for(stack, goal, done))
     case Lex.CBack{}:
       err.st(goal)
     case Lex.COther{}:

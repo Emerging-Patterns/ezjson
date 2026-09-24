@@ -3,6 +3,7 @@ import Base
 import ./value.bend as V
 import ./main.bend as Ezjson
 import ./lazy.bend as Lazy
+import ./lex.bend as Lex
 import ./print.bend as Print
 import ./pull.bend as Pull
 import ./LAWS.bend as Laws
@@ -1581,3 +1582,303 @@ def Laws.pull_end_ends(cur, h_end):
 def Laws.pull_ended_next(_stack):
   {==}
 
+# whitespace, once whether the code is 13 is known
+law ws_d:
+  for +uu: U32
+  for bb: Bool
+  for eb: {U32.is_eq(uu, 13) == bb : Bool}
+  for h_ws: {bb == True{} : Bool}
+  {Lex.classify(Chr{uu}) == Lex.CSpace{} : Lex.Class}
+
+def ws_d(uu, bb, eb, h_ws):
+  match bb:
+    case True{}:
+      ek = Equal.sym(U32, uu, 13, ueq(uu, 13, eb))
+      %ek : {Lex.classify(Chr{_}) == Lex.CSpace{} : Lex.Class}
+      {==}
+    case False{}:
+      Empty.absurd({Lex.classify(Chr{uu}) == Lex.CSpace{} : Lex.Class}, false_true(h_ws))
+
+# whitespace, once whether the code is 10 is known
+law ws_c:
+  for +uu: U32
+  for bb: Bool
+  for eb: {U32.is_eq(uu, 10) == bb : Bool}
+  for h_ws: {Bool.or(bb, U32.is_eq(uu, 13)) == True{} : Bool}
+  {Lex.classify(Chr{uu}) == Lex.CSpace{} : Lex.Class}
+
+def ws_c(uu, bb, eb, h_ws):
+  match bb:
+    case True{}:
+      ek = Equal.sym(U32, uu, 10, ueq(uu, 10, eb))
+      %ek : {Lex.classify(Chr{_}) == Lex.CSpace{} : Lex.Class}
+      {==}
+    case False{}:
+      ws_d(uu, U32.is_eq(uu, 13), {==}, h_ws)
+
+# whitespace, once whether the code is 9 is known
+law ws_b:
+  for +uu: U32
+  for bb: Bool
+  for eb: {U32.is_eq(uu, 9) == bb : Bool}
+  for h_ws: {Bool.or(bb, Bool.or(U32.is_eq(uu, 10), U32.is_eq(uu, 13))) == True{} : Bool}
+  {Lex.classify(Chr{uu}) == Lex.CSpace{} : Lex.Class}
+
+def ws_b(uu, bb, eb, h_ws):
+  match bb:
+    case True{}:
+      ek = Equal.sym(U32, uu, 9, ueq(uu, 9, eb))
+      %ek : {Lex.classify(Chr{_}) == Lex.CSpace{} : Lex.Class}
+      {==}
+    case False{}:
+      ws_c(uu, U32.is_eq(uu, 10), {==}, h_ws)
+
+# whitespace, once whether the code is 32 is known
+law ws_a:
+  for +uu: U32
+  for bb: Bool
+  for eb: {U32.is_eq(uu, 32) == bb : Bool}
+  for h_ws: {Bool.or(bb, Bool.or(U32.is_eq(uu, 9), Bool.or(U32.is_eq(uu, 10), U32.is_eq(uu, 13)))) == True{} : Bool}
+  {Lex.classify(Chr{uu}) == Lex.CSpace{} : Lex.Class}
+
+def ws_a(uu, bb, eb, h_ws):
+  match bb:
+    case True{}:
+      ek = Equal.sym(U32, uu, 32, ueq(uu, 32, eb))
+      %ek : {Lex.classify(Chr{_}) == Lex.CSpace{} : Lex.Class}
+      {==}
+    case False{}:
+      ws_b(uu, U32.is_eq(uu, 9), {==}, h_ws)
+
+# the cursor steps over whitespace between tokens, keeping its state, from
+# one character on, the rest given
+law go_ws.cons:
+  for +ff: Nat
+  for +uu: U32
+  for +tl: String
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +goal: Pull.Goal
+  for got: ({Laws.is_ws(Chr{uu}) == True{} : Bool} & {Laws.all_ws(tl) == True{} : Bool})
+  for ih: {Laws.all_ws(tl) == True{} : Bool}
+    -> {Pull.next.go(1n+ff, tl ++ tail, Pull.S{Pull.MIdle{}, stack, goal, False{}, False{}})
+      == Pull.next.go(1n+ff, tail, Pull.S{Pull.MIdle{}, stack, goal, False{}, False{}}) : Pull.Out}
+  {Pull.next.go(1n+ff, SCon{Chr{uu}, tl ++ tail}, Pull.S{Pull.MIdle{}, stack, goal, False{}, False{}})
+    == Pull.next.go(1n+ff, tail, Pull.S{Pull.MIdle{}, stack, goal, False{}, False{}}) : Pull.Out}
+
+def go_ws.cons(ff, uu, tl, tail, stack, goal, got, ih):
+  (e1, e2) = got
+  cls = Equal.sym(Lex.Class, Lex.classify(Chr{uu}), Lex.CSpace{}, ws_a(uu, U32.is_eq(uu, 32), {==}, e1))
+  %cls : {Pull.next.go(1n+ff, tl ++ tail, Pull.look.plan(Chr{uu}, stack, goal, False{}, _))
+    == Pull.next.go(1n+ff, tail, Pull.S{Pull.MIdle{}, stack, goal, False{}, False{}}) : Pull.Out}
+  ih(e2)
+
+# the cursor steps over whitespace between tokens, keeping its state
+law go_ws:
+  for +ff: Nat
+  for +ws: String
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +goal: Pull.Goal
+  for h_ws: {Laws.all_ws(ws) == True{} : Bool}
+  {Pull.next.go(1n+ff, ws ++ tail, Pull.S{Pull.MIdle{}, stack, goal, False{}, False{}})
+    == Pull.next.go(1n+ff, tail, Pull.S{Pull.MIdle{}, stack, goal, False{}, False{}}) : Pull.Out}
+
+def go_ws(ff, ws, tail, stack, goal, h_ws):
+  match ws:
+    case SNil{}:
+      {==}
+    case SCon{Chr{+uu}, +tl}:
+      go_ws.cons(ff, uu, tl, tail, stack, goal, and_both(Laws.is_ws(Chr{uu}), Laws.all_ws(tl), h_ws),
+        hh => go_ws(ff, tl, tail, stack, goal, hh))
+
+# a walk steps over whitespace between tokens, keeping its state
+law walk_ws:
+  for +ws: String
+  for +tail: String
+  for +stack: List<&2, Pull.Frame>
+  for +goal: Pull.Goal
+  for h_ws: {Laws.all_ws(ws) == True{} : Bool}
+  {Pull.next.walk(ws ++ tail, Pull.S{Pull.MIdle{}, stack, goal, False{}, False{}})
+    == Pull.next.walk(tail, Pull.S{Pull.MIdle{}, stack, goal, False{}, False{}}) : (Pull.Stop & Pull.Cur)}
+
+def walk_ws(ws, tail, stack, goal, h_ws):
+  Equal.cong(Pull.Out, (Pull.Stop & Pull.Cur), xx => Pull.next.fin(Pull.next.grow(32n, 1n, xx)),
+    Pull.next.go(4n, ws ++ tail, Pull.S{Pull.MIdle{}, stack, goal, False{}, False{}}),
+    Pull.next.go(4n, tail, Pull.S{Pull.MIdle{}, stack, goal, False{}, False{}}),
+    go_ws(3n, ws, tail, stack, goal, h_ws))
+
+# a finished step returns its answer, whatever text is left
+law go_done:
+  for +ff: Nat
+  for +txt: String
+  for stop: Pull.Stop
+  for saved: String
+  for stack: List<&2, Pull.Frame>
+  for goal: Pull.Goal
+  for done: Bool
+  for bad: Bool
+  {Pull.next.go(1n+ff, txt, Pull.S{Pull.MDone{stop, saved}, stack, goal, done, bad})
+    == Pull.Fin{(stop, Pull.Cur{saved, stack, done, bad})} : Pull.Out}
+
+def go_done(_ff, txt, _stop, _saved, _stack, _goal, _done, _bad):
+  match txt:
+    case SNil{}:
+      {==}
+    case SCon{_, _}:
+      {==}
+
+def Laws.skip_key(ws, key, fresh, stack, h_ws):
+  we = Equal.sym((Pull.Stop & Pull.Cur),
+    Pull.next.walk(ws ++ SCon{'"', key},
+      Pull.S{Pull.MIdle{}, Pull.FObj{Pull.SKey{}, fresh} <> stack, Pull.GSkip{0n}, False{}, False{}}),
+    Pull.next.walk(SCon{'"', key},
+      Pull.S{Pull.MIdle{}, Pull.FObj{Pull.SKey{}, fresh} <> stack, Pull.GSkip{0n}, False{}, False{}}),
+    walk_ws(ws, SCon{'"', key}, Pull.FObj{Pull.SKey{}, fresh} <> stack, Pull.GSkip{0n}, h_ws))
+  %we : {Pull.skip.use(_) == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
+  gd = Equal.sym(Pull.Out, Pull.next.go(4n, key, Pull.err.st(Pull.GSkip{0n})),
+    Pull.Fin{(Pull.SEv{Pull.EErr{}}, Pull.Cur{"", [], False{}, True{}})},
+    go_done(3n, key, Pull.SEv{Pull.EErr{}}, "", [], Pull.GSkip{0n}, False{}, True{}))
+  %gd : {Pull.skip.use(Pull.next.fin(Pull.next.grow(32n, 1n, _))) == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
+  {==}
+
+# the parent after a close, in a top-level skip, is a failure
+law close_out_err:
+  for ev: Pull.Ev
+  for frames: List<&2, Pull.Frame>
+  {Pull.close.out(ev, frames, Pull.GSkip{0n}) == Pull.err.st(Pull.GSkip{0n}) : Pull.St}
+
+def close_out_err(_ev, frames):
+  match frames:
+    case Nil{}:
+      {==}
+    case Pull.FArr{Pull.SVal{}, _} <> _:
+      {==}
+    case Pull.FArr{Pull.SCom{}, _} <> _:
+      {==}
+    case Pull.FArr{Pull.SKey{}, _} <> _:
+      {==}
+    case Pull.FArr{Pull.SCol{}, _} <> _:
+      {==}
+    case Pull.FObj{Pull.SVal{}, _} <> _:
+      {==}
+    case Pull.FObj{Pull.SCom{}, _} <> _:
+      {==}
+    case Pull.FObj{Pull.SKey{}, _} <> _:
+      {==}
+    case Pull.FObj{Pull.SCol{}, _} <> _:
+      {==}
+
+# a close in a top-level skip is a failure, whatever is open
+law close_arr_err:
+  for stack: List<&2, Pull.Frame>
+  {Pull.close.arr(stack, Pull.GSkip{0n}) == Pull.err.st(Pull.GSkip{0n}) : Pull.St}
+
+def close_arr_err(stack):
+  match stack:
+    case Nil{}:
+      {==}
+    case Pull.FArr{Pull.SVal{}, True{}} <> frames:
+      close_out_err(Pull.EEndArr{}, frames)
+    case Pull.FArr{Pull.SVal{}, False{}} <> _:
+      {==}
+    case Pull.FArr{Pull.SCom{}, True{}} <> frames:
+      close_out_err(Pull.EEndArr{}, frames)
+    case Pull.FArr{Pull.SCom{}, False{}} <> frames:
+      close_out_err(Pull.EEndArr{}, frames)
+    case Pull.FArr{Pull.SKey{}, True{}} <> _:
+      {==}
+    case Pull.FArr{Pull.SKey{}, False{}} <> _:
+      {==}
+    case Pull.FArr{Pull.SCol{}, True{}} <> _:
+      {==}
+    case Pull.FArr{Pull.SCol{}, False{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SVal{}, True{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SVal{}, False{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SCom{}, True{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SCom{}, False{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SKey{}, True{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SKey{}, False{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SCol{}, True{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SCol{}, False{}} <> _:
+      {==}
+
+def Laws.skip_close_arr(ws, rest, stack, h_ws):
+  we = Equal.sym((Pull.Stop & Pull.Cur),
+    Pull.next.walk(ws ++ SCon{']', rest}, Pull.S{Pull.MIdle{}, stack, Pull.GSkip{0n}, False{}, False{}}),
+    Pull.next.walk(SCon{']', rest}, Pull.S{Pull.MIdle{}, stack, Pull.GSkip{0n}, False{}, False{}}),
+    walk_ws(ws, SCon{']', rest}, stack, Pull.GSkip{0n}, h_ws))
+  %we : {Pull.skip.use(_) == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
+  ce = Equal.sym(Pull.St, Pull.close.arr(stack, Pull.GSkip{0n}), Pull.err.st(Pull.GSkip{0n}), close_arr_err(stack))
+  %ce : {Pull.skip.use(Pull.next.fin(Pull.next.grow(32n, 1n, Pull.next.go(4n, rest, _))))
+    == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
+  gd = Equal.sym(Pull.Out, Pull.next.go(4n, rest, Pull.err.st(Pull.GSkip{0n})),
+    Pull.Fin{(Pull.SEv{Pull.EErr{}}, Pull.Cur{"", [], False{}, True{}})},
+    go_done(3n, rest, Pull.SEv{Pull.EErr{}}, "", [], Pull.GSkip{0n}, False{}, True{}))
+  %gd : {Pull.skip.use(Pull.next.fin(Pull.next.grow(32n, 1n, _))) == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
+  {==}
+
+# a close in a top-level skip is a failure, whatever is open
+law close_obj_err:
+  for stack: List<&2, Pull.Frame>
+  {Pull.close.obj(stack, Pull.GSkip{0n}) == Pull.err.st(Pull.GSkip{0n}) : Pull.St}
+
+def close_obj_err(stack):
+  match stack:
+    case Nil{}:
+      {==}
+    case Pull.FArr{Pull.SVal{}, True{}} <> _:
+      {==}
+    case Pull.FArr{Pull.SVal{}, False{}} <> _:
+      {==}
+    case Pull.FArr{Pull.SCom{}, True{}} <> _:
+      {==}
+    case Pull.FArr{Pull.SCom{}, False{}} <> _:
+      {==}
+    case Pull.FArr{Pull.SKey{}, True{}} <> _:
+      {==}
+    case Pull.FArr{Pull.SKey{}, False{}} <> _:
+      {==}
+    case Pull.FArr{Pull.SCol{}, True{}} <> _:
+      {==}
+    case Pull.FArr{Pull.SCol{}, False{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SVal{}, True{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SVal{}, False{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SCom{}, True{}} <> frames:
+      close_out_err(Pull.EEndObj{}, frames)
+    case Pull.FObj{Pull.SCom{}, False{}} <> frames:
+      close_out_err(Pull.EEndObj{}, frames)
+    case Pull.FObj{Pull.SKey{}, True{}} <> frames:
+      close_out_err(Pull.EEndObj{}, frames)
+    case Pull.FObj{Pull.SKey{}, False{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SCol{}, True{}} <> _:
+      {==}
+    case Pull.FObj{Pull.SCol{}, False{}} <> _:
+      {==}
+
+def Laws.skip_close_obj(ws, rest, stack, h_ws):
+  we = Equal.sym((Pull.Stop & Pull.Cur),
+    Pull.next.walk(ws ++ SCon{'}', rest}, Pull.S{Pull.MIdle{}, stack, Pull.GSkip{0n}, False{}, False{}}),
+    Pull.next.walk(SCon{'}', rest}, Pull.S{Pull.MIdle{}, stack, Pull.GSkip{0n}, False{}, False{}}),
+    walk_ws(ws, SCon{'}', rest}, stack, Pull.GSkip{0n}, h_ws))
+  %we : {Pull.skip.use(_) == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
+  ce = Equal.sym(Pull.St, Pull.close.obj(stack, Pull.GSkip{0n}), Pull.err.st(Pull.GSkip{0n}), close_obj_err(stack))
+  %ce : {Pull.skip.use(Pull.next.fin(Pull.next.grow(32n, 1n, Pull.next.go(4n, rest, _))))
+    == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
+  gd = Equal.sym(Pull.Out, Pull.next.go(4n, rest, Pull.err.st(Pull.GSkip{0n})),
+    Pull.Fin{(Pull.SEv{Pull.EErr{}}, Pull.Cur{"", [], False{}, True{}})},
+    go_done(3n, rest, Pull.SEv{Pull.EErr{}}, "", [], Pull.GSkip{0n}, False{}, True{}))
+  %gd : {Pull.skip.use(Pull.next.fin(Pull.next.grow(32n, 1n, _))) == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
+  {==}

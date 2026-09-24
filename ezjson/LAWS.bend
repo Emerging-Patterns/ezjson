@@ -260,6 +260,18 @@ def ended(cur: Pull.Cur) -> Bool:
     case _:
       False{}
 
+# one of JSON's four whitespace characters (RFC 8259 §2)
+def is_ws(+ch: Char) -> Bool:
+  Bool.or(is_cp(ch, 32), Bool.or(is_cp(ch, 9), Bool.or(is_cp(ch, 10), is_cp(ch, 13))))
+
+# every character is whitespace
+def all_ws(+txt: String) -> Bool:
+  match txt:
+    case SNil{}:
+      True{}
+    case SCon{ch, tl}:
+      Bool.and(is_ws(ch), all_ws(tl))
+
 # LAW: as_bool reads back the boolean bool built
 # JSON-TREE-1
 law as_bool_bool:
@@ -639,4 +651,35 @@ law pull_ended_next:
   for stack: List<&2, Pull.Frame>
   {Ezjson.next(Pull.Cur{"", stack, True{}, False{}}) == (Pull.EEnd{}, Pull.Cur{"", stack, True{}, False{}})
     : (Pull.Ev & Pull.Cur)}
+
+# LAW: skip before an object key, after any whitespace, is the failed cursor
+# JSON-PULL-5
+law skip_key:
+  for +ws: String
+  for +key: String
+  for fresh: Bool
+  for stack: List<&2, Pull.Frame>
+  for h_ws: {all_ws(ws) == True{} : Bool}
+  {Ezjson.skip(Pull.Cur{ws ++ SCon{'"', key}, Pull.FObj{Pull.SKey{}, fresh} <> stack, False{}, False{}})
+    == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
+
+# LAW: skip at a close bracket, after any whitespace, is the failed cursor
+# JSON-PULL-5
+law skip_close_arr:
+  for +ws: String
+  for +rest: String
+  for +stack: List<&2, Pull.Frame>
+  for h_ws: {all_ws(ws) == True{} : Bool}
+  {Ezjson.skip(Pull.Cur{ws ++ SCon{']', rest}, stack, False{}, False{}})
+    == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
+
+# LAW: skip at a close brace, after any whitespace, is the failed cursor
+# JSON-PULL-5
+law skip_close_obj:
+  for +ws: String
+  for +rest: String
+  for +stack: List<&2, Pull.Frame>
+  for h_ws: {all_ws(ws) == True{} : Bool}
+  {Ezjson.skip(Pull.Cur{ws ++ SCon{'}', rest}, stack, False{}, False{}})
+    == Pull.Cur{"", [], False{}, True{}} : Pull.Cur}
 

@@ -84,7 +84,7 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | JSON-PULL-2 | Once `next` yields `EErr`, every later `next` on the returned cursor yields `EErr`, and `skip` returns a failed cursor | Proved | proved | ezjson/LAWS.bend pull_err_fails; ezjson/LAWS.bend pull_failed_next; ezjson/LAWS.bend pull_failed_skip |
 | JSON-PULL-3 | Once `next` yields `EEnd`, every later `next` on the returned cursor yields `EEnd` | Proved | proved | ezjson/LAWS.bend pull_end_ends; ezjson/LAWS.bend pull_ended_next |
 | JSON-PULL-4 | For every cursor at a position where a value may start, `next(skip(c))` yields the event that follows that value's last event in the full stream from `c` | Proved | pending |  |
-| JSON-PULL-5 | `skip` at a position where no value may start (before an object key, at a close bracket, after the root, or on a failed cursor) returns a failed cursor | Proved | pending | ezjson/LAWS.bend pull_failed_skip; ezjson/LAWS.bend pull_over_skip |
+| JSON-PULL-5 | `skip` at a position where no value may start (before an object key, at a close bracket, after the root, or on a failed cursor) returns a failed cursor | Proved | proved | ezjson/LAWS.bend pull_failed_skip; ezjson/LAWS.bend pull_over_skip; ezjson/LAWS.bend skip_key; ezjson/LAWS.bend skip_close_arr; ezjson/LAWS.bend skip_close_obj |
 | JSON-PULL-6 | `text(ev)` is `Some` of the decoded characters for a string or key event, span or owned, and of the spelling for a number event, and `None` for every other event | Proved | proved | ezjson/LAWS.bend text_str; ezjson/LAWS.bend text_key; ezjson/LAWS.bend text_str_span; ezjson/LAWS.bend text_key_span; ezjson/LAWS.bend text_num; ezjson/LAWS.bend text_none |
 
 ## Left to prove
@@ -95,7 +95,6 @@ Every pending row with no Law entry is unproved in full; the RFC's Rollout says 
 | :---- | :---- | :---- |
 | JSON-STR-5 | a non-scalar code point is written as U+FFFD (`print_non_scalar`); `"` and `\` are escaped (`esc_quote`, `esc_backslash`); backspace, form feed, line feed, carriage return and tab get their two-character escapes (`esc_b` to `esc_t`); every other scalar value at or above U+0020 is written as itself (`esc_plain`) | the other controls below U+0020 as `\u00` and two lowercase hex digits |
 | JSON-PRINT-3 | `null`, `bool`, `str` and `num` build well-formed values, and `arr` and `obj` do from well-formed values (`wf_scalars`, `wf_num`, `wf_arr`, `wf_obj`) | every value `parse` returns is well-formed |
-| JSON-PULL-5 | `skip` on a failed cursor or after the root is the failed cursor (`pull_failed_skip`, `pull_over_skip`) | before an object key and at a close bracket |
 
 ## Trust boundary
 
