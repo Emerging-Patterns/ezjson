@@ -674,6 +674,110 @@ def get_m(mb: Maybe<&2, V.Json>, +key: String) -> Maybe<&2, V.Json>:
     case Some{jj}:
       Some{own(Ezjson.get(jj, key))}
 
+# a derivation of RFC 8259's value rule (§3 to §7), whitespace included: a
+# literal name or a number (§3, §6), a string of pieces (§7), an empty array
+# or object, or one with its first element or member (§4, §5), and the cells
+# after it: the end, then a comma and the next element or member. The
+# whitespace fields sit where §2 allows whitespace: after `[` and `{`, around
+# `:` and `,`, and before `]` and `}`
+type Gv is Data:
+  GWord{w: String}
+  GStr{ps: List<&2, Piece>}
+  GArr0{w0: String}
+  GArr{w0: String, vv: Gv, w1: String, rr: Gv}
+  GObj0{w0: String}
+  GObj{w0: String, ps: List<&2, Piece>, w1: String, w2: String, vv: Gv, w3: String, rr: Gv}
+  GEnd{}
+  GNext{w2: String, vv: Gv, w1: String, rr: Gv}
+  GNextM{w4: String, ps: List<&2, Piece>, w1: String, w2: String, vv: Gv, w3: String, rr: Gv}
+
+# where a derivation stands: a value, an array's cells after an element, or
+# an object's cells after a member
+type GK is Data:
+  GKVal{}
+  GKArr{}
+  GKObj{}
+
+# the text a derivation spells
+def g.text(gg: Gv) -> String:
+  match gg:
+    case GWord{w}:
+      w
+    case GStr{ps}:
+      "\"" ++ spell(ps) ++ "\""
+    case GArr0{w0}:
+      "[" ++ w0 ++ "]"
+    case GArr{w0, vv, w1, rr}:
+      "[" ++ w0 ++ g.text(vv) ++ w1 ++ g.text(rr) ++ "]"
+    case GObj0{w0}:
+      "{" ++ w0 ++ "}"
+    case GObj{w0, ps, w1, w2, vv, w3, rr}:
+      "{" ++ w0 ++ "\"" ++ spell(ps) ++ "\"" ++ w1 ++ ":" ++ w2 ++ g.text(vv) ++ w3 ++ g.text(rr) ++ "}"
+    case GEnd{}:
+      ""
+    case GNext{w2, vv, w1, rr}:
+      "," ++ w2 ++ g.text(vv) ++ w1 ++ g.text(rr)
+    case GNextM{w4, ps, w1, w2, vv, w3, rr}:
+      "," ++ w4 ++ "\"" ++ spell(ps) ++ "\"" ++ w1 ++ ":" ++ w2 ++ g.text(vv) ++ w3 ++ g.text(rr)
+
+# whether a derivation follows the rules where it stands: words are literal
+# names or numbers, strings are well spelled, whitespace is whitespace, and
+# each cell is one that may stand there
+def g.ok(gg: Gv, kk: GK) -> Bool:
+  match gg kk:
+    case GWord{+w} GKVal{}:
+      lit_or_num(w)
+    case GStr{ps} GKVal{}:
+      spell_ok(ps)
+    case GArr0{+w0} GKVal{}:
+      all_ws(w0)
+    case GArr{+w0, vv, +w1, rr} GKVal{}:
+      Bool.and(all_ws(w0), Bool.and(g.ok(vv, GKVal{}), Bool.and(all_ws(w1), g.ok(rr, GKArr{}))))
+    case GObj0{+w0} GKVal{}:
+      all_ws(w0)
+    case GObj{+w0, ps, +w1, +w2, vv, +w3, rr} GKVal{}:
+      Bool.and(all_ws(w0), Bool.and(spell_ok(ps), Bool.and(all_ws(w1), Bool.and(all_ws(w2), Bool.and(g.ok(vv,
+        GKVal{}), Bool.and(all_ws(w3), g.ok(rr, GKObj{})))))))
+    case GEnd{} GKArr{}:
+      True{}
+    case GNext{+w2, vv, +w1, rr} GKArr{}:
+      Bool.and(all_ws(w2), Bool.and(g.ok(vv, GKVal{}), Bool.and(all_ws(w1), g.ok(rr, GKArr{}))))
+    case GEnd{} GKObj{}:
+      True{}
+    case GNextM{+w4, ps, +w1, +w2, vv, +w3, rr} GKObj{}:
+      Bool.and(all_ws(w4), Bool.and(spell_ok(ps), Bool.and(all_ws(w1), Bool.and(all_ws(w2), Bool.and(g.ok(vv,
+        GKVal{}), Bool.and(all_ws(w3), g.ok(rr, GKObj{})))))))
+    case _ _:
+      False{}
+
+# a literal name or a number as a value
+def g.word(+txt: String) -> V.Json:
+  Bool.pick(V.Json, String.eq(txt, "null"), V.JNull{},
+    Bool.pick(V.Json, String.eq(txt, "true"), V.JBool{True{}},
+      Bool.pick(V.Json, String.eq(txt, "false"), V.JBool{False{}}, V.JNum{txt})))
+
+# the value a derivation stands for, strings decoded
+def g.val(gg: Gv) -> V.Json:
+  match gg:
+    case GWord{w}:
+      g.word(w)
+    case GStr{ps}:
+      V.JStr{spelled(ps)}
+    case GArr0{_}:
+      V.JArr{V.JNil{}}
+    case GArr{_, vv, _, rr}:
+      V.JArr{V.JCons{g.val(vv), g.val(rr)}}
+    case GObj0{_}:
+      V.JObj{V.JNil{}}
+    case GObj{_, ps, _, _, vv, _, rr}:
+      V.JObj{V.JPair{spelled(ps), g.val(vv), g.val(rr)}}
+    case GEnd{}:
+      V.JNil{}
+    case GNext{_, vv, _, rr}:
+      V.JCons{g.val(vv), g.val(rr)}
+    case GNextM{_, ps, _, _, vv, _, rr}:
+      V.JPair{spelled(ps), g.val(vv), g.val(rr)}
+
 # where a scan for raw controls in strings is: outside strings, inside one,
 # just after a backslash inside one, or past a raw control inside one (§7)
 type Cs is Data:
@@ -1225,6 +1329,19 @@ law get_decoded:
   for h_s: {short("{\"" ++ spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}") == True{} : Bool}
   {get_m(Ezjson.parse("{\"" ++ spell(ps) ++ "\":" ++ Ezjson.print(val) ++ "}"), key) ==
     Some{Bool.pick(V.Json, String.eq(spelled(ps), key), fixv(own(val)), V.JNull{})} : Maybe<&2, V.Json>}
+
+# LAW: a text RFC 8259's JSON-text rule derives, whitespace, a value and
+# whitespace, parses, as the value the derivation stands for
+# JSON-TEXT-1
+law text_some:
+  for +gg: Gv
+  for +wa: String
+  for +wb: String
+  for +h_g: {g.ok(gg, GKVal{}) == True{} : Bool}
+  for +h_a: {all_ws(wa) == True{} : Bool}
+  for +h_b: {all_ws(wb) == True{} : Bool}
+  for h_s: {short(wa ++ g.text(gg) ++ wb) == True{} : Bool}
+  {own_m(Ezjson.parse(wa ++ g.text(gg) ++ wb)) == Some{g.val(gg)} : Maybe<&2, V.Json>}
 
 # LAW: a raw control U+0000 to U+001F inside a string makes parse None
 # JSON-STR-3

@@ -132,6 +132,22 @@ and takes the parse from `print_parse`'s lemmas (`parse_obj`). `get`
 then compares with `find.eq`, which is `String.eq` (`find_str_eq`).
 Walking past the other members of a longer object is `get_hit` and
 `get_miss`; spans are TREE-5's `get_same`.
+JSON-TEXT-1, the half from the grammar to `Some`: a derivation is a tree
+with one constructor per rule of §2 to §7, whitespace fields where §2 allows
+whitespace, and pieces for strings (`Gv`, `g.text`, `g.ok`, `g.val` in
+LAWS.bend). A text of whitespace, a well-formed derivation's text and
+whitespace parses, as the value the derivation stands for (`text_some`).
+The character lexer reads a derivation's text to its value's tokens by
+induction on the tree (`lexg`): a value's text leaves the lexer between
+tokens or inside a word (`gend`, `iw`, `fl`), whitespace then punctuation
+pushes the word (`ws_punct`), and a string or a member's name is its token
+(`str_in`, `mem_in`). The parser half is WP-P1's, over a copy of `tj` that
+keeps strings as they are rather than fixed as print writes them (`tj_r`,
+`pv_r`, `parse_tjr`): the derivation's strings may hold code points that
+are not scalar values. `tj` and its parser lemma now follow from that copy
+through `fxv`, which fixes a value's strings (`tj_fx`, `canon_fx`, `wf_fx`),
+so the parser induction is written once. The other half, that a text that
+parses has a derivation, is left.
 
 ## What parse does
 
