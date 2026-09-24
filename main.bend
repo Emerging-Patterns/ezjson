@@ -1,9 +1,10 @@
 # ezjson: JSON for Bend 2, with a parser, a printer and a pull cursor
 #
-# `parse` reads text into Maybe Json. `print` writes compact text. `cursor`
-# reads one event at a time. Build null, booleans, numbers, strings, arrays,
-# and objects; read them with get, at, and as_bool, as_str, as_num, as_u32,
-# as_f32; has and len tell a missing key or index from a null.
+# `parse` reads text into Maybe Json. `print` writes compact text and
+# `pretty` indented text. `cursor` reads one event at a time. Build null,
+# booleans, numbers, strings, arrays, and objects; read them with get, at, and
+# as_bool, as_str, as_num, as_u32, as_f32; has and len tell a missing key or
+# index from a null.
 import Base
 import ./src/value.bend as Value
 import ./src/parse.bend as Parse
@@ -17,6 +18,11 @@ def parse(txt: String) -> Maybe<&2, Value.Json>:
 # a value as compact JSON
 def print(val: Value.Json) -> String:
   Print.print(val)
+
+# a value as JSON indented two spaces a level, one element or member a line,
+# with no newline at the end
+def pretty(val: Value.Json) -> String:
+  Print.pretty(val)
 
 # null
 def null() -> Value.Json:

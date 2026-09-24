@@ -234,6 +234,23 @@ characters, the bound the laws and the row carry. Past about 2^35
 characters the budget runs out, which is why the row is bounded (SPEC.md,
 Left to prove).
 
+JSON-PRINT-4, `pretty`: `pretty_parse` says that for a well-formed value,
+`parse(pretty(j))` gives back what `parse(print(j))` does. The proof does
+not go through the lexer. It builds, from the value, a derivation of RFC
+8259's value rule (`pq.g`) whose whitespace fields hold `pretty`'s newlines
+and indents, then applies JSON-TEXT-1's `text_some`. Three facts do the
+work, each by induction over the value and its chains of cells, with
+`wf` ruling out the cells that cannot stand where they are:
+- The derivation's text is `pretty`'s (`pq.tl`, in the grouping `gt` uses).
+- It follows the rules (`pq.ok`).
+- It stands for the value as print writes it (`pq.val`).
+
+Strings are pieces chosen character by character to be what `print`
+writes (`pq.pc`): a two-character escape, `\u00XX` for a control, U+FFFD
+for a code point that is not a scalar value, and the character itself
+otherwise. Changing a comma `pretty` writes, or its starting indent, makes
+the gate fail.
+
 ## What parse does
 
 | |

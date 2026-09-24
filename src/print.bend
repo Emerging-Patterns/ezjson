@@ -1,4 +1,4 @@
-# src/print: a value as compact JSON text.
+# src/print: a value as compact or indented JSON text.
 import Base
 import ./value.bend as V
 
@@ -100,6 +100,53 @@ def print(val: V.Json) -> String:
       quote(V.span.str(src, n, U32.is_zero(n))) ++ ":" ++ print(v)
     case V.JBind{src, +n, v, r}:
       quote(V.span.str(src, n, U32.is_zero(n))) ++ ":" ++ print(v) ++ "," ++ print(r)
+
+# a value as indented JSON. `pad` is the spaces a value's lines start with,
+# after their newline. For a chain of cells, a newline and `pad` start each
+# element or member, and `close` follows the last one, before the bracket
+def pretty.go(val: V.Json, +pad: String, +close: String) -> String:
+  match val:
+    case V.JNull{}:
+      "null"
+    case V.JBool{True{}}:
+      "true"
+    case V.JBool{False{}}:
+      "false"
+    case V.JNum{raw}:
+      raw
+    case V.JStr{s}:
+      quote(s)
+    case V.JSpan{src, +n}:
+      quote(V.span.str(src, n, U32.is_zero(n)))
+    case V.JArr{V.JNil{}}:
+      "[]"
+    case V.JArr{items}:
+      +inner = "  " ++ pad
+      "[\n" ++ inner ++ pretty.go(items, inner, "\n" ++ pad) ++ "]"
+    case V.JObj{V.JNil{}}:
+      "{}"
+    case V.JObj{pairs}:
+      +inner = "  " ++ pad
+      "{\n" ++ inner ++ pretty.go(pairs, inner, "\n" ++ pad) ++ "}"
+    case V.JNil{}:
+      ""
+    case V.JCons{h, V.JNil{}}:
+      pretty.go(h, pad, "") ++ close
+    case V.JCons{h, t}:
+      pretty.go(h, pad, "") ++ ",\n" ++ pad ++ pretty.go(t, pad, close)
+    case V.JPair{k, v, V.JNil{}}:
+      quote(k) ++ ": " ++ pretty.go(v, pad, "") ++ close
+    case V.JPair{k, v, r}:
+      quote(k) ++ ": " ++ pretty.go(v, pad, "") ++ ",\n" ++ pad ++ pretty.go(r, pad, close)
+    case V.JBind{src, +n, v, V.JNil{}}:
+      quote(V.span.str(src, n, U32.is_zero(n))) ++ ": " ++ pretty.go(v, pad, "") ++ close
+    case V.JBind{src, +n, v, r}:
+      quote(V.span.str(src, n, U32.is_zero(n))) ++ ": " ++ pretty.go(v, pad, "") ++ ",\n" ++ pad ++
+        pretty.go(r, pad, close)
+
+# a value as JSON indented two spaces a level, one element or member a line
+def pretty(val: V.Json) -> String:
+  pretty.go(val, "", "")
 
 # a parse result: the value, or "<bad>"
 def maybe(mb: Maybe<&2, V.Json>) -> String:
