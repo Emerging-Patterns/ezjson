@@ -4,10 +4,19 @@ JSON for [Bend 2](https://github.com/bendlang/bend).
 
 ## Install
 
-Use with [Bend](https://github.com/bendlang/bend) or install easily with [ez](https://github.com/Emerging-Patterns/ez):
+With [Bend](https://github.com/bendlang/bend) alone there is nothing to
+install: import ezjson by its hub name and `bend` fetches it from
+[the hub](https://hub.bend-lang.com) into `~/.bend/lib` on the first run.
+`0x81c67699424929b5c44cd8577e18117f` is ezjson v1.1.0.
 
 ```
-ez init
+import 0x81c67699424929b5c44cd8577e18117f/main.bend as Ezjson
+```
+
+Or with [ez](https://github.com/Emerging-Patterns/ez), which records the
+package in `ez.toml` (`ez init` makes one):
+
+```
 ez add Emerging-Patterns/ezjson
 ```
 
@@ -20,17 +29,23 @@ writes U+FFFD for a code point no UTF-8 text can hold (a lone surrogate).
 member a line and a space after each colon, as JavaScript's
 `JSON.stringify(v, null, 2)` does, with no newline at the end. A number
 keeps the spelling it was parsed with. `num` builds one from that text, and
-builds null when the text is not a JSON number.
+builds null when the text is not a JSON number. The `Json` type is
+`src/value.bend`'s; import that file to name it in a signature, and give a
+`match` on a result its own def, since Bend matches only a parameter.
 
 ```
-import 0xd9c8d4d2899ddda845dfa7525a3568ea/main.bend as Ezjson
+import 0x81c67699424929b5c44cd8577e18117f/main.bend as Ezjson
+import 0x81c67699424929b5c44cd8577e18117f/src/value.bend as Value
 
-def compact(s: String) -> String:
-  match Ezjson.parse(s):
+def shown(got: Maybe<&2, Value.Json>) -> String:
+  match got:
     case None{}:
       ""
     case Some{j}:
       Ezjson.print(j)
+
+def compact(s: String) -> String:
+  shown(Ezjson.parse(s))
 
 def point() -> String:
   Ezjson.print(Ezjson.obj([("x", Ezjson.num("1")), ("y", Ezjson.num("-2")),
@@ -50,7 +65,7 @@ A multi-gigabyte text is read with a cursor. `parse` builds one tree;
 drops the next value (one scalar, or one array or object and everything
 inside it) without building that value. `text` copies the spelling of a
 string, a key, or a number. Commas and colons are not events. Import
-`pull.bend` to match the event constructors.
+`src/pull.bend` to name the cursor and match the event constructors.
 
 `cursor` holds the unread suffix of the source. A string or key span
 (`Pull.EStrS`, `Pull.EKeyS`) is the first `nn` characters of a suffix, not
@@ -64,12 +79,15 @@ Walk a large object or array one event at a time. `skip` drops a subtree
 you do not need. `text` copies an owned string when you need one.
 
 ```
-import 0xd9c8d4d2899ddda845dfa7525a3568ea/main.bend as Ezjson
-import 0xd9c8d4d2899ddda845dfa7525a3568ea/pull.bend as Pull
+import 0x81c67699424929b5c44cd8577e18117f/main.bend as Ezjson
+import 0x81c67699424929b5c44cd8577e18117f/src/pull.bend as Pull
+
+def owned.go(step: (Pull.Ev & Pull.Cur)) -> (String & Pull.Cur):
+  (ev, rest) = step
+  (Maybe.default(&2, String, Ezjson.text(ev), ""), Ezjson.skip(rest))
 
 def owned(cur: Pull.Cur) -> (String & Pull.Cur):
-  (ev, rest) = Ezjson.next(cur)
-  (Maybe.default(&2, String, Ezjson.text(ev), ""), Ezjson.skip(rest))
+  owned.go(Ezjson.next(cur))
 ```
 
 ## Specification
