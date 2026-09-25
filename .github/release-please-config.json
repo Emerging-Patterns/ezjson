@@ -6,8 +6,12 @@
       "release-type": "go",
       "include-component-in-tag": false,
       "extra-files": [
-        { "type": "generic", "path": "flake.nix" }
-      ]
+        {
+          "type": "generic",
+          "path": "flake.nix"
+        }
+      ],
+      "versioning": "always-bump-minor"
     }
   }
 }
