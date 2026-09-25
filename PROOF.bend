@@ -28747,48 +28747,48 @@ def pick_lr_o(bv, _xx, _yy, h):
       Unit{}
 
 
-law cl_o_oo.s.1:
+law cl_o_oo.s.c1:
   for +da: Nat
   for +ch: Char
   rel_o(sc.out(LOp{}, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LOp{}, 1n+da, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_o_oo.s.1(da, _ch):
+def cl_o_oo.s.c1(da, _ch):
   match da:
     case 0n:
       Unit{}
     case 1n+n0:
       ({==}, Unit{})
 
-law cl_o_oo.s.2:
+law cl_o_oo.s.c2:
   for +da: Nat
   for +ch: Char
   rel_o(sc.out(LOp{}, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LOp{}, 1n+da, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_o_oo.s.2(da, _ch):
+def cl_o_oo.s.c2(da, _ch):
   match da:
     case 0n:
       Unit{}
     case 1n+n0:
       ({==}, Unit{})
 
-law cl_o_oo.s.3:
+law cl_o_oo.s.c3:
   for +da: Nat
   for +ch: Char
   rel_o(sc.out(LVal{}, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LVal{}, 1n+da, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_o_oo.s.3(da, _ch):
+def cl_o_oo.s.c3(da, _ch):
   match da:
     case 0n:
       Unit{}
     case 1n+n0:
       ({==}, Unit{})
 
-law cl_o_oo.s.4:
+law cl_o_oo.s.c4:
   for +da: Nat
   for +ch: Char
   rel_o(sc.out(LVal{}, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LVal{}, 1n+da, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_o_oo.s.4(da, _ch):
+def cl_o_oo.s.c4(da, _ch):
   match da:
     case 0n:
       Unit{}
@@ -28889,11 +28889,11 @@ def cl_o_oo.s(la, da, lb, cls, ch, l):
                 case Lex.TOpenArr{}:
                   ({==}, Unit{})
                 case Lex.TCloseArr{}:
-                  cl_o_oo.s.1(da, ch)
+                  cl_o_oo.s.c1(da, ch)
                 case Lex.TOpenObj{}:
                   ({==}, Unit{})
                 case Lex.TCloseObj{}:
-                  cl_o_oo.s.2(da, ch)
+                  cl_o_oo.s.c2(da, ch)
                 case Lex.TColon{}:
                   Unit{}
                 case Lex.TComma{}:
@@ -28931,11 +28931,11 @@ def cl_o_oo.s(la, da, lb, cls, ch, l):
                 case Lex.TOpenArr{}:
                   Unit{}
                 case Lex.TCloseArr{}:
-                  cl_o_oo.s.3(da, ch)
+                  cl_o_oo.s.c3(da, ch)
                 case Lex.TOpenObj{}:
                   Unit{}
                 case Lex.TCloseObj{}:
-                  cl_o_oo.s.4(da, ch)
+                  cl_o_oo.s.c4(da, ch)
                 case Lex.TColon{}:
                   ({==}, Unit{})
                 case Lex.TComma{}:
@@ -28960,26 +28960,26 @@ def cl_o_oo.s(la, da, lb, cls, ch, l):
               Unit{}
 
 
-law cl_o_ww.s.1:
+law cl_o_ww.s.c1:
   for +da: Nat
   for +ba: List<&2, Char>
   for +ch: Char
   rel_o(sc.word(ba, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.word(ba, 1n+da, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_o_ww.s.1(da, ba, _ch):
+def cl_o_ww.s.c1(da, ba, _ch):
   match da:
     case 0n:
       pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SOut{LVal{}, 0n}, Unit{})
     case 1n+n0:
       pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, n0}, SOut{LVal{}, 1n+n0}, ({==}, Unit{}))
 
-law cl_o_ww.s.2:
+law cl_o_ww.s.c2:
   for +da: Nat
   for +ba: List<&2, Char>
   for +ch: Char
   rel_o(sc.word(ba, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.word(ba, 1n+da, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_o_ww.s.2(da, ba, _ch):
+def cl_o_ww.s.c2(da, ba, _ch):
   match da:
     case 0n:
       pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SOut{LVal{}, 0n}, Unit{})
@@ -29000,11 +29000,11 @@ def cl_o_ww.s(ba, da, cls, ch):
         case Lex.TOpenArr{}:
           pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
         case Lex.TCloseArr{}:
-          cl_o_ww.s.1(da, ba, ch)
+          cl_o_ww.s.c1(da, ba, ch)
         case Lex.TOpenObj{}:
           pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
         case Lex.TCloseObj{}:
-          cl_o_ww.s.2(da, ba, ch)
+          cl_o_ww.s.c2(da, ba, ch)
         case Lex.TColon{}:
           pick_lr_o(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, da}, SOut{LSt{}, 1n+da}, ({==}, Unit{}))
         case Lex.TComma{}:
@@ -29308,72 +29308,72 @@ def pick_lr_c(bv, _xx, _yy, h):
       Unit{}
 
 
-law cl_c_oo.s.1:
+law cl_c_oo.s.c1:
   for +db: Nat
   for +ch: Char
   rel_c(sc.out(LOp{}, 1n+db, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LOp{}, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_c_oo.s.1(db, _ch):
+def cl_c_oo.s.c1(db, _ch):
   match db:
     case 0n:
       Unit{}
     case 1n+n0:
       ({==}, Unit{})
 
-law cl_c_oo.s.2:
+law cl_c_oo.s.c2:
   for +db: Nat
   for +ch: Char
   rel_c(sc.out(LOp{}, 1n+db, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LOp{}, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_c_oo.s.2(db, _ch):
+def cl_c_oo.s.c2(db, _ch):
   match db:
     case 0n:
       Unit{}
     case 1n+n0:
       ({==}, Unit{})
 
-law cl_c_oo.s.3:
+law cl_c_oo.s.c3:
   for +db: Nat
   for +ch: Char
   rel_c(sc.out(LOp{}, 1n+db, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LVal{}, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_c_oo.s.3(db, _ch):
+def cl_c_oo.s.c3(db, _ch):
   match db:
     case 0n:
       Unit{}
     case 1n+n0:
       ({==}, Unit{})
 
-law cl_c_oo.s.4:
+law cl_c_oo.s.c4:
   for +db: Nat
   for +ch: Char
   rel_c(sc.out(LOp{}, 1n+db, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LVal{}, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_c_oo.s.4(db, _ch):
+def cl_c_oo.s.c4(db, _ch):
   match db:
     case 0n:
       Unit{}
     case 1n+n0:
       ({==}, Unit{})
 
-law cl_c_oo.s.5:
+law cl_c_oo.s.c5:
   for +db: Nat
   for +ch: Char
   rel_c(sc.out(LVal{}, 1n+db, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LVal{}, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_c_oo.s.5(db, _ch):
+def cl_c_oo.s.c5(db, _ch):
   match db:
     case 0n:
       Unit{}
     case 1n+n0:
       ({==}, Unit{})
 
-law cl_c_oo.s.6:
+law cl_c_oo.s.c6:
   for +db: Nat
   for +ch: Char
   rel_c(sc.out(LVal{}, 1n+db, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LVal{}, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_c_oo.s.6(db, _ch):
+def cl_c_oo.s.c6(db, _ch):
   match db:
     case 0n:
       Unit{}
@@ -29442,11 +29442,11 @@ def cl_c_oo.s(la, lb, db, cls, ch, l):
                 case Lex.TOpenArr{}:
                   ({==}, Unit{})
                 case Lex.TCloseArr{}:
-                  cl_c_oo.s.1(db, ch)
+                  cl_c_oo.s.c1(db, ch)
                 case Lex.TOpenObj{}:
                   ({==}, Unit{})
                 case Lex.TCloseObj{}:
-                  cl_c_oo.s.2(db, ch)
+                  cl_c_oo.s.c2(db, ch)
                 case Lex.TColon{}:
                   Unit{}
                 case Lex.TComma{}:
@@ -29476,11 +29476,11 @@ def cl_c_oo.s(la, lb, db, cls, ch, l):
                 case Lex.TOpenArr{}:
                   Unit{}
                 case Lex.TCloseArr{}:
-                  cl_c_oo.s.3(db, ch)
+                  cl_c_oo.s.c3(db, ch)
                 case Lex.TOpenObj{}:
                   Unit{}
                 case Lex.TCloseObj{}:
-                  cl_c_oo.s.4(db, ch)
+                  cl_c_oo.s.c4(db, ch)
                 case Lex.TColon{}:
                   Unit{}
                 case Lex.TComma{}:
@@ -29516,11 +29516,11 @@ def cl_c_oo.s(la, lb, db, cls, ch, l):
                 case Lex.TOpenArr{}:
                   Unit{}
                 case Lex.TCloseArr{}:
-                  cl_c_oo.s.5(db, ch)
+                  cl_c_oo.s.c5(db, ch)
                 case Lex.TOpenObj{}:
                   Unit{}
                 case Lex.TCloseObj{}:
-                  cl_c_oo.s.6(db, ch)
+                  cl_c_oo.s.c6(db, ch)
                 case Lex.TColon{}:
                   ({==}, Unit{})
                 case Lex.TComma{}:
@@ -29545,26 +29545,26 @@ def cl_c_oo.s(la, lb, db, cls, ch, l):
               Unit{}
 
 
-law cl_c_ww.s.1:
+law cl_c_ww.s.c1:
   for +db: Nat
   for +ba: List<&2, Char>
   for +ch: Char
   rel_c(sc.word(ba, 1n+db, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.word(ba, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_c_ww.s.1(db, ba, _ch):
+def cl_c_ww.s.c1(db, ba, _ch):
   match db:
     case 0n:
       pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 0n}, SBad{}, Unit{})
     case 1n+n0:
       pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 1n+n0}, SOut{LVal{}, n0}, ({==}, Unit{}))
 
-law cl_c_ww.s.2:
+law cl_c_ww.s.c2:
   for +db: Nat
   for +ba: List<&2, Char>
   for +ch: Char
   rel_c(sc.word(ba, 1n+db, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.word(ba, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_c_ww.s.2(db, ba, _ch):
+def cl_c_ww.s.c2(db, ba, _ch):
   match db:
     case 0n:
       pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 0n}, SBad{}, Unit{})
@@ -29585,11 +29585,11 @@ def cl_c_ww.s(ba, db, cls, ch):
         case Lex.TOpenArr{}:
           pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
         case Lex.TCloseArr{}:
-          cl_c_ww.s.1(db, ba, ch)
+          cl_c_ww.s.c1(db, ba, ch)
         case Lex.TOpenObj{}:
           pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
         case Lex.TCloseObj{}:
-          cl_c_ww.s.2(db, ba, ch)
+          cl_c_ww.s.c2(db, ba, ch)
         case Lex.TColon{}:
           pick_lr_c(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, 1n+db}, SOut{LSt{}, db}, ({==}, Unit{}))
         case Lex.TComma{}:
@@ -29614,26 +29614,26 @@ def cl_c_ww.s(ba, db, cls, ch):
       ({==}, {==})
 
 
-law cl_c_wo.s.1:
+law cl_c_wo.s.c1:
   for +db: Nat
   for +ba: List<&2, Char>
   for +ch: Char
   rel_c(sc.word(ba, 1n+db, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LVal{}, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_c_wo.s.1(db, ba, _ch):
+def cl_c_wo.s.c1(db, ba, _ch):
   match db:
     case 0n:
       pick_l_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 0n}, SBad{}, Unit{})
     case 1n+n0:
       pick_l_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 1n+n0}, SOut{LVal{}, n0}, ({==}, Unit{}))
 
-law cl_c_wo.s.2:
+law cl_c_wo.s.c2:
   for +db: Nat
   for +ba: List<&2, Char>
   for +ch: Char
   rel_c(sc.word(ba, 1n+db, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LVal{}, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_c_wo.s.2(db, ba, _ch):
+def cl_c_wo.s.c2(db, ba, _ch):
   match db:
     case 0n:
       pick_l_c(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, 0n}, SBad{}, Unit{})
@@ -29662,11 +29662,11 @@ def cl_c_wo.s(ba, lb, db, cls, ch, l):
             case Lex.TOpenArr{}:
               pick_l_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
             case Lex.TCloseArr{}:
-              cl_c_wo.s.1(db, ba, ch)
+              cl_c_wo.s.c1(db, ba, ch)
             case Lex.TOpenObj{}:
               pick_l_c(Laws.lit_or_num(Lex.text(ba)), SBad{}, SBad{}, Unit{})
             case Lex.TCloseObj{}:
-              cl_c_wo.s.2(db, ba, ch)
+              cl_c_wo.s.c2(db, ba, ch)
             case Lex.TColon{}:
               pick_l_c(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, 1n+db}, SOut{LSt{}, db}, ({==}, Unit{}))
             case Lex.TComma{}:
@@ -29958,26 +29958,26 @@ def pick_lr_s(bv, _xx, _yy, h):
       Unit{}
 
 
-law cl_s_oo.s.1:
+law cl_s_oo.s.c1:
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_s(sc.out(LVal{}, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.out(LSt{}, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_s_oo.s.1(da, _db, _ch):
+def cl_s_oo.s.c1(da, _db, _ch):
   match da:
     case 0n:
       Unit{}
     case 1n+n0:
       Unit{}
 
-law cl_s_oo.s.2:
+law cl_s_oo.s.c2:
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_s(sc.out(LVal{}, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.out(LSt{}, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_s_oo.s.2(da, _db, _ch):
+def cl_s_oo.s.c2(da, _db, _ch):
   match da:
     case 0n:
       Unit{}
@@ -30021,11 +30021,11 @@ def cl_s_oo.s(la, da, lb, db, cls, ch, l):
                 case Lex.TOpenArr{}:
                   Unit{}
                 case Lex.TCloseArr{}:
-                  cl_s_oo.s.1(da, db, ch)
+                  cl_s_oo.s.c1(da, db, ch)
                 case Lex.TOpenObj{}:
                   Unit{}
                 case Lex.TCloseObj{}:
-                  cl_s_oo.s.2(da, db, ch)
+                  cl_s_oo.s.c2(da, db, ch)
                 case Lex.TColon{}:
                   Unit{}
                 case Lex.TComma{}:
@@ -30270,7 +30270,7 @@ def pick2_w(cc, b1, b2, xx, yy, kk):
       Unit{}
 
 
-law cl_w_ow.s.1:
+law cl_w_ow.s.c1:
   for +db: Nat
   for +cc: Char
   for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
@@ -30278,14 +30278,14 @@ law cl_w_ow.s.1:
   for +ch: Char
   rel_w(cc, sc.out(LSt{}, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.word([cc], db, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_w_ow.s.1(db, cc, hn, _da, _ch):
+def cl_w_ow.s.c1(db, cc, hn, _da, _ch):
   match db:
     case 0n:
       pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
     case 1n+n0:
       pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SOut{LVal{}, n0}, lon1(cc, hn))
 
-law cl_w_ow.s.2:
+law cl_w_ow.s.c2:
   for +db: Nat
   for +cc: Char
   for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
@@ -30293,14 +30293,14 @@ law cl_w_ow.s.2:
   for +ch: Char
   rel_w(cc, sc.out(LSt{}, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.word([cc], db, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_w_ow.s.2(db, cc, hn, _da, _ch):
+def cl_w_ow.s.c2(db, cc, hn, _da, _ch):
   match db:
     case 0n:
       pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SBad{}, lon1(cc, hn))
     case 1n+n0:
       pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SOut{LVal{}, n0}, lon1(cc, hn))
 
-law cl_w_ow.s.3:
+law cl_w_ow.s.c3:
   for +da: Nat
   for +cc: Char
   for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
@@ -30308,7 +30308,7 @@ law cl_w_ow.s.3:
   for +ch: Char
   rel_w(cc, sc.out(LOp{}, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.word([cc], db, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_w_ow.s.3(da, cc, hn, db, _ch):
+def cl_w_ow.s.c3(da, cc, hn, db, _ch):
   match da:
     case 0n:
       match db:
@@ -30323,7 +30323,7 @@ def cl_w_ow.s.3(da, cc, hn, db, _ch):
         case 1n+n1:
           pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LVal{}, n0}, SOut{LVal{}, n1}, lon1(cc, hn))
 
-law cl_w_ow.s.4:
+law cl_w_ow.s.c4:
   for +da: Nat
   for +cc: Char
   for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
@@ -30331,7 +30331,7 @@ law cl_w_ow.s.4:
   for +ch: Char
   rel_w(cc, sc.out(LOp{}, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.word([cc], db, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_w_ow.s.4(da, cc, hn, db, _ch):
+def cl_w_ow.s.c4(da, cc, hn, db, _ch):
   match da:
     case 0n:
       match db:
@@ -30366,11 +30366,11 @@ def cl_w_ow.s(cc, hn, la, da, db, cls, ch, l):
             case Lex.TOpenArr{}:
               pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LOp{}, 1n+da}, SBad{}, lon1(cc, hn))
             case Lex.TCloseArr{}:
-              cl_w_ow.s.1(db, cc, hn, da, ch)
+              cl_w_ow.s.c1(db, cc, hn, da, ch)
             case Lex.TOpenObj{}:
               pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LOp{}, 1n+da}, SBad{}, lon1(cc, hn))
             case Lex.TCloseObj{}:
-              cl_w_ow.s.2(db, cc, hn, da, ch)
+              cl_w_ow.s.c2(db, cc, hn, da, ch)
             case Lex.TColon{}:
               pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SOut{LSt{}, db}, lon1(cc, hn))
             case Lex.TComma{}:
@@ -30400,11 +30400,11 @@ def cl_w_ow.s(cc, hn, la, da, db, cls, ch, l):
             case Lex.TOpenArr{}:
               pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LOp{}, 1n+da}, SBad{}, lon1(cc, hn))
             case Lex.TCloseArr{}:
-              cl_w_ow.s.3(da, cc, hn, db, ch)
+              cl_w_ow.s.c3(da, cc, hn, db, ch)
             case Lex.TOpenObj{}:
               pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SOut{LOp{}, 1n+da}, SBad{}, lon1(cc, hn))
             case Lex.TCloseObj{}:
-              cl_w_ow.s.4(da, cc, hn, db, ch)
+              cl_w_ow.s.c4(da, cc, hn, db, ch)
             case Lex.TColon{}:
               pick_f_w(cc, Laws.lit_or_num(Lex.text([cc])), SBad{}, SOut{LSt{}, db}, lon1(cc, hn))
             case Lex.TComma{}:
@@ -30431,7 +30431,7 @@ def cl_w_ow.s(cc, hn, la, da, db, cls, ch, l):
       Empty.absurd(rel_w(cc, sc.out(LVal{}, da, cls, ch), sc.word([cc], db, cls, ch)), l)
 
 
-law cl_w_ww.s.1:
+law cl_w_ww.s.c1:
   for +da: Nat
   for +cc: Char
   for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
@@ -30441,7 +30441,7 @@ law cl_w_ww.s.1:
   rel_w(cc, sc.word(ba, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.word(List.append(&2, Char, ba, [cc]), db,
     Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_w_ww.s.1(da, cc, hn, ba, db, _ch):
+def cl_w_ww.s.c1(da, cc, hn, ba, db, _ch):
   match da:
     case 0n:
       match db:
@@ -30460,7 +30460,7 @@ def cl_w_ww.s.1(da, cc, hn, ba, db, _ch):
           pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
             SOut{LVal{}, n0}, SOut{LVal{}, n1}, ee => lon_app(cc, hn, ba, ee))
 
-law cl_w_ww.s.2:
+law cl_w_ww.s.c2:
   for +da: Nat
   for +cc: Char
   for +hn: {Bool.or(Laws.digit(cc), Laws.is_cp(cc, 45)) == False{} : Bool}
@@ -30470,7 +30470,7 @@ law cl_w_ww.s.2:
   rel_w(cc, sc.word(ba, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.word(List.append(&2, Char, ba, [cc]), db,
     Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_w_ww.s.2(da, cc, hn, ba, db, _ch):
+def cl_w_ww.s.c2(da, cc, hn, ba, db, _ch):
   match da:
     case 0n:
       match db:
@@ -30507,12 +30507,12 @@ def cl_w_ww.s(cc, hn, ba, da, db, cls, ch):
           pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
             SBad{}, SBad{}, ee => lon_app(cc, hn, ba, ee))
         case Lex.TCloseArr{}:
-          cl_w_ww.s.1(da, cc, hn, ba, db, ch)
+          cl_w_ww.s.c1(da, cc, hn, ba, db, ch)
         case Lex.TOpenObj{}:
           pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
             SBad{}, SBad{}, ee => lon_app(cc, hn, ba, ee))
         case Lex.TCloseObj{}:
-          cl_w_ww.s.2(da, cc, hn, ba, db, ch)
+          cl_w_ww.s.c2(da, cc, hn, ba, db, ch)
         case Lex.TColon{}:
           pick2_w(cc, Laws.lit_or_num(Lex.text(ba)), Laws.lit_or_num(Lex.text(List.append(&2, Char, ba, [cc]))),
             SOut{LSt{}, da}, SOut{LSt{}, db}, ee => lon_app(cc, hn, ba, ee))
@@ -30768,14 +30768,14 @@ def pick_lr_q(bv, _xx, _yy, h):
       Unit{}
 
 
-law cl_q_oi.s.1:
+law cl_q_oi.s.c1:
   for +la: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.out(la, da, Lex.CPunct{Lex.TOpenArr{}}, ch), sc.in(db, Lex.CPunct{Lex.TOpenArr{}}))
 
-def cl_q_oi.s.1(la, _da, _db, _ch):
+def cl_q_oi.s.c1(la, _da, _db, _ch):
   match la:
     case LSt{}:
       Unit{}
@@ -30784,14 +30784,14 @@ def cl_q_oi.s.1(la, _da, _db, _ch):
     case LVal{}:
       Unit{}
 
-law cl_q_oi.s.2:
+law cl_q_oi.s.c2:
   for +la: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.out(la, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.in(db, Lex.CPunct{Lex.TCloseArr{}}))
 
-def cl_q_oi.s.2(la, da, _db, _ch):
+def cl_q_oi.s.c2(la, da, _db, _ch):
   match la:
     case LSt{}:
       Unit{}
@@ -30808,14 +30808,14 @@ def cl_q_oi.s.2(la, da, _db, _ch):
         case 1n+n0:
           Unit{}
 
-law cl_q_oi.s.3:
+law cl_q_oi.s.c3:
   for +la: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.out(la, da, Lex.CPunct{Lex.TOpenObj{}}, ch), sc.in(db, Lex.CPunct{Lex.TOpenObj{}}))
 
-def cl_q_oi.s.3(la, _da, _db, _ch):
+def cl_q_oi.s.c3(la, _da, _db, _ch):
   match la:
     case LSt{}:
       Unit{}
@@ -30824,14 +30824,14 @@ def cl_q_oi.s.3(la, _da, _db, _ch):
     case LVal{}:
       Unit{}
 
-law cl_q_oi.s.4:
+law cl_q_oi.s.c4:
   for +la: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.out(la, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.in(db, Lex.CPunct{Lex.TCloseObj{}}))
 
-def cl_q_oi.s.4(la, da, _db, _ch):
+def cl_q_oi.s.c4(la, da, _db, _ch):
   match la:
     case LSt{}:
       Unit{}
@@ -30848,14 +30848,14 @@ def cl_q_oi.s.4(la, da, _db, _ch):
         case 1n+n0:
           Unit{}
 
-law cl_q_oi.s.5:
+law cl_q_oi.s.c5:
   for +la: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.out(la, da, Lex.CPunct{Lex.TColon{}}, ch), sc.in(db, Lex.CPunct{Lex.TColon{}}))
 
-def cl_q_oi.s.5(la, _da, _db, _ch):
+def cl_q_oi.s.c5(la, _da, _db, _ch):
   match la:
     case LSt{}:
       Unit{}
@@ -30864,14 +30864,14 @@ def cl_q_oi.s.5(la, _da, _db, _ch):
     case LVal{}:
       Unit{}
 
-law cl_q_oi.s.6:
+law cl_q_oi.s.c6:
   for +la: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.out(la, da, Lex.CPunct{Lex.TComma{}}, ch), sc.in(db, Lex.CPunct{Lex.TComma{}}))
 
-def cl_q_oi.s.6(la, _da, _db, _ch):
+def cl_q_oi.s.c6(la, _da, _db, _ch):
   match la:
     case LSt{}:
       Unit{}
@@ -30880,14 +30880,14 @@ def cl_q_oi.s.6(la, _da, _db, _ch):
     case LVal{}:
       Unit{}
 
-law cl_q_oi.s.7:
+law cl_q_oi.s.c7:
   for +la: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.out(la, da, Lex.CQuote{}, ch), sc.in(db, Lex.CQuote{}))
 
-def cl_q_oi.s.7(la, _da, _db, _ch):
+def cl_q_oi.s.c7(la, _da, _db, _ch):
   match la:
     case LSt{}:
       Unit{}
@@ -30896,14 +30896,14 @@ def cl_q_oi.s.7(la, _da, _db, _ch):
     case LVal{}:
       Unit{}
 
-law cl_q_oi.s.8:
+law cl_q_oi.s.c8:
   for +la: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.out(la, da, Lex.COther{}, ch), sc.in(db, Lex.COther{}))
 
-def cl_q_oi.s.8(la, _da, _db, _ch):
+def cl_q_oi.s.c8(la, _da, _db, _ch):
   match la:
     case LSt{}:
       Unit{}
@@ -30925,17 +30925,17 @@ def cl_q_oi.s(la, da, db, cls, ch):
     case Lex.CPunct{tk}:
       match tk:
         case Lex.TOpenArr{}:
-          cl_q_oi.s.1(la, da, db, ch)
+          cl_q_oi.s.c1(la, da, db, ch)
         case Lex.TCloseArr{}:
-          cl_q_oi.s.2(la, da, db, ch)
+          cl_q_oi.s.c2(la, da, db, ch)
         case Lex.TOpenObj{}:
-          cl_q_oi.s.3(la, da, db, ch)
+          cl_q_oi.s.c3(la, da, db, ch)
         case Lex.TCloseObj{}:
-          cl_q_oi.s.4(la, da, db, ch)
+          cl_q_oi.s.c4(la, da, db, ch)
         case Lex.TColon{}:
-          cl_q_oi.s.5(la, da, db, ch)
+          cl_q_oi.s.c5(la, da, db, ch)
         case Lex.TComma{}:
-          cl_q_oi.s.6(la, da, db, ch)
+          cl_q_oi.s.c6(la, da, db, ch)
         case Lex.TStr{_x0}:
           Unit{}
         case Lex.TWord{_x0}:
@@ -30947,37 +30947,37 @@ def cl_q_oi.s(la, da, db, cls, ch):
         case Lex.TBad{}:
           Unit{}
     case Lex.CQuote{}:
-      cl_q_oi.s.7(la, da, db, ch)
+      cl_q_oi.s.c7(la, da, db, ch)
     case Lex.CBack{}:
       Unit{}
     case Lex.CSpace{}:
       Unit{}
     case Lex.COther{}:
-      cl_q_oi.s.8(la, da, db, ch)
+      cl_q_oi.s.c8(la, da, db, ch)
 
 
-law cl_q_wi.s.1:
+law cl_q_wi.s.c1:
   for +da: Nat
   for +ba: List<&2, Char>
   for +db: Nat
   for +ch: Char
   rel_q(sc.word(ba, da, Lex.CPunct{Lex.TCloseArr{}}, ch), sc.in(db, Lex.CPunct{Lex.TCloseArr{}}))
 
-def cl_q_wi.s.1(da, ba, db, _ch):
+def cl_q_wi.s.c1(da, ba, db, _ch):
   match da:
     case 0n:
       pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
     case 1n+n0:
       pick_l_q(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, n0}, SIn{db}, Unit{})
 
-law cl_q_wi.s.2:
+law cl_q_wi.s.c2:
   for +da: Nat
   for +ba: List<&2, Char>
   for +db: Nat
   for +ch: Char
   rel_q(sc.word(ba, da, Lex.CPunct{Lex.TCloseObj{}}, ch), sc.in(db, Lex.CPunct{Lex.TCloseObj{}}))
 
-def cl_q_wi.s.2(da, ba, db, _ch):
+def cl_q_wi.s.c2(da, ba, db, _ch):
   match da:
     case 0n:
       pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
@@ -30999,11 +30999,11 @@ def cl_q_wi.s(ba, da, db, cls, ch):
         case Lex.TOpenArr{}:
           pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
         case Lex.TCloseArr{}:
-          cl_q_wi.s.1(da, ba, db, ch)
+          cl_q_wi.s.c1(da, ba, db, ch)
         case Lex.TOpenObj{}:
           pick_l_q(Laws.lit_or_num(Lex.text(ba)), SBad{}, SIn{db}, Unit{})
         case Lex.TCloseObj{}:
-          cl_q_wi.s.2(da, ba, db, ch)
+          cl_q_wi.s.c2(da, ba, db, ch)
         case Lex.TColon{}:
           pick_l_q(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, da}, SIn{db}, Unit{})
         case Lex.TComma{}:
@@ -31028,14 +31028,14 @@ def cl_q_wi.s(ba, da, db, cls, ch):
       Unit{}
 
 
-law cl_q_io.s.1:
+law cl_q_io.s.c1:
   for +lb: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.in(da, Lex.CPunct{Lex.TOpenArr{}}), sc.out(lb, db, Lex.CPunct{Lex.TOpenArr{}}, ch))
 
-def cl_q_io.s.1(lb, _da, _db, _ch):
+def cl_q_io.s.c1(lb, _da, _db, _ch):
   match lb:
     case LSt{}:
       Unit{}
@@ -31044,14 +31044,14 @@ def cl_q_io.s.1(lb, _da, _db, _ch):
     case LVal{}:
       Unit{}
 
-law cl_q_io.s.2:
+law cl_q_io.s.c2:
   for +lb: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.in(da, Lex.CPunct{Lex.TCloseArr{}}), sc.out(lb, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_q_io.s.2(lb, _da, db, _ch):
+def cl_q_io.s.c2(lb, _da, db, _ch):
   match lb:
     case LSt{}:
       Unit{}
@@ -31068,14 +31068,14 @@ def cl_q_io.s.2(lb, _da, db, _ch):
         case 1n+n0:
           Unit{}
 
-law cl_q_io.s.3:
+law cl_q_io.s.c3:
   for +lb: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.in(da, Lex.CPunct{Lex.TOpenObj{}}), sc.out(lb, db, Lex.CPunct{Lex.TOpenObj{}}, ch))
 
-def cl_q_io.s.3(lb, _da, _db, _ch):
+def cl_q_io.s.c3(lb, _da, _db, _ch):
   match lb:
     case LSt{}:
       Unit{}
@@ -31084,14 +31084,14 @@ def cl_q_io.s.3(lb, _da, _db, _ch):
     case LVal{}:
       Unit{}
 
-law cl_q_io.s.4:
+law cl_q_io.s.c4:
   for +lb: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.in(da, Lex.CPunct{Lex.TCloseObj{}}), sc.out(lb, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_q_io.s.4(lb, _da, db, _ch):
+def cl_q_io.s.c4(lb, _da, db, _ch):
   match lb:
     case LSt{}:
       Unit{}
@@ -31108,14 +31108,14 @@ def cl_q_io.s.4(lb, _da, db, _ch):
         case 1n+n0:
           Unit{}
 
-law cl_q_io.s.5:
+law cl_q_io.s.c5:
   for +lb: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.in(da, Lex.CPunct{Lex.TColon{}}), sc.out(lb, db, Lex.CPunct{Lex.TColon{}}, ch))
 
-def cl_q_io.s.5(lb, _da, _db, _ch):
+def cl_q_io.s.c5(lb, _da, _db, _ch):
   match lb:
     case LSt{}:
       Unit{}
@@ -31124,14 +31124,14 @@ def cl_q_io.s.5(lb, _da, _db, _ch):
     case LVal{}:
       Unit{}
 
-law cl_q_io.s.6:
+law cl_q_io.s.c6:
   for +lb: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.in(da, Lex.CPunct{Lex.TComma{}}), sc.out(lb, db, Lex.CPunct{Lex.TComma{}}, ch))
 
-def cl_q_io.s.6(lb, _da, _db, _ch):
+def cl_q_io.s.c6(lb, _da, _db, _ch):
   match lb:
     case LSt{}:
       Unit{}
@@ -31140,14 +31140,14 @@ def cl_q_io.s.6(lb, _da, _db, _ch):
     case LVal{}:
       Unit{}
 
-law cl_q_io.s.7:
+law cl_q_io.s.c7:
   for +lb: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.in(da, Lex.CQuote{}), sc.out(lb, db, Lex.CQuote{}, ch))
 
-def cl_q_io.s.7(lb, _da, _db, _ch):
+def cl_q_io.s.c7(lb, _da, _db, _ch):
   match lb:
     case LSt{}:
       Unit{}
@@ -31156,14 +31156,14 @@ def cl_q_io.s.7(lb, _da, _db, _ch):
     case LVal{}:
       Unit{}
 
-law cl_q_io.s.8:
+law cl_q_io.s.c8:
   for +lb: Lt
   for +da: Nat
   for +db: Nat
   for +ch: Char
   rel_q(sc.in(da, Lex.COther{}), sc.out(lb, db, Lex.COther{}, ch))
 
-def cl_q_io.s.8(lb, _da, _db, _ch):
+def cl_q_io.s.c8(lb, _da, _db, _ch):
   match lb:
     case LSt{}:
       Unit{}
@@ -31185,17 +31185,17 @@ def cl_q_io.s(da, lb, db, cls, ch):
     case Lex.CPunct{tk}:
       match tk:
         case Lex.TOpenArr{}:
-          cl_q_io.s.1(lb, da, db, ch)
+          cl_q_io.s.c1(lb, da, db, ch)
         case Lex.TCloseArr{}:
-          cl_q_io.s.2(lb, da, db, ch)
+          cl_q_io.s.c2(lb, da, db, ch)
         case Lex.TOpenObj{}:
-          cl_q_io.s.3(lb, da, db, ch)
+          cl_q_io.s.c3(lb, da, db, ch)
         case Lex.TCloseObj{}:
-          cl_q_io.s.4(lb, da, db, ch)
+          cl_q_io.s.c4(lb, da, db, ch)
         case Lex.TColon{}:
-          cl_q_io.s.5(lb, da, db, ch)
+          cl_q_io.s.c5(lb, da, db, ch)
         case Lex.TComma{}:
-          cl_q_io.s.6(lb, da, db, ch)
+          cl_q_io.s.c6(lb, da, db, ch)
         case Lex.TStr{_x0}:
           Unit{}
         case Lex.TWord{_x0}:
@@ -31207,37 +31207,37 @@ def cl_q_io.s(da, lb, db, cls, ch):
         case Lex.TBad{}:
           Unit{}
     case Lex.CQuote{}:
-      cl_q_io.s.7(lb, da, db, ch)
+      cl_q_io.s.c7(lb, da, db, ch)
     case Lex.CBack{}:
       Unit{}
     case Lex.CSpace{}:
       Unit{}
     case Lex.COther{}:
-      cl_q_io.s.8(lb, da, db, ch)
+      cl_q_io.s.c8(lb, da, db, ch)
 
 
-law cl_q_iw.s.1:
+law cl_q_iw.s.c1:
   for +db: Nat
   for +da: Nat
   for +b2: List<&2, Char>
   for +ch: Char
   rel_q(sc.in(da, Lex.CPunct{Lex.TCloseArr{}}), sc.word(b2, db, Lex.CPunct{Lex.TCloseArr{}}, ch))
 
-def cl_q_iw.s.1(db, da, b2, _ch):
+def cl_q_iw.s.c1(db, da, b2, _ch):
   match db:
     case 0n:
       pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
     case 1n+n0:
       pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SOut{LVal{}, n0}, Unit{})
 
-law cl_q_iw.s.2:
+law cl_q_iw.s.c2:
   for +db: Nat
   for +da: Nat
   for +b2: List<&2, Char>
   for +ch: Char
   rel_q(sc.in(da, Lex.CPunct{Lex.TCloseObj{}}), sc.word(b2, db, Lex.CPunct{Lex.TCloseObj{}}, ch))
 
-def cl_q_iw.s.2(db, da, b2, _ch):
+def cl_q_iw.s.c2(db, da, b2, _ch):
   match db:
     case 0n:
       pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
@@ -31259,11 +31259,11 @@ def cl_q_iw.s(da, b2, db, cls, ch):
         case Lex.TOpenArr{}:
           pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
         case Lex.TCloseArr{}:
-          cl_q_iw.s.1(db, da, b2, ch)
+          cl_q_iw.s.c1(db, da, b2, ch)
         case Lex.TOpenObj{}:
           pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SBad{}, Unit{})
         case Lex.TCloseObj{}:
-          cl_q_iw.s.2(db, da, b2, ch)
+          cl_q_iw.s.c2(db, da, b2, ch)
         case Lex.TColon{}:
           pick_r_q(Laws.lit_or_num(Lex.text(b2)), SIn{da}, SOut{LSt{}, db}, Unit{})
         case Lex.TComma{}:
@@ -32457,14 +32457,14 @@ def pick_cp(bv, _xx, _gg, h):
       Unit{}
 
 
-law cpo.1:
+law cpo.c1:
   for +lt: Lt
   for +dd: Nat
   for +ww: Bool
   for +ch: Char
   cpt(sc.out(lt, dd, Lex.CPunct{Lex.TOpenArr{}}, ch), gps(Laws.GpOut{ww}, Lex.CPunct{Lex.TOpenArr{}}))
 
-def cpo.1(lt, _dd, _ww, _ch):
+def cpo.c1(lt, _dd, _ww, _ch):
   match lt:
     case LSt{}:
       Unit{}
@@ -32473,14 +32473,14 @@ def cpo.1(lt, _dd, _ww, _ch):
     case LVal{}:
       Unit{}
 
-law cpo.2:
+law cpo.c2:
   for +lt: Lt
   for +dd: Nat
   for +ww: Bool
   for +ch: Char
   cpt(sc.out(lt, dd, Lex.CPunct{Lex.TCloseArr{}}, ch), gps(Laws.GpOut{ww}, Lex.CPunct{Lex.TCloseArr{}}))
 
-def cpo.2(lt, dd, _ww, _ch):
+def cpo.c2(lt, dd, _ww, _ch):
   match lt:
     case LSt{}:
       Unit{}
@@ -32497,14 +32497,14 @@ def cpo.2(lt, dd, _ww, _ch):
         case 1n+n0:
           Unit{}
 
-law cpo.3:
+law cpo.c3:
   for +lt: Lt
   for +dd: Nat
   for +ww: Bool
   for +ch: Char
   cpt(sc.out(lt, dd, Lex.CPunct{Lex.TOpenObj{}}, ch), gps(Laws.GpOut{ww}, Lex.CPunct{Lex.TOpenObj{}}))
 
-def cpo.3(lt, _dd, _ww, _ch):
+def cpo.c3(lt, _dd, _ww, _ch):
   match lt:
     case LSt{}:
       Unit{}
@@ -32513,14 +32513,14 @@ def cpo.3(lt, _dd, _ww, _ch):
     case LVal{}:
       Unit{}
 
-law cpo.4:
+law cpo.c4:
   for +lt: Lt
   for +dd: Nat
   for +ww: Bool
   for +ch: Char
   cpt(sc.out(lt, dd, Lex.CPunct{Lex.TCloseObj{}}, ch), gps(Laws.GpOut{ww}, Lex.CPunct{Lex.TCloseObj{}}))
 
-def cpo.4(lt, dd, _ww, _ch):
+def cpo.c4(lt, dd, _ww, _ch):
   match lt:
     case LSt{}:
       Unit{}
@@ -32537,14 +32537,14 @@ def cpo.4(lt, dd, _ww, _ch):
         case 1n+n0:
           Unit{}
 
-law cpo.5:
+law cpo.c5:
   for +lt: Lt
   for +dd: Nat
   for +ww: Bool
   for +ch: Char
   cpt(sc.out(lt, dd, Lex.CPunct{Lex.TColon{}}, ch), gps(Laws.GpOut{ww}, Lex.CPunct{Lex.TColon{}}))
 
-def cpo.5(lt, _dd, _ww, _ch):
+def cpo.c5(lt, _dd, _ww, _ch):
   match lt:
     case LSt{}:
       Unit{}
@@ -32553,14 +32553,14 @@ def cpo.5(lt, _dd, _ww, _ch):
     case LVal{}:
       Unit{}
 
-law cpo.6:
+law cpo.c6:
   for +lt: Lt
   for +dd: Nat
   for +ww: Bool
   for +ch: Char
   cpt(sc.out(lt, dd, Lex.CPunct{Lex.TComma{}}, ch), gps(Laws.GpOut{ww}, Lex.CPunct{Lex.TComma{}}))
 
-def cpo.6(lt, _dd, _ww, _ch):
+def cpo.c6(lt, _dd, _ww, _ch):
   match lt:
     case LSt{}:
       Unit{}
@@ -32569,14 +32569,14 @@ def cpo.6(lt, _dd, _ww, _ch):
     case LVal{}:
       Unit{}
 
-law cpo.7:
+law cpo.c7:
   for +lt: Lt
   for +dd: Nat
   for +ww: Bool
   for +ch: Char
   cpt(sc.out(lt, dd, Lex.CQuote{}, ch), gps(Laws.GpOut{ww}, Lex.CQuote{}))
 
-def cpo.7(lt, _dd, _ww, _ch):
+def cpo.c7(lt, _dd, _ww, _ch):
   match lt:
     case LSt{}:
       Unit{}
@@ -32585,14 +32585,14 @@ def cpo.7(lt, _dd, _ww, _ch):
     case LVal{}:
       Unit{}
 
-law cpo.8:
+law cpo.c8:
   for +lt: Lt
   for +dd: Nat
   for +ww: Bool
   for +ch: Char
   cpt(sc.out(lt, dd, Lex.COther{}, ch), gps(Laws.GpOut{ww}, Lex.COther{}))
 
-def cpo.8(lt, _dd, _ww, _ch):
+def cpo.c8(lt, _dd, _ww, _ch):
   match lt:
     case LSt{}:
       Unit{}
@@ -32614,17 +32614,17 @@ def cpo(lt, dd, ww, cls, ch):
     case Lex.CPunct{tk}:
       match tk:
         case Lex.TOpenArr{}:
-          cpo.1(lt, dd, ww, ch)
+          cpo.c1(lt, dd, ww, ch)
         case Lex.TCloseArr{}:
-          cpo.2(lt, dd, ww, ch)
+          cpo.c2(lt, dd, ww, ch)
         case Lex.TOpenObj{}:
-          cpo.3(lt, dd, ww, ch)
+          cpo.c3(lt, dd, ww, ch)
         case Lex.TCloseObj{}:
-          cpo.4(lt, dd, ww, ch)
+          cpo.c4(lt, dd, ww, ch)
         case Lex.TColon{}:
-          cpo.5(lt, dd, ww, ch)
+          cpo.c5(lt, dd, ww, ch)
         case Lex.TComma{}:
-          cpo.6(lt, dd, ww, ch)
+          cpo.c6(lt, dd, ww, ch)
         case Lex.TStr{_x0}:
           Unit{}
         case Lex.TWord{_x0}:
@@ -32636,35 +32636,35 @@ def cpo(lt, dd, ww, cls, ch):
         case Lex.TBad{}:
           Unit{}
     case Lex.CQuote{}:
-      cpo.7(lt, dd, ww, ch)
+      cpo.c7(lt, dd, ww, ch)
     case Lex.CBack{}:
       Unit{}
     case Lex.CSpace{}:
       Unit{}
     case Lex.COther{}:
-      cpo.8(lt, dd, ww, ch)
+      cpo.c8(lt, dd, ww, ch)
 
 
-law cpw.t.1:
+law cpw.t.c1:
   for +dd: Nat
   for +ba: List<&2, Char>
   for +ch: Char
   cpt(sc.word(ba, dd, Lex.CPunct{Lex.TCloseArr{}}, ch), gps(Laws.GpOut{True{}}, Lex.CPunct{Lex.TCloseArr{}}))
 
-def cpw.t.1(dd, ba, _ch):
+def cpw.t.c1(dd, ba, _ch):
   match dd:
     case 0n:
       pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
     case 1n+n0:
       pick_cp(Laws.lit_or_num(Lex.text(ba)), SOut{LVal{}, n0}, Laws.GpOut{False{}}, Unit{})
 
-law cpw.t.2:
+law cpw.t.c2:
   for +dd: Nat
   for +ba: List<&2, Char>
   for +ch: Char
   cpt(sc.word(ba, dd, Lex.CPunct{Lex.TCloseObj{}}, ch), gps(Laws.GpOut{True{}}, Lex.CPunct{Lex.TCloseObj{}}))
 
-def cpw.t.2(dd, ba, _ch):
+def cpw.t.c2(dd, ba, _ch):
   match dd:
     case 0n:
       pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
@@ -32685,11 +32685,11 @@ def cpw.t(ba, dd, cls, ch):
         case Lex.TOpenArr{}:
           pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
         case Lex.TCloseArr{}:
-          cpw.t.1(dd, ba, ch)
+          cpw.t.c1(dd, ba, ch)
         case Lex.TOpenObj{}:
           pick_cp(Laws.lit_or_num(Lex.text(ba)), SBad{}, Laws.GpOut{False{}}, Unit{})
         case Lex.TCloseObj{}:
-          cpw.t.2(dd, ba, ch)
+          cpw.t.c2(dd, ba, ch)
         case Lex.TColon{}:
           pick_cp(Laws.lit_or_num(Lex.text(ba)), SOut{LSt{}, dd}, Laws.GpOut{False{}}, Unit{})
         case Lex.TComma{}:
