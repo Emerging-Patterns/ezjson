@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/Emerging-Patterns/ezjson/compare/v1.0.0...v1.1.0) (2026-09-25)
+
+
+### Features
+
+* add pretty, indented JSON, and prove it parses back (JSON-PRINT-4) ([#59](https://github.com/Emerging-Patterns/ezjson/issues/59)) ([a9c2ebd](https://github.com/Emerging-Patterns/ezjson/commit/a9c2ebd7961717a8e68126ce894e0609fb3ac66b))
+
 ## [1.0.0](https://github.com/Emerging-Patterns/ezjson/compare/v0.5.0...v1.0.0) (2026-09-24)
 
 
