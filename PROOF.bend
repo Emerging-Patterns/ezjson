@@ -9023,12 +9023,16 @@ def Laws.str_back(txt, h_sc, h_s):
 
 # WP-P1: the parser on a value's tokens
 
+# the equality answer a string comparison carries, as String.eq reads it
+def eq_of(rr: (String & String) & Cmp) -> Bool:
+  Cmp.is_eq(Pair.snd(String & String, Cmp, rr))
+
 # comparing two strings, one character in front of each, answers as the rest
 law cmp_rec_eq:
   for h1: Char
   for h2: Char
   for rr: (String & String) & Cmp
-  {String.eq.fin(String.cmp.rec(h1, h2, rr)) == String.eq.fin(rr) : Bool}
+  {eq_of(String.cmp.rec(h1, h2, rr)) == eq_of(rr) : Bool}
 
 def cmp_rec_eq(_h1, _h2, rr):
   ((_a, _b), _c) = rr
@@ -9042,7 +9046,7 @@ law str_eq_at:
   for +t1: String
   for +t2: String
   for ec: {U32.cmp(xx, yy) == cc : Cmp}
-  for h: {String.eq.fin(String.cmp.fin(t1, t2, ((Chr{xx}, Chr{yy}), cc))) == True{} : Bool}
+  for h: {eq_of(String.cmp.fin(t1, t2, ((Chr{xx}, Chr{yy}), cc))) == True{} : Bool}
   for ih: {String.eq(t1, t2) == True{} : Bool} -> {t1 == t2 : String}
   {SCon{Chr{xx}, t1} == SCon{Chr{yy}, t2} : String}
 
@@ -9053,8 +9057,8 @@ def str_eq_at(cc, xx, yy, t1, t2, ec, h, ih):
     case GT{}:
       Empty.absurd({SCon{Chr{xx}, t1} == SCon{Chr{yy}, t2} : String}, false_true(h))
     case EQ{}:
-      et = ih(Equal.trans(Bool, String.eq(t1, t2), String.eq.fin(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(t1, t2))),
-        True{}, Equal.sym(Bool, String.eq.fin(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(t1, t2))), String.eq(t1, t2),
+      et = ih(Equal.trans(Bool, String.eq(t1, t2), eq_of(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(t1, t2))),
+        True{}, Equal.sym(Bool, eq_of(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(t1, t2))), String.eq(t1, t2),
           cmp_rec_eq(Chr{xx}, Chr{yy}, String.cmp(t1, t2))), h))
       ex = ueq(xx, yy, Equal.cong(Cmp, Bool, zz => Cmp.is_eq(zz), U32.cmp(xx, yy), EQ{}, ec))
       %ex : {SCon{Chr{xx}, t1} == SCon{Chr{_}, t2} : String}
@@ -11755,7 +11759,7 @@ law span_eq_at:
   for ih: {V.span.eq.go(as, True{}, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)) ==
     String.eq(V.span.str(as, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))), bs) : Bool}
   {V.span.eq.go(as, Cmp.is_eq(cc), U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)) ==
-    String.eq.fin(String.cmp.fin(V.span.str(as, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))), bs,
+    eq_of(String.cmp.fin(V.span.str(as, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))), bs,
       ((Chr{xx}, Chr{yy}), cc))) : Bool}
 
 def span_eq_at(cc, xx, yy, as, bs, nn, ih):
@@ -11767,8 +11771,8 @@ def span_eq_at(cc, xx, yy, as, bs, nn, ih):
     case EQ{}:
       +sp = V.span.str(as, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)))
       Equal.trans(Bool, V.span.eq.go(as, True{}, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)), String.eq(sp, bs),
-        String.eq.fin(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(sp, bs))), ih,
-        Equal.sym(Bool, String.eq.fin(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(sp, bs))), String.eq(sp, bs),
+        eq_of(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(sp, bs))), ih,
+        Equal.sym(Bool, eq_of(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(sp, bs))), String.eq(sp, bs),
           cmp_rec_eq(Chr{xx}, Chr{yy}, String.cmp(sp, bs))))
 
 # comparing a span with a key is comparing what the span covers with it
@@ -12894,7 +12898,7 @@ law find_str_at:
   for +as: String
   for +bs: String
   for ih: {V.find.eq.go(as, bs, True{}) == String.eq(as, bs) : Bool}
-  {V.find.eq.go(as, bs, Cmp.is_eq(cc)) == String.eq.fin(String.cmp.fin(as, bs, ((Chr{xx}, Chr{yy}), cc))) : Bool}
+  {V.find.eq.go(as, bs, Cmp.is_eq(cc)) == eq_of(String.cmp.fin(as, bs, ((Chr{xx}, Chr{yy}), cc))) : Bool}
 
 def find_str_at(cc, xx, yy, as, bs, ih):
   match cc:
@@ -12904,8 +12908,8 @@ def find_str_at(cc, xx, yy, as, bs, ih):
       find_miss(as, bs)
     case EQ{}:
       Equal.trans(Bool, V.find.eq.go(as, bs, True{}), String.eq(as, bs),
-        String.eq.fin(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(as, bs))), ih,
-        Equal.sym(Bool, String.eq.fin(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(as, bs))), String.eq(as, bs),
+        eq_of(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(as, bs))), ih,
+        Equal.sym(Bool, eq_of(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(as, bs))), String.eq(as, bs),
           cmp_rec_eq(Chr{xx}, Chr{yy}, String.cmp(as, bs))))
 
 # find.eq is String.eq

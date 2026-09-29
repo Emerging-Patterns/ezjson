@@ -730,8 +730,16 @@ def main.go(quad: String & String & String & String) -> IO(Unit):
   (a, b, c, d) = quad
   run.named(a, b, c, d)
 
-# CLI entry: dispatch by the first argv word
+# argv past the program name (bend 2.0.32 puts the program first)
+def args.rest(xs: List<String>) -> List<String>:
+  match xs:
+    case _p <> t:
+      t
+    case Nil{}:
+      Nil{}
+
+# CLI entry: dispatch by the first argument after the program
 def main() -> IO(Unit):  # noqa: L001 IO entry point
   do IO<Unit>:
     args : List<String> <- IO.args()
-    main.go(args.of4(args))
+    main.go(args.of4(args.rest(args)))
