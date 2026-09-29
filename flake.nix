@@ -3,7 +3,7 @@
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.bend = {
-    url = "github:bendlang/bend";
+    url = "github:bendlang/bend/777ee0b55c485afdd7e68bd917b3d23a88d77371";
     inputs.nixpkgs.follows = "nixpkgs";
   };
   inputs.ez = {
@@ -41,7 +41,19 @@
       apps.${system} = bench.apps;
 
       checks.${system} = {
-        proofs = ez.mkProofs { ez = ezBin; src = self; };
+        proofs = pkgs.runCommand "proofs" {
+          nativeBuildInputs = [ bend ];
+        } ''
+          export HOME=$TMPDIR
+          export BEND_NO_TELEMETRY=1
+          cp -r ${self} src && chmod -R u+w src && cd src
+          for p in $(find . -name PROOF.bend -not -path './.ez/*' | sort); do
+            first=$(cd "$(dirname "$p")" && bend "$(basename "$p")" | head -n 1)
+            echo "$p: $first"
+            [ "$first" = "ALL PROOFS CHECK" ] || exit 1
+          done
+          touch $out
+        '';
         lint = ez.mkLint { src = self; };
       } // bench.checks // scale.checks;
 

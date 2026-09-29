@@ -730,8 +730,16 @@ def main.go(quad: String & String & String & String) -> IO(Unit):
   (a, b, c, d) = quad
   run.named(a, b, c, d)
 
-# CLI entry: dispatch by the first argv word
+# the arguments after the program name, which IO.args gives first
+def args.after(xs: List<String>) -> List<String>:
+  match xs:
+    case _p <> t:
+      t
+    case Nil{}:
+      Nil{}
+
+# CLI entry: dispatch by the first argument
 def main() -> IO(Unit):  # noqa: L001 IO entry point
   do IO<Unit>:
     args : List<String> <- IO.args()
-    main.go(args.of4(args))
+    main.go(args.of4(args.after(args)))

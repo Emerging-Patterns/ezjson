@@ -96,7 +96,7 @@ def owned(cur: Pull.Cur) -> (String & Pull.Cur):
 to [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259) and the behavior of
 each def in `main.bend`. A row is either proved by a quantified law in
 `LAWS.bend`, checked by `bend PROOF.bend` (the first line must be
-`All terms check.`), or listed in its trust boundary. A row marked pending is
+`ALL PROOFS CHECK`), or listed in its trust boundary. A row marked pending is
 not guaranteed yet. [docs/rfc/ezjson-spec.md](docs/rfc/ezjson-spec.md) has the
 reasoning and the rollout.
 
