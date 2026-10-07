@@ -7,7 +7,7 @@ JSON for [Bend 2](https://github.com/bendlang/bend).
 With [Bend](https://github.com/bendlang/bend) alone there is nothing to
 install: import ezjson by its hub name and version, and `bend` fetches it
 from [the hub](https://hub.bend-lang.com) into `~/.bend/lib` on the first
-run; no install step. ezjson is built and checked on Bend 2.0.35.
+run; no install step. ezjson is built and checked on Bend 2.0.36.
 
 ```
 import emerging-ezjson@1.1.0.0/main.bend as Ezjson
