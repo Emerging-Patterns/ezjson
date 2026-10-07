@@ -8,7 +8,7 @@
     url = "github:bendlang/bend/eebc18cd04daeade06c3f68c3c96c1faefd3462f";
     inputs.nixpkgs.follows = "nixpkgs";
   };
-  # ez 1.3.0 follows this bend, so ez (and the bolt it builds) runs on 2.0.36
+  # ez 1.5.0 follows this bend, so ez (and the bolt it builds) runs on 2.0.36
   inputs.ez = {
     url = "github:Emerging-Patterns/ez";
     inputs.nixpkgs.follows = "nixpkgs";
