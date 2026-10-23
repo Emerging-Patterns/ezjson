@@ -10,12 +10,12 @@ from [the hub](https://hub.bend-lang.com) into `~/.bend/lib` on the first
 run; no install step. ezjson is built and checked on Bend 2.0.38.
 
 ```
-import emerging-ezjson@1.1.0.0/main.bend as Ezjson
+import emerging-ezjson@1.2.0.0/main.bend as Ezjson
 ```
 
-`emerging-ezjson@1.1.0.0` is ezjson v1.1.0 and resolves to
-`0x81c67699424929b5c44cd8577e18117f`; to pin by content, import
-`0x81c67699424929b5c44cd8577e18117f/main.bend` instead.
+`emerging-ezjson@1.2.0.0` is ezjson v1.2.0 and resolves to
+`0xa81e161008ecc2f297c0a3065cb9b188`; to pin by content, import
+`0xa81e161008ecc2f297c0a3065cb9b188/main.bend` instead.
 
 Or with [ez](https://github.com/Emerging-Patterns/ez), which records the
 package in `ez.toml` (`ez init` makes one):
@@ -38,8 +38,8 @@ builds null when the text is not a JSON number. The `Json` type is
 `match` on a result its own def, since Bend matches only a parameter.
 
 ```
-import emerging-ezjson@1.1.0.0/main.bend as Ezjson
-import emerging-ezjson@1.1.0.0/src/value.bend as Value
+import emerging-ezjson@1.2.0.0/main.bend as Ezjson
+import emerging-ezjson@1.2.0.0/src/value.bend as Value
 
 def shown(got: Maybe<&2, Value.Json>) -> String:
   match got:
@@ -68,8 +68,8 @@ for every index), and gives `[]` for anything that is not an array. `is_arr`
 and `is_obj` tell whether a value is an array or an object.
 
 ```
-import emerging-ezjson@1.1.0.0/main.bend as Ezjson
-import emerging-ezjson@1.1.0.0/src/value.bend as Value
+import emerging-ezjson@1.2.0.0/main.bend as Ezjson
+import emerging-ezjson@1.2.0.0/src/value.bend as Value
 
 def names.go(users: List<&2, Value.Json>) -> List<&2, Maybe<&2, String>>:
   match users:
@@ -102,8 +102,8 @@ Walk a large object or array one event at a time. `skip` drops a subtree
 you do not need. `text` copies an owned string when you need one.
 
 ```
-import emerging-ezjson@1.1.0.0/main.bend as Ezjson
-import emerging-ezjson@1.1.0.0/src/pull.bend as Pull
+import emerging-ezjson@1.2.0.0/main.bend as Ezjson
+import emerging-ezjson@1.2.0.0/src/pull.bend as Pull
 
 def owned.go(step: (Pull.Ev & Pull.Cur)) -> (String & Pull.Cur):
   (ev, rest) = step
