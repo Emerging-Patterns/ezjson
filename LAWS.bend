@@ -1256,6 +1256,69 @@ law len_scalar:
   for h_obj: {is_obj(val) == False{} : Bool}
   {Ezjson.len(val) == 0 : U32}
 
+# LAW: items of an array built from a list is that list
+# JSON-TREE-10
+law items_arr:
+  for xs: List<&2, V.Json>
+  {Ezjson.items(Ezjson.arr(xs)) == xs : List<&2, V.Json>}
+
+# LAW: a well-formed array is the array built from its items
+# JSON-TREE-10
+law items_back:
+  for +val: V.Json
+  for +h_wf: {V.wf(val) == True{} : Bool}
+  for h_arr: {is_arr(val) == True{} : Bool}
+  {Ezjson.arr(Ezjson.items(val)) == val : V.Json}
+
+# LAW: at on a well-formed array is the element of its items at that index,
+# and null past the end
+# JSON-TREE-10
+law items_at:
+  for +val: V.Json
+  for +idx: U32
+  for +h_wf: {V.wf(val) == True{} : Bool}
+  for h_arr: {is_arr(val) == True{} : Bool}
+  {Ezjson.at(val, idx) == nth(Ezjson.items(val), U32.to_nat(idx)) : V.Json}
+
+# LAW: len of a well-formed array is how many items it has
+# JSON-TREE-10
+law items_len:
+  for +val: V.Json
+  for +h_wf: {V.wf(val) == True{} : Bool}
+  for h_arr: {is_arr(val) == True{} : Bool}
+  {Ezjson.len(val) == U32.from_nat(List.length(&2, V.Json, Ezjson.items(val))) : U32}
+
+# LAW: items of a value that is not an array is empty
+# JSON-TREE-10
+law items_not_arr:
+  for +val: V.Json
+  for h_kind: {is_arr(val) == False{} : Bool}
+  {Ezjson.items(val) == [] : List<&2, V.Json>}
+
+# LAW: is_arr holds of a value exactly when it is an array
+# JSON-TREE-11
+law is_arr_kind:
+  for +val: V.Json
+  {Ezjson.is_arr(val) == is_arr(val) : Bool}
+
+# LAW: is_obj holds of a value exactly when it is an object
+# JSON-TREE-11
+law is_obj_kind:
+  for +val: V.Json
+  {Ezjson.is_obj(val) == is_obj(val) : Bool}
+
+# LAW: an array built from any list is an array and not an object
+# JSON-TREE-11
+law is_arr_arr:
+  for xs: List<&2, V.Json>
+  {Bool.and(Ezjson.is_arr(Ezjson.arr(xs)), Bool.not(Ezjson.is_obj(Ezjson.arr(xs)))) == True{} : Bool}
+
+# LAW: an object built from any pairs is an object and not an array
+# JSON-TREE-11
+law is_obj_obj:
+  for ps: List<&1, String & V.Json>
+  {Bool.and(Ezjson.is_obj(Ezjson.obj(ps)), Bool.not(Ezjson.is_arr(Ezjson.obj(ps)))) == True{} : Bool}
+
 # LAW: null, a boolean and a string are well-formed
 # JSON-PRINT-3
 law wf_scalars:
