@@ -7,6 +7,7 @@ import ./src/lex.bend as Lex
 import ./src/parse.bend as Parse
 import ./src/print.bend as Print
 import ./src/pull.bend as Pull
+import ./src/fixed.bend as F
 import ./LAWS.bend as Laws
 
 # Unit for True, Empty for False: tells them apart
@@ -53093,3 +53094,396 @@ def Laws.pretty_parse(val, h_wf, h_s):
       Laws.text_some(gg, "", "", pq.ok(val, "", "", V.WVal{}, h_wf, {==}, {==}), {==}, {==}, es),
       Equal.cong(V.Json, Maybe<&2, V.Json>, zz => Some{zz}, Laws.g.val(gg), Laws.fixv(Laws.own(val)),
         pq.val(val, "", "", V.WVal{}, h_wf))))
+
+# --- fixed decimals (JSON-FIX) ---
+
+# a true `when` with a false yes: its test is false
+law fx_when_test:
+  for +cc: Bool
+  for +rest: Bool
+  for +h: {Laws.when(cc, False{}, rest) == True{} : Bool}
+  {cc == False{} : Bool}
+
+def fx_when_test(cc, _rest, h):
+  match cc:
+    case True{}:
+      Empty.absurd({True{} == False{} : Bool}, false_true(h))
+    case False{}:
+      {==}
+
+# a true `when` with a false yes: its no is true
+law fx_when_rest:
+  for +cc: Bool
+  for +rest: Bool
+  for +h: {Laws.when(cc, False{}, rest) == True{} : Bool}
+  {rest == True{} : Bool}
+
+def fx_when_rest(cc, _rest, h):
+  match cc:
+    case True{}:
+      Empty.absurd({_rest == True{} : Bool}, false_true(h))
+    case False{}:
+      h
+
+# a text with no exponent mark, then a mark: the cut is at that mark
+law fx_cut_e_hit:
+  for +aa: String
+  for +ch: Char
+  for +bb: String
+  for +h_a: {Laws.no_e(aa) == True{} : Bool}
+  for +h_c: {F.mark.e(ch) == True{} : Bool}
+  {F.cut.e(aa ++ SCon{ch, bb}) == (aa, bb) : String & String}
+
+def fx_cut_e_hit(aa, ch, bb, h_a, h_c):
+  match aa:
+    case SNil{}:
+      %Equal.sym(Bool, F.mark.e(ch), True{}, h_c)
+        : {F.cut.at(_, ch, bb, _u => F.cut.e(bb)) == ("", bb) : String & String}
+      {==}
+    case SCon{+cc, +tl}:
+      %Equal.sym(Bool, F.mark.e(cc), False{},
+        fx_when_test(F.mark.e(cc), Laws.no_e(tl), h_a))
+        : {F.cut.at(_, cc, tl ++ SCon{ch, bb}, _u => F.cut.e(tl ++ SCon{ch, bb}))
+          == (SCon{cc, tl}, bb) : String & String}
+      Equal.cong(String & String, String & String, pp => F.cut.put(cc, pp),
+        F.cut.e(tl ++ SCon{ch, bb}), (tl, bb),
+        fx_cut_e_hit(tl, ch, bb, fx_when_rest(F.mark.e(cc), Laws.no_e(tl), h_a),
+          h_c))
+
+# a text with no exponent mark is not cut
+law fx_cut_e_none:
+  for +aa: String
+  for +h_a: {Laws.no_e(aa) == True{} : Bool}
+  {F.cut.e(aa) == (aa, "") : String & String}
+
+def fx_cut_e_none(aa, h_a):
+  match aa:
+    case SNil{}:
+      {==}
+    case SCon{+cc, +tl}:
+      %Equal.sym(Bool, F.mark.e(cc), False{},
+        fx_when_test(F.mark.e(cc), Laws.no_e(tl), h_a))
+        : {F.cut.at(_, cc, tl, _u => F.cut.e(tl)) == (SCon{cc, tl}, "")
+          : String & String}
+      Equal.cong(String & String, String & String, pp => F.cut.put(cc, pp),
+        F.cut.e(tl), (tl, ""),
+        fx_cut_e_none(tl, fx_when_rest(F.mark.e(cc), Laws.no_e(tl), h_a)))
+
+# a text with no point, then a point: the cut is at that point
+law fx_cut_dot_hit:
+  for +aa: String
+  for +bb: String
+  for +h_a: {Laws.no_dot(aa) == True{} : Bool}
+  {F.cut.dot(aa ++ SCon{'.', bb}) == (aa, bb) : String & String}
+
+def fx_cut_dot_hit(aa, bb, h_a):
+  match aa:
+    case SNil{}:
+      {==}
+    case SCon{+cc, +tl}:
+      %Equal.sym(Bool, F.mark.dot(cc), False{},
+        fx_when_test(F.mark.dot(cc), Laws.no_dot(tl), h_a))
+        : {F.cut.at(_, cc, tl ++ SCon{'.', bb}, _u => F.cut.dot(tl ++ SCon{'.', bb}))
+          == (SCon{cc, tl}, bb) : String & String}
+      Equal.cong(String & String, String & String, pp => F.cut.put(cc, pp),
+        F.cut.dot(tl ++ SCon{'.', bb}), (tl, bb),
+        fx_cut_dot_hit(tl, bb, fx_when_rest(F.mark.dot(cc), Laws.no_dot(tl), h_a)))
+
+# a text with no point is not cut
+law fx_cut_dot_none:
+  for +aa: String
+  for +h_a: {Laws.no_dot(aa) == True{} : Bool}
+  {F.cut.dot(aa) == (aa, "") : String & String}
+
+def fx_cut_dot_none(aa, h_a):
+  match aa:
+    case SNil{}:
+      {==}
+    case SCon{+cc, +tl}:
+      %Equal.sym(Bool, F.mark.dot(cc), False{},
+        fx_when_test(F.mark.dot(cc), Laws.no_dot(tl), h_a))
+        : {F.cut.at(_, cc, tl, _u => F.cut.dot(tl)) == (SCon{cc, tl}, "")
+          : String & String}
+      Equal.cong(String & String, String & String, pp => F.cut.put(cc, pp),
+        F.cut.dot(tl), (tl, ""),
+        fx_cut_dot_none(tl, fx_when_rest(F.mark.dot(cc), Laws.no_dot(tl), h_a)))
+
+def Laws.fixed_none(txt, nn, h):
+  %Equal.sym(Bool, V.num.ok(txt), False{}, h)
+    : {F.fixed.go(_, txt, nn) == None{} : Maybe<&2, String>}
+  {==}
+
+def Laws.fixed_some(txt, nn, h):
+  %Equal.sym(Bool, V.num.ok(txt), True{}, h)
+    : {F.fixed.go(_, txt, nn) == Some{F.text(txt, nn)} : Maybe<&2, String>}
+  {==}
+
+def Laws.text_minus(_txt, _nn):
+  {==}
+
+def Laws.text_plain(ch, tl, nn, h):
+  %Equal.sym(Bool, Char.is_eq(ch, '-'), False{}, h)
+    : {F.text.at(_, ch, tl, nn) == F.unsigned(SCon{ch, tl}, nn) : String}
+  {==}
+
+def Laws.text_empty(_nn):
+  {==}
+
+def Laws.unsigned_steps(_txt, _nn):
+  {==}
+
+def Laws.parts_exp(mant, ch, exp, h_m, h_c):
+  Equal.cong(String & String, (String & String) & (Bool & String),
+    pp => F.parts.of(pp), F.cut.e(mant ++ SCon{ch, exp}), (mant, exp),
+    fx_cut_e_hit(mant, ch, exp, h_m, h_c))
+
+def Laws.parts_plain(mant, h_m):
+  Equal.cong(String & String, (String & String) & (Bool & String),
+    pp => F.parts.of(pp), F.cut.e(mant), (mant, ""), fx_cut_e_none(mant, h_m))
+
+def Laws.mant_dot(int, frac, h_i):
+  fx_cut_dot_hit(int, frac, h_i)
+
+def Laws.mant_int(int, h_i):
+  fx_cut_dot_none(int, h_i)
+
+def Laws.esign_minus(_exp):
+  {==}
+
+def Laws.esign_plus(_exp):
+  {==}
+
+def Laws.esign_digits(ch, tl, h_m, h_p):
+  %Equal.sym(Bool, Char.is_eq(ch, '-'), False{}, h_m)
+    : {F.esign.at(_, Char.is_eq(ch, '+'), ch, tl) == (False{}, SCon{ch, tl})
+      : Bool & String}
+  %Equal.sym(Bool, Char.is_eq(ch, '+'), False{}, h_p)
+    : {F.esign.at(False{}, _, ch, tl) == (False{}, SCon{ch, tl})
+      : Bool & String}
+  {==}
+
+def Laws.place_parts(_int, _frac, _neg, _exp):
+  {==}
+
+def Laws.nat_start(_exp):
+  {==}
+
+def Laws.nat_end(_acc):
+  {==}
+
+def Laws.nat_snoc(exp, ch, acc):
+  match exp:
+    case SNil{}:
+      {==}
+    case SCon{+cc, +tl}:
+      Laws.nat_snoc(tl, ch, Nat.add(Nat.mul(acc, 10n), F.digit.nat(cc)))
+
+def Laws.move_right(_kk, _dec):
+  {==}
+
+def Laws.move_left(_kk, _dec):
+  {==}
+
+def Laws.ups_zero(_dec):
+  {==}
+
+def Laws.ups_succ(_kk, _dec):
+  {==}
+
+def Laws.downs_zero(_dec):
+  {==}
+
+def Laws.downs_succ(_kk, _dec):
+  {==}
+
+def Laws.up_digit(_left, _ch, _tl):
+  {==}
+
+def Laws.up_zero(_left):
+  {==}
+
+def Laws.down_digit(_ch, _tl, _right):
+  {==}
+
+def Laws.down_zero(_right):
+  {==}
+
+def Laws.up_down(_left, _ch, _tl):
+  {==}
+
+def Laws.down_up(_ch, _tl, _right):
+  {==}
+
+def Laws.round_cut(nn, left, right, kept, dropped, h):
+  %Equal.sym(String & String, F.pad(nn, right), (kept, dropped), h)
+    : {F.round.keep(left, _)
+      == F.bump(F.round.up(dropped, String.reverse.go(kept, left)),
+        String.reverse.go(kept, left)) : String}
+  {==}
+
+# a character put before a pair's first is the first's head
+law fx_put_fst:
+  for +ch: Char
+  for pp: String & String
+  {Pair.fst(String, String, F.cut.put(ch, pp))
+    == SCon{ch, Pair.fst(String, String, pp)} : String}
+
+def fx_put_fst(_ch, pp):
+  match pp:
+    case (_a, _b):
+      {==}
+
+def Laws.pad_width(nn, right):
+  match nn:
+    case 0n:
+      {==}
+    case 1n+mm:
+      match right:
+        case SNil{}:
+          Equal.trans(Nat,
+            String.length(Pair.fst(String, String, F.cut.put('0', F.pad(mm, "")))),
+            1n+String.length(Pair.fst(String, String, F.pad(mm, ""))),
+            1n+mm,
+            Equal.cong(String, Nat, ss => String.length(ss),
+              Pair.fst(String, String, F.cut.put('0', F.pad(mm, ""))),
+              SCon{'0', Pair.fst(String, String, F.pad(mm, ""))},
+              fx_put_fst('0', F.pad(mm, ""))),
+            Equal.cong(Nat, Nat, kk => 1n+kk,
+              String.length(Pair.fst(String, String, F.pad(mm, ""))), mm,
+              Laws.pad_width(mm, "")))
+        case SCon{+cc, +tl}:
+          Equal.trans(Nat,
+            String.length(Pair.fst(String, String, F.cut.put(cc, F.pad(mm, tl)))),
+            1n+String.length(Pair.fst(String, String, F.pad(mm, tl))),
+            1n+mm,
+            Equal.cong(String, Nat, ss => String.length(ss),
+              Pair.fst(String, String, F.cut.put(cc, F.pad(mm, tl))),
+              SCon{cc, Pair.fst(String, String, F.pad(mm, tl))},
+              fx_put_fst(cc, F.pad(mm, tl))),
+            Equal.cong(Nat, Nat, kk => 1n+kk,
+              String.length(Pair.fst(String, String, F.pad(mm, tl))), mm,
+              Laws.pad_width(mm, tl)))
+
+def Laws.pad_none(_right):
+  {==}
+
+def Laws.pad_digit(_mm, _ch, _tl):
+  {==}
+
+def Laws.pad_past(_mm):
+  {==}
+
+def Laws.up_exact(_kept):
+  {==}
+
+def Laws.up_below(dd, rest, kept, h):
+  %Equal.sym(Cmp, Laws.vs5(dd), LT{}, h)
+    : {F.round.at(_, rest, kept) == False{} : Bool}
+  {==}
+
+def Laws.up_above(dd, rest, kept, h):
+  %Equal.sym(Cmp, Laws.vs5(dd), GT{}, h)
+    : {F.round.at(_, rest, kept) == True{} : Bool}
+  {==}
+
+def Laws.up_past_half(dd, rest, kept, h_d, h_r):
+  %Equal.sym(Cmp, Laws.vs5(dd), EQ{}, h_d)
+    : {F.round.at(_, rest, kept) == True{} : Bool}
+  %Equal.sym(Bool, F.nonzero(rest), True{}, h_r)
+    : {F.tie(_, kept) == True{} : Bool}
+  {==}
+
+def Laws.up_tie(dd, rest, last, kept, h_d, h_r):
+  %Equal.sym(Cmp, Laws.vs5(dd), EQ{}, h_d)
+    : {F.round.at(_, rest, SCon{last, kept})
+      == U32.is_eq(U32.mod(Char.to_u32(last), 2), 1) : Bool}
+  %Equal.sym(Bool, F.nonzero(rest), False{}, h_r)
+    : {F.tie(_, SCon{last, kept})
+      == U32.is_eq(U32.mod(Char.to_u32(last), 2), 1) : Bool}
+  {==}
+
+def Laws.up_tie_none(dd, rest, h_d, h_r):
+  %Equal.sym(Cmp, Laws.vs5(dd), EQ{}, h_d)
+    : {F.round.at(_, rest, "") == False{} : Bool}
+  %Equal.sym(Bool, F.nonzero(rest), False{}, h_r)
+    : {F.tie(_, "") == False{} : Bool}
+  {==}
+
+def Laws.nonzero_zeros(kk):
+  match kk:
+    case 0n:
+      {==}
+    case 1n+jj:
+      Laws.nonzero_zeros(jj)
+
+# a nonzero step whose rest is true is true
+law fx_at_true:
+  for +zero: Bool
+  for more: Unit -> Bool
+  for h: {more(Unit{}) == True{} : Bool}
+  {F.nonzero.at(zero, more) == True{} : Bool}
+
+def fx_at_true(zero, _more, h):
+  match zero:
+    case False{}:
+      {==}
+    case True{}:
+      h
+
+def Laws.nonzero_digit(pre, ch, post, h):
+  match pre:
+    case SNil{}:
+      %Equal.sym(Bool, Char.is_eq(ch, '0'), False{}, h)
+        : {F.nonzero.at(_, _u => F.nonzero(post)) == True{} : Bool}
+      {==}
+    case SCon{+cc, +tl}:
+      fx_at_true(Char.is_eq(cc, '0'), _u => F.nonzero(tl ++ SCon{ch, post}),
+        Laws.nonzero_digit(tl, ch, post, h))
+
+def Laws.bump_up(_kept):
+  {==}
+
+def Laws.bump_down(_kept):
+  {==}
+
+def Laws.inc_digit(ch, tl, h):
+  %Equal.sym(Bool, Char.is_eq(ch, '9'), False{}, h)
+    : {F.inc.at(_, ch, tl, _u => F.inc(tl))
+      == SCon{Char.from_u32(U32.add(Char.to_u32(ch), 1)), tl} : String}
+  {==}
+
+def Laws.inc_nine(_tl):
+  {==}
+
+def Laws.inc_nines(kk):
+  match kk:
+    case 0n:
+      {==}
+    case 1n+jj:
+      Equal.cong(String, String, ss => SCon{'0', ss},
+        F.inc(String.repeat("9", jj)), String.repeat("0", jj) ++ "1",
+        Laws.inc_nines(jj))
+
+def Laws.write_parts(_nn, _digits):
+  {==}
+
+def Laws.point_none(_int, _frac):
+  {==}
+
+def Laws.point_some(_mm, _int, _frac):
+  {==}
+
+def Laws.trim_zero(_tl):
+  {==}
+
+def Laws.trim_lead(ch, tl, h):
+  %Equal.sym(Bool, Char.is_eq(ch, '0'), False{}, h)
+    : {F.trim.at(_, ch, tl, _u => F.trim(tl)) == SCon{ch, tl} : String}
+  {==}
+
+def Laws.trim_zeros(kk):
+  match kk:
+    case 0n:
+      {==}
+    case 1n+jj:
+      Laws.trim_zeros(jj)

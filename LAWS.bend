@@ -6,6 +6,7 @@ import ./src/value.bend as V
 import ./main.bend as Ezjson
 import ./src/print.bend as Print
 import ./src/pull.bend as Pull
+import ./src/fixed.bend as F
 
 # a boolean
 def is_bool(val: V.Json) -> Bool:
@@ -2026,3 +2027,442 @@ law pull_skip_next:
   for +h_s: {short(rest_of(cur)) == True{} : Bool}
   for +h_v: {val_len(pulled(mm, cur), 0n) == Some{mm} : Maybe<&2, Nat>}
   {ev_of(Ezjson.next(Ezjson.skip(cur))) == ev_of(Ezjson.next(nexts(mm, cur))) : Pull.Ev}
+
+# --- fixed decimals (JSON-FIX) ---
+
+# no character of the text is an exponent mark, `e` or `E`
+def no_e(+txt: String) -> Bool:
+  match txt:
+    case SNil{}:
+      True{}
+    case SCon{+ch, +tl}:
+      when(F.mark.e(ch), False{}, no_e(tl))
+
+# no character of the text is a decimal point
+def no_dot(+txt: String) -> Bool:
+  match txt:
+    case SNil{}:
+      True{}
+    case SCon{+ch, +tl}:
+      when(F.mark.dot(ch), False{}, no_dot(tl))
+
+# a character's place against `5`
+def vs5(+ch: Char) -> Cmp:
+  U32.cmp(Char.to_u32(ch), 53)
+
+# LAW: num.fixed of a text that is not a JSON number is None
+# JSON-FIX-1
+law fixed_none:
+  for +txt: String
+  for +nn: Nat
+  for +h: {V.num.ok(txt) == False{} : Bool}
+  {Ezjson.num.fixed(txt, nn) == None{} : Maybe<&2, String>}
+
+# LAW: num.fixed of a JSON number is Some of its text with nn decimals
+# JSON-FIX-1
+law fixed_some:
+  for +txt: String
+  for +nn: Nat
+  for +h: {V.num.ok(txt) == True{} : Bool}
+  {Ezjson.num.fixed(txt, nn) == Some{F.text(txt, nn)} : Maybe<&2, String>}
+
+# LAW: a leading minus is written, then the rest unsigned, whatever the
+# digits round to
+# JSON-FIX-2
+law text_minus:
+  for +txt: String
+  for +nn: Nat
+  {F.text("-" ++ txt, nn) == "-" ++ F.unsigned(txt, nn) : String}
+
+# LAW: a text that starts with anything but a minus is written unsigned
+# JSON-FIX-2
+law text_plain:
+  for +ch: Char
+  for +tl: String
+  for +nn: Nat
+  for +h: {Char.is_eq(ch, '-') == False{} : Bool}
+  {F.text(SCon{ch, tl}, nn) == F.unsigned(SCon{ch, tl}, nn) : String}
+
+# LAW: the empty text is written unsigned
+# JSON-FIX-2
+law text_empty:
+  for +nn: Nat
+  {F.text("", nn) == F.unsigned("", nn) : String}
+
+# LAW: an unsigned text is split, its point moved, rounded at nn places and
+# written
+# JSON-FIX-3
+law unsigned_steps:
+  for +txt: String
+  for +nn: Nat
+  {F.unsigned(txt, nn) == F.write(nn, F.round(nn, F.place(F.parts(txt))))
+    : String}
+
+# LAW: a text with an exponent mark is cut at the first one: the mantissa
+# before it, the exponent after it
+# JSON-FIX-3
+law parts_exp:
+  for +mant: String
+  for +ch: Char
+  for +exp: String
+  for +h_m: {no_e(mant) == True{} : Bool}
+  for +h_c: {F.mark.e(ch) == True{} : Bool}
+  {F.parts(mant ++ SCon{ch, exp}) == (F.cut.dot(mant), F.esign(exp))
+    : (String & String) & (Bool & String)}
+
+# LAW: a text with no exponent mark is all mantissa, with exponent 0
+# JSON-FIX-3
+law parts_plain:
+  for +mant: String
+  for +h_m: {no_e(mant) == True{} : Bool}
+  {F.parts(mant) == (F.cut.dot(mant), (False{}, ""))
+    : (String & String) & (Bool & String)}
+
+# LAW: a mantissa with a point is cut at the first one: the integer digits
+# before it, the fraction digits after it
+# JSON-FIX-3
+law mant_dot:
+  for +int: String
+  for +frac: String
+  for +h_i: {no_dot(int) == True{} : Bool}
+  {F.cut.dot(int ++ "." ++ frac) == (int, frac) : String & String}
+
+# LAW: a mantissa with no point is all integer digits
+# JSON-FIX-3
+law mant_int:
+  for +int: String
+  for +h_i: {no_dot(int) == True{} : Bool}
+  {F.cut.dot(int) == (int, "") : String & String}
+
+# LAW: an exponent's leading minus makes it negative
+# JSON-FIX-3
+law esign_minus:
+  for +exp: String
+  {F.esign("-" ++ exp) == (True{}, exp) : Bool & String}
+
+# LAW: an exponent's leading plus is dropped
+# JSON-FIX-3
+law esign_plus:
+  for +exp: String
+  {F.esign("+" ++ exp) == (False{}, exp) : Bool & String}
+
+# LAW: an exponent with no sign is positive and keeps every digit
+# JSON-FIX-3
+law esign_digits:
+  for +ch: Char
+  for +tl: String
+  for +h_m: {Char.is_eq(ch, '-') == False{} : Bool}
+  for +h_p: {Char.is_eq(ch, '+') == False{} : Bool}
+  {F.esign(SCon{ch, tl}) == (False{}, SCon{ch, tl}) : Bool & String}
+
+# LAW: the integer digits, last first, and the fraction digits stand around
+# the point, which the exponent moves
+# JSON-FIX-3
+law place_parts:
+  for +int: String
+  for +frac: String
+  for +neg: Bool
+  for +exp: String
+  {F.place(((int, frac), (neg, exp)))
+    == F.move(neg, F.nat(exp), F.Dec{String.reverse(int), frac}) : F.Dec}
+
+# LAW: an exponent's digits are read from 0
+# JSON-FIX-3
+law nat_start:
+  for +exp: String
+  {F.nat(exp) == F.nat.go(exp, 0n) : Nat}
+
+# LAW: reading no more digits leaves the value read
+# JSON-FIX-3
+law nat_end:
+  for +acc: Nat
+  {F.nat.go("", acc) == acc : Nat}
+
+# LAW: one more digit at the end is ten times the value so far plus that
+# digit: most significant first
+# JSON-FIX-3
+law nat_snoc:
+  for +exp: String
+  for +ch: Char
+  for +acc: Nat
+  {F.nat.go(exp ++ SCon{ch, SNil{}}, acc)
+    == Nat.add(Nat.mul(F.nat.go(exp, acc), 10n),
+      U32.to_nat(U32.sub(Char.to_u32(ch), 48))) : Nat}
+
+# LAW: a positive exponent moves the point right, a negative one left
+# JSON-FIX-3
+law move_right:
+  for +kk: Nat
+  for +dec: F.Dec
+  {F.move(False{}, kk, dec) == F.ups(kk, dec) : F.Dec}
+
+# LAW: a negative exponent moves the point left
+# JSON-FIX-3
+law move_left:
+  for +kk: Nat
+  for +dec: F.Dec
+  {F.move(True{}, kk, dec) == F.downs(kk, dec) : F.Dec}
+
+# LAW: moving the point no places right leaves it
+# JSON-FIX-3
+law ups_zero:
+  for +dec: F.Dec
+  {F.ups(0n, dec) == dec : F.Dec}
+
+# LAW: moving the point k + 1 places right is one move, then k
+# JSON-FIX-3
+law ups_succ:
+  for +kk: Nat
+  for +dec: F.Dec
+  {F.ups(1n+kk, dec) == F.ups(kk, F.up(dec)) : F.Dec}
+
+# LAW: moving the point no places left leaves it
+# JSON-FIX-3
+law downs_zero:
+  for +dec: F.Dec
+  {F.downs(0n, dec) == dec : F.Dec}
+
+# LAW: moving the point k + 1 places left is one move, then k
+# JSON-FIX-3
+law downs_succ:
+  for +kk: Nat
+  for +dec: F.Dec
+  {F.downs(1n+kk, dec) == F.downs(kk, F.down(dec)) : F.Dec}
+
+# LAW: one move right carries the first fraction digit before the point
+# JSON-FIX-3
+law up_digit:
+  for +left: String
+  for +ch: Char
+  for +tl: String
+  {F.up(F.Dec{left, SCon{ch, tl}}) == F.Dec{SCon{ch, left}, tl} : F.Dec}
+
+# LAW: one move right with no fraction digit carries a 0 before the point
+# JSON-FIX-3
+law up_zero:
+  for +left: String
+  {F.up(F.Dec{left, ""}) == F.Dec{SCon{'0', left}, ""} : F.Dec}
+
+# LAW: one move left carries the last integer digit after the point
+# JSON-FIX-3
+law down_digit:
+  for +ch: Char
+  for +tl: String
+  for +right: String
+  {F.down(F.Dec{SCon{ch, tl}, right}) == F.Dec{tl, SCon{ch, right}} : F.Dec}
+
+# LAW: one move left with no integer digit carries a 0 after the point
+# JSON-FIX-3
+law down_zero:
+  for +right: String
+  {F.down(F.Dec{"", right}) == F.Dec{"", SCon{'0', right}} : F.Dec}
+
+# LAW: a move right then left gives back the digits around the point
+# JSON-FIX-3
+law up_down:
+  for +left: String
+  for +ch: Char
+  for +tl: String
+  {F.down(F.up(F.Dec{left, SCon{ch, tl}})) == F.Dec{left, SCon{ch, tl}}
+    : F.Dec}
+
+# LAW: a move left then right gives back the digits around the point
+# JSON-FIX-3
+law down_up:
+  for +ch: Char
+  for +tl: String
+  for +right: String
+  {F.up(F.down(F.Dec{SCon{ch, tl}, right})) == F.Dec{SCon{ch, tl}, right}
+    : F.Dec}
+
+# LAW: rounding cuts the fraction after nn places, joins the kept digits
+# last first, and adds one when the dropped digits say so
+# JSON-FIX-4
+law round_cut:
+  for +nn: Nat
+  for +left: String
+  for +right: String
+  for +kept: String
+  for +dropped: String
+  for +h: {F.pad(nn, right) == (kept, dropped) : String & String}
+  {F.round(nn, F.Dec{left, right})
+    == F.bump(F.round.up(dropped, String.reverse.go(kept, left)),
+      String.reverse.go(kept, left)) : String}
+
+# LAW: the kept fraction digits are exactly nn
+# JSON-FIX-4
+law pad_width:
+  for +nn: Nat
+  for +right: String
+  {String.length(Pair.fst(String, String, F.pad(nn, right))) == nn : Nat}
+
+# LAW: no place kept keeps nothing and drops every fraction digit
+# JSON-FIX-4
+law pad_none:
+  for +right: String
+  {F.pad(0n, right) == ("", right) : String & String}
+
+# LAW: a kept place takes the next fraction digit
+# JSON-FIX-4
+law pad_digit:
+  for +mm: Nat
+  for +ch: Char
+  for +tl: String
+  {F.pad(1n+mm, SCon{ch, tl}) == F.cut.put(ch, F.pad(mm, tl))
+    : String & String}
+
+# LAW: a kept place past the last fraction digit is a 0
+# JSON-FIX-4
+law pad_past:
+  for +mm: Nat
+  {F.pad(1n+mm, "") == F.cut.put('0', F.pad(mm, "")) : String & String}
+
+# LAW: no dropped digit: no rounding
+# JSON-FIX-4
+law up_exact:
+  for +kept: String
+  {F.round.up("", kept) == False{} : Bool}
+
+# LAW: a first dropped digit below 5 rounds down
+# JSON-FIX-4
+law up_below:
+  for +dd: Char
+  for +rest: String
+  for +kept: String
+  for +h: {vs5(dd) == LT{} : Cmp}
+  {F.round.up(SCon{dd, rest}, kept) == False{} : Bool}
+
+# LAW: a first dropped digit above 5 rounds up
+# JSON-FIX-4
+law up_above:
+  for +dd: Char
+  for +rest: String
+  for +kept: String
+  for +h: {vs5(dd) == GT{} : Cmp}
+  {F.round.up(SCon{dd, rest}, kept) == True{} : Bool}
+
+# LAW: a first dropped digit of 5 with a later nonzero dropped digit is past
+# half, and rounds up
+# JSON-FIX-4
+law up_past_half:
+  for +dd: Char
+  for +rest: String
+  for +kept: String
+  for +h_d: {vs5(dd) == EQ{} : Cmp}
+  for +h_r: {F.nonzero(rest) == True{} : Bool}
+  {F.round.up(SCon{dd, rest}, kept) == True{} : Bool}
+
+# LAW: an exact half rounds up exactly when the last kept digit is odd
+# JSON-FIX-4
+law up_tie:
+  for +dd: Char
+  for +rest: String
+  for +last: Char
+  for +kept: String
+  for +h_d: {vs5(dd) == EQ{} : Cmp}
+  for +h_r: {F.nonzero(rest) == False{} : Bool}
+  {F.round.up(SCon{dd, rest}, SCon{last, kept})
+    == U32.is_eq(U32.mod(Char.to_u32(last), 2), 1) : Bool}
+
+# LAW: an exact half with no kept digit (an empty integer part and no
+# places) counts as even 0, and rounds down
+# JSON-FIX-4
+law up_tie_none:
+  for +dd: Char
+  for +rest: String
+  for +h_d: {vs5(dd) == EQ{} : Cmp}
+  for +h_r: {F.nonzero(rest) == False{} : Bool}
+  {F.round.up(SCon{dd, rest}, "") == False{} : Bool}
+
+# LAW: dropped digits that are all 0 are not past half
+# JSON-FIX-4
+law nonzero_zeros:
+  for +kk: Nat
+  {F.nonzero(String.repeat("0", kk)) == False{} : Bool}
+
+# LAW: a digit other than 0 anywhere among the dropped digits is past half
+# JSON-FIX-4
+law nonzero_digit:
+  for +pre: String
+  for +ch: Char
+  for +post: String
+  for +h: {Char.is_eq(ch, '0') == False{} : Bool}
+  {F.nonzero(pre ++ SCon{ch, post}) == True{} : Bool}
+
+# LAW: rounding up adds one, rounding down keeps the digits
+# JSON-FIX-4
+law bump_up:
+  for +kept: String
+  {F.bump(True{}, kept) == F.inc(kept) : String}
+
+# LAW: rounding down keeps the digits
+# JSON-FIX-4
+law bump_down:
+  for +kept: String
+  {F.bump(False{}, kept) == kept : String}
+
+# LAW: adding one to a last digit other than 9 makes it the next digit
+# JSON-FIX-4
+law inc_digit:
+  for +ch: Char
+  for +tl: String
+  for +h: {Char.is_eq(ch, '9') == False{} : Bool}
+  {F.inc(SCon{ch, tl}) == SCon{Char.from_u32(U32.add(Char.to_u32(ch), 1)), tl}
+    : String}
+
+# LAW: adding one to a last digit 9 makes it 0 and carries one
+# JSON-FIX-4
+law inc_nine:
+  for +tl: String
+  {F.inc(SCon{'9', tl}) == SCon{'0', F.inc(tl)} : String}
+
+# LAW: adding one to all 9s makes them 0s and a new leading 1
+# JSON-FIX-4
+law inc_nines:
+  for +kk: Nat
+  {F.inc(String.repeat("9", kk)) == String.repeat("0", kk) ++ "1" : String}
+
+# LAW: the rounded digits (last first) are written as the integer part, the
+# digits before the last nn, and the fraction, the last nn
+# JSON-FIX-5
+law write_parts:
+  for +nn: Nat
+  for +digits: String
+  {F.write(nn, digits)
+    == F.point(nn, F.trim(String.reverse(String.drop(digits, nn))),
+      String.reverse(String.take(digits, nn))) : String}
+
+# LAW: no places writes the integer part alone, with no point
+# JSON-FIX-5
+law point_none:
+  for +int: String
+  for +frac: String
+  {F.point(0n, int, frac) == int : String}
+
+# LAW: one or more places write the integer part, a point and the fraction
+# JSON-FIX-5
+law point_some:
+  for +mm: Nat
+  for +int: String
+  for +frac: String
+  {F.point(1n+mm, int, frac) == int ++ "." ++ frac : String}
+
+# LAW: a leading 0 of the integer part is dropped
+# JSON-FIX-5
+law trim_zero:
+  for +tl: String
+  {F.trim(SCon{'0', tl}) == F.trim(tl) : String}
+
+# LAW: an integer part that starts with another digit is kept whole
+# JSON-FIX-5
+law trim_lead:
+  for +ch: Char
+  for +tl: String
+  for +h: {Char.is_eq(ch, '0') == False{} : Bool}
+  {F.trim(SCon{ch, tl}) == SCon{ch, tl} : String}
+
+# LAW: an integer part of only 0s, or none, is written 0
+# JSON-FIX-5
+law trim_zeros:
+  for +kk: Nat
+  {F.trim(String.repeat("0", kk)) == "0" : String}

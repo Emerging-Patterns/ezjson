@@ -67,6 +67,15 @@ array's elements in order in one walk (a loop over `at` walks the array again
 for every index), and gives `[]` for anything that is not an array. `is_arr`
 and `is_obj` tell whether a value is an array or an object.
 
+`num.fixed(s, n)` writes a number's text with exactly `n` decimals, as
+Python's `'%.Nf'` does, but rounding half to even on the decimal digits
+rather than through a binary float: `num.fixed("2.675", 2n)` is
+`Some{"2.68"}` where Python's `'%.2f' % 2.675` is `2.67`. It reads
+exponents (`1e-05` to 7 places is `0.0000100`), keeps a minus on a value
+that rounds to zero (`-0.04` to 1 place is `-0.0`), and is `None` when the
+text is not a JSON number. Pass it what `as_num` reads. SPEC.md's JSON-FIX
+rows list where it and Python's float formatting differ.
+
 ```
 import emerging-ezjson@1.1.0.0/main.bend as Ezjson
 import emerging-ezjson@1.1.0.0/src/value.bend as Value
