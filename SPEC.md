@@ -76,6 +76,8 @@ A tag may name a proved or a pending requirement, never a Trusted one or an ID n
 | JSON-TREE-7 | For every number value whose text is `s`: when `F32.read(s)` is `Some{x}` with `F32.abs(x)` at most 3.4028235e38 (the largest finite F32), `as_f32` is `Some{x}`; when that read is infinite or `None`, `as_f32` is `None` | Proved | proved | LAWS.bend as_f32_fits; LAWS.bend as_f32_overflow; LAWS.bend as_f32_unread |
 | JSON-TREE-8 | `has(obj(ps), k)` is true exactly when some pair in `ps` has key `k`, and `has(j, k)` is false for every `j` that is not an object | Proved | proved | LAWS.bend has_not_obj; LAWS.bend has_empty; LAWS.bend has_hit; LAWS.bend has_miss |
 | JSON-TREE-9 | `len(arr(xs))` is the length of `xs`, `len(obj(ps))` the length of `ps`, and `len(j)` is 0 for every scalar | Proved | proved | LAWS.bend len_arr; LAWS.bend len_obj; LAWS.bend len_scalar |
+| JSON-TREE-10 | `items(arr(xs))` is `xs`; for every well-formed array `j`, `arr(items(j))` is `j`, `at(j, i)` is the `i`-th element of `items(j)` (`null()` past its end) and `len(j)` is the length of `items(j)`: `items` gives an array's elements in order; `items(j)` is `[]` for every `j` that is not an array | Proved | proved | LAWS.bend items_arr; LAWS.bend items_back; LAWS.bend items_at; LAWS.bend items_len; LAWS.bend items_not_arr |
+| JSON-TREE-11 | For every value `j`, `is_arr(j)` is true exactly when `j` is an array and `is_obj(j)` exactly when `j` is an object: `is_arr(arr(xs))` and `is_obj(obj(ps))` hold, and neither holds of a null, a boolean, a number or a string, owned or a span | Proved | proved | LAWS.bend is_arr_kind; LAWS.bend is_obj_kind; LAWS.bend is_arr_arr; LAWS.bend is_obj_obj |
 
 ### The pull cursor (JSON-PULL)
 

@@ -4,7 +4,8 @@
 # `pretty` indented text. `cursor` reads one event at a time. Build null,
 # booleans, numbers, strings, arrays, and objects; read them with get, at, and
 # as_bool, as_str, as_num, as_u32, as_f32; has and len tell a missing key or
-# index from a null.
+# index from a null; items lists an array's elements, and is_arr and is_obj
+# tell the containers apart.
 import Base
 import ./src/value.bend as Value
 import ./src/parse.bend as Parse
@@ -65,6 +66,19 @@ def has(val: Value.Json, key: String) -> Bool:
 # how many elements an array, or members an object, has; 0 for anything else
 def len(val: Value.Json) -> U32:
   Value.len(val)
+
+# an array's elements, in order; [] when the value is not an array. One
+# walk of the array, where a loop over `at` walks it again for every index
+def items(val: Value.Json) -> List<&2, Value.Json>:
+  Value.items(val)
+
+# whether a value is an array
+def is_arr(val: Value.Json) -> Bool:
+  Value.is_arr(val)
+
+# whether a value is an object
+def is_obj(val: Value.Json) -> Bool:
+  Value.is_obj(val)
 
 # a boolean, or none when the value is not one
 def as_bool(val: Value.Json) -> Maybe<&2, Bool>:

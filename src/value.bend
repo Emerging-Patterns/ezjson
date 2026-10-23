@@ -431,6 +431,38 @@ def len(val: Json) -> U32:
     case _:
       0
 
+# the elements of a chain of array cells, in order
+def items.go(cells: Json) -> List<&2, Json>:
+  match cells:
+    case JCons{hd, tl}:
+      hd <> items.go(tl)
+    case _:
+      []
+
+# an array's elements, in order; [] for anything else
+def items(val: Json) -> List<&2, Json>:
+  match val:
+    case JArr{cells}:
+      items.go(cells)
+    case _:
+      []
+
+# whether a value is an array
+def is_arr(val: Json) -> Bool:
+  match val:
+    case JArr{_}:
+      True{}
+    case _:
+      False{}
+
+# whether a value is an object
+def is_obj(val: Json) -> Bool:
+  match val:
+    case JObj{_}:
+      True{}
+    case _:
+      False{}
+
 # a string, or none when the value is not one
 def as_str(val: Json) -> Maybe<&2, String>:
   match val:
