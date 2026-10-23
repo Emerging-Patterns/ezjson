@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/Emerging-Patterns/ezjson/compare/v1.1.0...v1.2.0) (2026-10-23)
+
+
+### Features
+
+* **tree:** items, is_arr and is_obj ([#74](https://github.com/Emerging-Patterns/ezjson/issues/74)) ([49dead4](https://github.com/Emerging-Patterns/ezjson/commit/49dead431e854474378d69c088b4470875872186))
+
 ## [1.1.0](https://github.com/Emerging-Patterns/ezjson/compare/v1.0.0...v1.1.0) (2026-09-25)
 
 
