@@ -9023,22 +9023,63 @@ def Laws.str_back(txt, h_sc, h_s):
 
 # WP-P1: the parser on a value's tokens
 
-# the equality answer a string comparison carries, as String.eq reads it
-def eq_of(rr: (String & String) & Cmp) -> Bool:
-  Cmp.is_eq(Pair.snd(String & String, Cmp, rr))
+# a string walk whose first characters already differ answers that order
+law order_go_ne:
+  for +aa: String
+  for +bb: String
+  for cc: Cmp
+  for ne: {Cmp.is_eq(cc) == False{} : Bool}
+  {String.order.go(aa, bb, cc) == cc : Cmp}
 
-# comparing two strings, one character in front of each, answers as the rest
-law cmp_rec_eq:
-  for h1: Char
-  for h2: Char
-  for rr: (String & String) & Cmp
-  {eq_of(String.cmp.rec(h1, h2, rr)) == eq_of(rr) : Bool}
+def order_go_ne(aa, bb, cc, ne):
+  match aa bb:
+    case SNil{} SNil{}:
+      match cc:
+        case LT{}:
+          {==}
+        case GT{}:
+          {==}
+        case EQ{}:
+          Empty.absurd({String.order.go(SNil{}, SNil{}, EQ{}) == EQ{} : Cmp}, true_false(ne))
+    case SNil{} SCon{y, ys}:
+      match cc:
+        case LT{}:
+          {==}
+        case GT{}:
+          {==}
+        case EQ{}:
+          Empty.absurd({String.order.go(SNil{}, SCon{y, ys}, EQ{}) == EQ{} : Cmp}, true_false(ne))
+    case SCon{x, xs} SNil{}:
+      match cc:
+        case LT{}:
+          {==}
+        case GT{}:
+          {==}
+        case EQ{}:
+          Empty.absurd({String.order.go(SCon{x, xs}, SNil{}, EQ{}) == EQ{} : Cmp}, true_false(ne))
+    case SCon{Chr{x}, xs} SCon{Chr{y}, ys}:
+      match cc:
+        case LT{}:
+          {==}
+        case GT{}:
+          {==}
+        case EQ{}:
+          Empty.absurd({String.order.go(SCon{Chr{x}, xs}, SCon{Chr{y}, ys}, EQ{}) == EQ{} : Cmp}, true_false(ne))
 
-def cmp_rec_eq(_h1, _h2, rr):
-  ((_a, _b), _c) = rr
-  {==}
+# so String.eq of such a walk is False
+law order_go_ne_eq:
+  for +aa: String
+  for +bb: String
+  for cc: Cmp
+  for +ne: {Cmp.is_eq(cc) == False{} : Bool}
+  {Cmp.is_eq(String.order.go(aa, bb, cc)) == False{} : Bool}
 
-# str_eq_sound, once the first characters' comparison is named
+def order_go_ne_eq(aa, bb, cc, ne):
+  Equal.trans(Bool, Cmp.is_eq(String.order.go(aa, bb, cc)), Cmp.is_eq(cc), False{},
+    Equal.cong(Cmp, Bool, zz => Cmp.is_eq(zz), String.order.go(aa, bb, cc), cc, order_go_ne(aa, bb, cc, ne)), ne)
+
+# str_eq_sound, once the first characters' comparison is named: String.eq
+# walks the rests with String.order.go, carrying that comparison
 law str_eq_at:
   for cc: Cmp
   for +xx: U32
@@ -9046,20 +9087,22 @@ law str_eq_at:
   for +t1: String
   for +t2: String
   for ec: {U32.cmp(xx, yy) == cc : Cmp}
-  for h: {eq_of(String.cmp.fin(t1, t2, ((Chr{xx}, Chr{yy}), cc))) == True{} : Bool}
+  for h: {Cmp.is_eq(String.order.go(t1, t2, cc)) == True{} : Bool}
   for ih: {String.eq(t1, t2) == True{} : Bool} -> {t1 == t2 : String}
   {SCon{Chr{xx}, t1} == SCon{Chr{yy}, t2} : String}
 
 def str_eq_at(cc, xx, yy, t1, t2, ec, h, ih):
   match cc:
     case LT{}:
-      Empty.absurd({SCon{Chr{xx}, t1} == SCon{Chr{yy}, t2} : String}, false_true(h))
+      Empty.absurd({SCon{Chr{xx}, t1} == SCon{Chr{yy}, t2} : String},
+        false_true(Equal.trans(Bool, False{}, Cmp.is_eq(String.order.go(t1, t2, LT{})), True{},
+          Equal.sym(Bool, Cmp.is_eq(String.order.go(t1, t2, LT{})), False{}, order_go_ne_eq(t1, t2, LT{}, {==})), h)))
     case GT{}:
-      Empty.absurd({SCon{Chr{xx}, t1} == SCon{Chr{yy}, t2} : String}, false_true(h))
+      Empty.absurd({SCon{Chr{xx}, t1} == SCon{Chr{yy}, t2} : String},
+        false_true(Equal.trans(Bool, False{}, Cmp.is_eq(String.order.go(t1, t2, GT{})), True{},
+          Equal.sym(Bool, Cmp.is_eq(String.order.go(t1, t2, GT{})), False{}, order_go_ne_eq(t1, t2, GT{}, {==})), h)))
     case EQ{}:
-      et = ih(Equal.trans(Bool, String.eq(t1, t2), eq_of(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(t1, t2))),
-        True{}, Equal.sym(Bool, eq_of(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(t1, t2))), String.eq(t1, t2),
-          cmp_rec_eq(Chr{xx}, Chr{yy}, String.cmp(t1, t2))), h))
+      et = ih(h)
       ex = ueq(xx, yy, Equal.cong(Cmp, Bool, zz => Cmp.is_eq(zz), U32.cmp(xx, yy), EQ{}, ec))
       %ex : {SCon{Chr{xx}, t1} == SCon{Chr{_}, t2} : String}
       %et : {SCon{Chr{xx}, t1} == SCon{Chr{xx}, _} : String}
@@ -11751,29 +11794,30 @@ def span_miss(src, _zero, _key, _nn):
 # span_eq_go, one character on, with its comparison named
 law span_eq_at:
   for cc: Cmp
-  for +xx: U32
-  for +yy: U32
   for +as: String
   for +bs: String
   for +nn: U32
   for ih: {V.span.eq.go(as, True{}, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)) ==
     String.eq(V.span.str(as, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))), bs) : Bool}
   {V.span.eq.go(as, Cmp.is_eq(cc), U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)) ==
-    eq_of(String.cmp.fin(V.span.str(as, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))), bs,
-      ((Chr{xx}, Chr{yy}), cc))) : Bool}
+    Cmp.is_eq(String.order.go(V.span.str(as, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1))), bs, cc)) : Bool}
 
-def span_eq_at(cc, xx, yy, as, bs, nn, ih):
+def span_eq_at(cc, as, bs, nn, ih):
   match cc:
     case LT{}:
-      span_miss(as, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1))
-    case GT{}:
-      span_miss(as, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1))
-    case EQ{}:
       +sp = V.span.str(as, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)))
-      Equal.trans(Bool, V.span.eq.go(as, True{}, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)), String.eq(sp, bs),
-        eq_of(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(sp, bs))), ih,
-        Equal.sym(Bool, eq_of(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(sp, bs))), String.eq(sp, bs),
-          cmp_rec_eq(Chr{xx}, Chr{yy}, String.cmp(sp, bs))))
+      Equal.trans(Bool, V.span.eq.go(as, False{}, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)), False{},
+        Cmp.is_eq(String.order.go(sp, bs, LT{})),
+        span_miss(as, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)),
+        Equal.sym(Bool, Cmp.is_eq(String.order.go(sp, bs, LT{})), False{}, order_go_ne_eq(sp, bs, LT{}, {==})))
+    case GT{}:
+      +sp = V.span.str(as, U32.sub(nn, 1), U32.is_zero(U32.sub(nn, 1)))
+      Equal.trans(Bool, V.span.eq.go(as, False{}, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)), False{},
+        Cmp.is_eq(String.order.go(sp, bs, GT{})),
+        span_miss(as, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)),
+        Equal.sym(Bool, Cmp.is_eq(String.order.go(sp, bs, GT{})), False{}, order_go_ne_eq(sp, bs, GT{}, {==})))
+    case EQ{}:
+      ih
 
 # comparing a span with a key is comparing what the span covers with it
 law span_eq_go:
@@ -11812,7 +11856,7 @@ def span_eq_go(src, zero, key, nn):
             case SNil{}:
               {==}
             case SCon{Chr{+yy}, +bs}:
-              span_eq_at(U32.cmp(xx, yy), xx, yy, as, bs, nn,
+              span_eq_at(U32.cmp(xx, yy), as, bs, nn,
                 span_eq_go(as, U32.is_zero(U32.sub(nn, 1)), bs, U32.sub(nn, 1)))
 
 # fix_eq, with the scalar test named
@@ -12893,24 +12937,23 @@ def find_miss(aa, bb):
 # find_str_eq, one character on, with its comparison named
 law find_str_at:
   for cc: Cmp
-  for +xx: U32
-  for +yy: U32
   for +as: String
   for +bs: String
   for ih: {V.find.eq.go(as, bs, True{}) == String.eq(as, bs) : Bool}
-  {V.find.eq.go(as, bs, Cmp.is_eq(cc)) == eq_of(String.cmp.fin(as, bs, ((Chr{xx}, Chr{yy}), cc))) : Bool}
+  {V.find.eq.go(as, bs, Cmp.is_eq(cc)) == Cmp.is_eq(String.order.go(as, bs, cc)) : Bool}
 
-def find_str_at(cc, xx, yy, as, bs, ih):
+def find_str_at(cc, as, bs, ih):
   match cc:
     case LT{}:
-      find_miss(as, bs)
+      Equal.trans(Bool, V.find.eq.go(as, bs, False{}), False{}, Cmp.is_eq(String.order.go(as, bs, LT{})),
+        find_miss(as, bs),
+        Equal.sym(Bool, Cmp.is_eq(String.order.go(as, bs, LT{})), False{}, order_go_ne_eq(as, bs, LT{}, {==})))
     case GT{}:
-      find_miss(as, bs)
+      Equal.trans(Bool, V.find.eq.go(as, bs, False{}), False{}, Cmp.is_eq(String.order.go(as, bs, GT{})),
+        find_miss(as, bs),
+        Equal.sym(Bool, Cmp.is_eq(String.order.go(as, bs, GT{})), False{}, order_go_ne_eq(as, bs, GT{}, {==})))
     case EQ{}:
-      Equal.trans(Bool, V.find.eq.go(as, bs, True{}), String.eq(as, bs),
-        eq_of(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(as, bs))), ih,
-        Equal.sym(Bool, eq_of(String.cmp.rec(Chr{xx}, Chr{yy}, String.cmp(as, bs))), String.eq(as, bs),
-          cmp_rec_eq(Chr{xx}, Chr{yy}, String.cmp(as, bs))))
+      ih
 
 # find.eq is String.eq
 law find_str_eq:
@@ -12927,7 +12970,7 @@ def find_str_eq(aa, bb):
     case SCon{_x, _xs} SNil{}:
       {==}
     case SCon{Chr{+xx}, +as} SCon{Chr{+yy}, +bs}:
-      find_str_at(U32.cmp(xx, yy), xx, yy, as, bs, find_str_eq(as, bs))
+      find_str_at(U32.cmp(xx, yy), as, bs, find_str_eq(as, bs))
 
 # comparing a span key is comparing the key it covers
 law span_find:
@@ -16006,6 +16049,20 @@ law feff_word:
   {wrej(Lex.TWord{SCon{Chr{65279}, txt}}) == True{} : Bool}
 
 def feff_word(txt):
+  # U+FEFF is above every literal's first letter, so String.eq walks the
+  # rest already GT and answers False
+  n1 = Equal.sym(Bool, Cmp.is_eq(String.order.go(txt, "ull", GT{})), False{}, order_go_ne_eq(txt, "ull", GT{}, {==}))
+  %n1 : {pbad(Parse.step.word.go(SCon{Chr{65279}, txt}, Parse.P{False{}, None{}, Nil{}},
+    Bool.or(_, Bool.or(Cmp.is_eq(String.order.go(txt, "rue", GT{})),
+      Bool.or(Cmp.is_eq(String.order.go(txt, "alse", GT{})), V.num.ok.go(String.to_list(txt), V.NBad{})))))) ==
+    True{} : Bool}
+  n2 = Equal.sym(Bool, Cmp.is_eq(String.order.go(txt, "rue", GT{})), False{}, order_go_ne_eq(txt, "rue", GT{}, {==}))
+  %n2 : {pbad(Parse.step.word.go(SCon{Chr{65279}, txt}, Parse.P{False{}, None{}, Nil{}},
+    Bool.or(_, Bool.or(Cmp.is_eq(String.order.go(txt, "alse", GT{})), V.num.ok.go(String.to_list(txt), V.NBad{}))))) ==
+    True{} : Bool}
+  n3 = Equal.sym(Bool, Cmp.is_eq(String.order.go(txt, "alse", GT{})), False{}, order_go_ne_eq(txt, "alse", GT{}, {==}))
+  %n3 : {pbad(Parse.step.word.go(SCon{Chr{65279}, txt}, Parse.P{False{}, None{}, Nil{}},
+    Bool.or(_, V.num.ok.go(String.to_list(txt), V.NBad{})))) == True{} : Bool}
   sb = Equal.sym(Bool, V.num.ok.go(String.to_list(txt), V.NBad{}), False{}, st_bad(String.to_list(txt)))
   %sb : {pbad(Parse.step.word.go(SCon{Chr{65279}, txt}, Parse.P{False{}, None{}, Nil{}}, _)) == True{} : Bool}
   {==}
@@ -28584,21 +28641,30 @@ law lon_snoc.at:
 def lon_snoc.at(b1, b2, b3, cc, hn, w, e1, e2, e3, h):
   match b1:
     case True{}:
-      ek = Equal.sym(String, w, "null", str_eq_sound(w, "null", e1))
-      %ek : {Laws.lit_or_num(_ ++ SCon{cc, ""}) == False{} : Bool}
-      {==}
+      # String.eq walks to the appended character, so name its code
+      match cc:
+        case Chr{u}:
+          ek = Equal.sym(String, w, "null", str_eq_sound(w, "null", e1))
+          %ek : {Laws.lit_or_num(_ ++ SCon{Chr{u}, ""}) == False{} : Bool}
+          {==}
     case False{}:
       match b2:
         case True{}:
-          ek = Equal.sym(String, w, "true", str_eq_sound(w, "true", e2))
-          %ek : {Laws.lit_or_num(_ ++ SCon{cc, ""}) == False{} : Bool}
-          {==}
+          # String.eq walks to the appended character, so name its code
+          match cc:
+            case Chr{u}:
+              ek = Equal.sym(String, w, "true", str_eq_sound(w, "true", e2))
+              %ek : {Laws.lit_or_num(_ ++ SCon{Chr{u}, ""}) == False{} : Bool}
+              {==}
         case False{}:
           match b3:
             case True{}:
-              ek = Equal.sym(String, w, "false", str_eq_sound(w, "false", e3))
-              %ek : {Laws.lit_or_num(_ ++ SCon{cc, ""}) == False{} : Bool}
-              {==}
+              # String.eq walks to the appended character, so name its code
+              match cc:
+                case Chr{u}:
+                  ek = Equal.sym(String, w, "false", str_eq_sound(w, "false", e3))
+                  %ek : {Laws.lit_or_num(_ ++ SCon{Chr{u}, ""}) == False{} : Bool}
+                  {==}
             case False{}:
               lon_snoc.n(cc, hn, w, h)
 

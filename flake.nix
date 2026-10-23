@@ -2,17 +2,20 @@
   description = "ezjson: JSON for Bend 2";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-  # bendlang/bend's flake at the commit that packages 2.0.36 (the v2.0.36 tag
-  # still packages 2.0.35)
+  # bendlang/bend's flake at the commit that packages 2.0.38 (the v2.0.38 tag
+  # may still package 2.0.37)
   inputs.bend = {
-    url = "github:bendlang/bend/eebc18cd04daeade06c3f68c3c96c1faefd3462f";
+    url = "github:bendlang/bend/042e797ebd1cfc060603e2682879909fe86fa8c2";
     inputs.nixpkgs.follows = "nixpkgs";
   };
-  # ez 1.5.0 follows this bend, so ez (and the bolt it builds) runs on 2.0.36
+  # Interim: ez 1.5.0 does not build on 2.0.38 yet, so ez (and the bolt it
+  # builds for mkLint) stays on its own bend, 2.0.36. The proofs run on this
+  # flake's bend (checks.proofs below). The tooling pass, once ez releases on
+  # 2.0.38, puts `inputs.bend.follows = "bend"` and ez.mkProofs back.
   inputs.ez = {
     url = "github:Emerging-Patterns/ez";
     inputs.nixpkgs.follows = "nixpkgs";
-    inputs.bend.follows = "bend";
+    inputs.bend.url = "github:bendlang/bend/eebc18cd04daeade06c3f68c3c96c1faefd3462f";
   };
 
   outputs = { self, nixpkgs, ... }@inputs:
@@ -44,8 +47,21 @@
       apps.${system} = bench.apps;
 
       checks.${system} = {
-        # every PROOF.bend must print ALL PROOFS CHECK (ez prove)
-        proofs = ez.mkProofs { ez = ezBin; src = self; };
+        # every PROOF.bend must print ALL PROOFS CHECK, on this flake's bend
+        # (interim for ez.mkProofs, which runs ez's own bend)
+        proofs = pkgs.runCommand "ezjson-proofs" {
+          nativeBuildInputs = [ bend ];
+          BEND_LIB = ez.bendLib ./ez.lock.toml;
+        } ''
+          export HOME=$TMPDIR
+          cp -r ${self} src && chmod -R u+w src && cd src
+          for p in $(find . -name PROOF.bend -not -path './.ez/*' | sort); do
+            first=$(cd "$(dirname "$p")" && bend "$(basename "$p")" | head -n 1)
+            echo "$p: $first"
+            [ "$first" = "ALL PROOFS CHECK" ] || exit 1
+          done
+          touch $out
+        '';
         lint = ez.mkLint { src = self; };
       } // bench.checks // scale.checks;
 
