@@ -11,6 +11,7 @@ import ./src/value.bend as Value
 import ./src/parse.bend as Parse
 import ./src/print.bend as Print
 import ./src/pull.bend as Pull
+import ./src/fixed.bend as Fixed
 
 # a text as a value, or None when it is not JSON
 def parse(txt: String) -> Maybe<&2, Value.Json>:
@@ -91,6 +92,14 @@ def as_str(val: Value.Json) -> Maybe<&2, String>:
 # a number's text, or none when the value is not a number
 def as_num(val: Value.Json) -> Maybe<&2, String>:
   Value.as_num(val)
+
+# a number's text written with `places` decimals, rounded half to even on
+# its decimal digits (not through a binary float), as Python's `'%.Nf'`
+# writes a value whose decimal text is exact; None when the text is not a
+# JSON number. A `-` is kept even when the result is zero: `-0.04` to one
+# place is `-0.0`
+def num.fixed(raw: String, places: Nat) -> Maybe<&2, String>:
+  Fixed.fixed(raw, places)
 
 # a number as a U32, or none when it is not one or does not fit
 def as_u32(val: Value.Json) -> Maybe<&2, U32>:
