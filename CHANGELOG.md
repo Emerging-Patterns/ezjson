@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/Emerging-Patterns/ezjson/compare/v1.3.0...v1.4.0) (2026-10-25)
+
+
+### Features
+
+* **nix:** build and check on x86_64-linux, aarch64-linux and aarch64-darwin ([#84](https://github.com/Emerging-Patterns/ezjson/issues/84)) ([30485c6](https://github.com/Emerging-Patterns/ezjson/commit/30485c648db9026c81c7c5a928e8f6615045162f))
+
 ## [1.3.0](https://github.com/Emerging-Patterns/ezjson/compare/v1.2.0...v1.3.0) (2026-10-23)
 
 
