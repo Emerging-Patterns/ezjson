@@ -10,12 +10,12 @@ from [the hub](https://hub.bend-lang.com) into `~/.bend/lib` on the first
 run; no install step. ezjson is built and checked on Bend 2.0.38.
 
 ```
-import emerging-ezjson@1.2.0.0/main.bend as Ezjson
+import ezjson@1.4.0.0/main.bend as Ezjson
 ```
 
-`emerging-ezjson@1.2.0.0` is ezjson v1.2.0 and resolves to
-`0xa81e161008ecc2f297c0a3065cb9b188`; to pin by content, import
-`0xa81e161008ecc2f297c0a3065cb9b188/main.bend` instead.
+`ezjson@1.4.0.0` is ezjson v1.4.0 and resolves to
+`0xdab377b48b4edd8247427c10e2120805`; to pin by content, import
+`0xdab377b48b4edd8247427c10e2120805/main.bend` instead.
 
 Or with [ez](https://github.com/Emerging-Patterns/ez), which records the
 package in `ez.toml` (`ez init` makes one):
@@ -38,8 +38,8 @@ builds null when the text is not a JSON number. The `Json` type is
 `match` on a result its own def, since Bend matches only a parameter.
 
 ```
-import emerging-ezjson@1.2.0.0/main.bend as Ezjson
-import emerging-ezjson@1.2.0.0/src/value.bend as Value
+import ezjson@1.4.0.0/main.bend as Ezjson
+import ezjson@1.4.0.0/src/value.bend as Value
 
 def shown(got: Maybe<&2, Value.Json>) -> String:
   match got:
@@ -77,8 +77,8 @@ text is not a JSON number. Pass it what `as_num` reads. SPEC.md's JSON-FIX
 rows list where it and Python's float formatting differ.
 
 ```
-import emerging-ezjson@1.2.0.0/main.bend as Ezjson
-import emerging-ezjson@1.2.0.0/src/value.bend as Value
+import ezjson@1.4.0.0/main.bend as Ezjson
+import ezjson@1.4.0.0/src/value.bend as Value
 
 def names.go(users: List<&2, Value.Json>) -> List<&2, Maybe<&2, String>>:
   match users:
@@ -111,8 +111,8 @@ Walk a large object or array one event at a time. `skip` drops a subtree
 you do not need. `text` copies an owned string when you need one.
 
 ```
-import emerging-ezjson@1.2.0.0/main.bend as Ezjson
-import emerging-ezjson@1.2.0.0/src/pull.bend as Pull
+import ezjson@1.4.0.0/main.bend as Ezjson
+import ezjson@1.4.0.0/src/pull.bend as Pull
 
 def owned.go(step: (Pull.Ev & Pull.Cur)) -> (String & Pull.Cur):
   (ev, rest) = step
