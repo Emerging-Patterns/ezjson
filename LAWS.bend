@@ -7,8 +7,8 @@
 #
 # There are two families: conformance to RFC 8259 (the text, number, string
 # and print guarantees) and the public interface in main.bend (the tree, the
-# pull cursor and fixed decimals). Every other module is internal and carries
-# no promise.
+# pull cursor and fixed decimals). Every other module is internal: a law about
+# one holds it in place without making it interface.
 #
 # A value is well-formed when `V.wf` holds of it: its arrays and objects are
 # chains of cells ending in `JNil`, no cell stands where a value belongs, and
