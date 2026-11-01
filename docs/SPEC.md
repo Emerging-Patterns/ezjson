@@ -6,7 +6,7 @@ Every requirement has one of two levels. A **Proved** requirement holds for ever
 
 A value is **well-formed** when `V.wf` holds of it: its arrays and objects are chains of cells ending in `JNil`, no cell stands where a value belongs, and every number's text is a JSON number. Every value built through `main.bend` or returned by `parse` is well-formed (JSON-PRINT-3). `same` is the specification relation "the same JSON value", which ignores whether a string or key is owned or a span of the source. `LAWS.bend` decides it with `own`, which reads every span out into its own string: two values are `same` when their `own` forms are equal.
 
-The reasoning behind each requirement, the verdict of each against the code at `089d520`, and the decisions that shaped them are in [docs/rfc/ezjson-spec.md](docs/rfc/ezjson-spec.md). Every law as it stood then, and the progress of the rollout, is in [docs/rfc/ezjson-law-inventory.md](docs/rfc/ezjson-law-inventory.md).
+The reasoning behind each requirement, the verdict of each against the code at `089d520`, and the decisions that shaped them are in [docs/rfc/ezjson-spec.md](rfc/ezjson-spec.md). Every law as it stood then, and the progress of the rollout, is in [docs/rfc/ezjson-law-inventory.md](rfc/ezjson-law-inventory.md).
 
 The number rule of RFC 8259 §6 is written out in `LAWS.bend` as `number` and the defs above it, one def per ABNF production, so JSON-NUM-1 can be checked against the RFC by reading those defs.
 

@@ -15,7 +15,7 @@ def cat.rev(chunk: String, acc: String) -> String:
       cat.rev(t, SCon{c, acc})
 
 # undo a reversed buffer
-def flip(txt: String, acc: String) -> String:  # noqa: L001 scale harness, outside the spec
+def flip(txt: String, acc: String) -> String:
   match txt:
     case SNil{}:
       acc
@@ -37,7 +37,7 @@ def rows.of(nn: Nat, one: String, more: String) -> String:
   flip(rows.put(nn, True{}, "", one, more), "")
 
 # {"rows":[ ... ],"n":1}
-def pack(body: String) -> String:  # noqa: L001 scale harness, outside the spec
+def pack(body: String) -> String:
   "{\"rows\":[" ++ body ++ "],\"n\":1}"
 
 # 32000 string rows
@@ -49,16 +49,16 @@ def nest.doc() -> String:
   pack(rows.of(Nat.mul(350n, 100n), "[0.100,0.200,0.3]", ",[0.100,0.200,0.3]"))
 
 # enough steps for one event per character, plus the end
-def steps(+src: String) -> Nat:  # noqa: L001 scale harness, outside the spec
+def steps(+src: String) -> Nat:
   1n+Nat.add(String.length(src), String.length(src))
 
 # the count walk: the next event is still unread, or one is in hand
-type Phase is Data:  # noqa: L001 scale harness, outside the spec
+type Phase is Data:
   Need{cur: Pull.Cur, acc: U32}
   Have{ev: Pull.Ev, cur: Pull.Cur, acc: U32}
 
 # keep the event just read
-def take(acc: U32, got: (Pull.Ev & Pull.Cur)) -> Phase:  # noqa: L001 scale harness, outside the spec
+def take(acc: U32, got: (Pull.Ev & Pull.Cur)) -> Phase:
   (ev, cur) = got
   Have{ev, cur, acc}
 
@@ -79,7 +79,7 @@ def add.num(ev: Pull.Ev, acc: U32) -> U32:
       acc
 
 # string spans, or number spans
-def add(ev: Pull.Ev, acc: U32, strs: Bool) -> U32:  # noqa: L001 scale harness, outside the spec
+def add(ev: Pull.Ev, acc: U32, strs: Bool) -> U32:
   match strs:
     case True{}:
       add.str(ev, acc)
@@ -87,7 +87,7 @@ def add(ev: Pull.Ev, acc: U32, strs: Bool) -> U32:  # noqa: L001 scale harness, 
       add.num(ev, acc)
 
 # count spans until the end. `strs` counts string rows; otherwise numbers
-def walk(left: Nat, ph: Phase, +strs: Bool) -> U32:  # noqa: L001 scale harness, outside the spec
+def walk(left: Nat, ph: Phase, +strs: Bool) -> U32:
   match left ph:
     case n Have{Pull.EEnd{}, cur, acc}:
       acc
@@ -103,7 +103,7 @@ def walk(left: Nat, ph: Phase, +strs: Bool) -> U32:  # noqa: L001 scale harness,
       walk(p, take(acc, Ezjson.next(cur)), strs)
 
 # how many spans `next` yields
-def count(+src: String, strs: Bool) -> U32:  # noqa: L001 scale harness, outside the spec
+def count(+src: String, strs: Bool) -> U32:
   walk(steps(src), Need{Ezjson.cursor(src), 0}, strs)
 
 # the number after the key that follows a skipped value
@@ -127,13 +127,13 @@ def skip.mem(got: (Pull.Ev & Pull.Cur)) -> String:
   skip.val(Ezjson.next(cur))
 
 # skip the array and read the next member
-def skipped(src: String) -> String:  # noqa: L001 scale harness, outside the spec
+def skipped(src: String) -> String:
   skip.mem(Ezjson.next(Ezjson.cursor(src)))
 
 # the count and the member after the skipped array
-def report(+src: String, strs: Bool, label: String) -> String:  # noqa: L001 scale harness, outside the spec
+def report(+src: String, strs: Bool, label: String) -> String:
   U32.show(count(src, strs)) ++ " " ++ label ++ skipped(src)
 
-def main() -> String:  # noqa: L001 entry point
+def main() -> String:
   "rows=" ++ report(wide.doc(), True{}, "skip-rows=")
     ++ " nest=" ++ report(nest.doc(), False{}, "skip-nest=")

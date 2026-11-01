@@ -3,6 +3,12 @@
 # the cursor after it. `skip` drops one value. A span event keeps the suffix
 # it points at, so it stays readable while that event is held and is gone
 # when the event is dropped. Commas and colons are not events.
+#
+# Trusted, not proved: the cursor keeps no parse tree and none of the text
+# it has passed, so memory while walking a large text stays proportional to
+# the open containers and the events the caller holds. A law sees values,
+# not heap shape; the `scale` flake check walks a 563 KiB and a 615 KiB text
+# with the cursor as an integration check.
 import Base
 import ./value.bend as V
 import ./lex.bend as Lex

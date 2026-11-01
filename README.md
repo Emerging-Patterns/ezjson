@@ -73,8 +73,9 @@ rather than through a binary float: `num.fixed("2.675", 2n)` is
 `Some{"2.68"}` where Python's `'%.2f' % 2.675` is `2.67`. It reads
 exponents (`1e-05` to 7 places is `0.0000100`), keeps a minus on a value
 that rounds to zero (`-0.04` to 1 place is `-0.0`), and is `None` when the
-text is not a JSON number. Pass it what `as_num` reads. SPEC.md's JSON-FIX
-rows list where it and Python's float formatting differ.
+text is not a JSON number. Pass it what `as_num` reads.
+[laws/FixedWritesValidNumbers.bend](laws/FixedWritesValidNumbers.bend) lists
+where it and Python's float formatting differ.
 
 ```
 import ezjson@1.4.0.0/main.bend as Ezjson
@@ -124,12 +125,12 @@ def owned(cur: Pull.Cur) -> (String & Pull.Cur):
 
 ## Specification
 
-[SPEC.md](SPEC.md) lists every behavior ezjson guarantees, by ID: conformance
+[LAWS.bend](LAWS.bend) lists every behavior ezjson guarantees: conformance
 to [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259) and the behavior of
-each def in `main.bend`. A row is either proved by a quantified law in
-`LAWS.bend`, checked by `bend PROOF.bend` (the first line must be
-`ALL PROOFS CHECK`), or listed in its trust boundary. A row marked pending is
-not guaranteed yet. [docs/rfc/ezjson-spec.md](docs/rfc/ezjson-spec.md) has the
+each def in `main.bend`, one file under [laws/](laws/) each, proved by the
+file of the same name under [proofs/](proofs/) and checked by
+`bend PROOF.bend` (the first line must be `ALL PROOFS CHECK`). What ezjson
+trusts rather than proves is said on the code that assumes it. [docs/rfc/ezjson-spec.md](docs/rfc/ezjson-spec.md) has the
 reasoning and the rollout.
 
 `scale/` is a compiled size check that pull-walks large string-row and

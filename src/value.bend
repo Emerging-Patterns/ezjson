@@ -518,7 +518,10 @@ def f32.fit(got: Maybe<&2, F32>) -> Maybe<&2, F32>:
     case None{}:
       None{}
 
-# a number as an F32, or none when it is not one or does not fit
+# a number as an F32, or none when it is not one or does not fit. Trusted,
+# not proved: `F32.read` in Bend's base library reads a decimal spelling as
+# documented, rounding to nearest; as_f32 forwards to it
+# (laws/AsF32ReadsFiniteFloats.bend states the rest)
 def as_f32(val: Json) -> Maybe<&2, F32>:
   match val:
     case JNum{raw}:

@@ -15,8 +15,8 @@ def suspicious() -> String:
 def style() -> String:
   "error"
 
-# a def named by no quantified law: advice while SPEC.md's requirements are
-# pending, since deleting the closed laws left defs no law names. That rule
+# a def named by no quantified law: advice while guarantees are pending,
+# since deleting the closed laws left defs no law names. That rule
 # is `coverage` (L001).
 def laws() -> String:
   "warn"
@@ -27,8 +27,4 @@ def closed() -> String:
 
 # an @unsafe def a law file reaches
 def unsafe() -> String:
-  "error"
-
-# SPEC.md's rows and the laws' tags agree
-def trace() -> String:
   "error"

@@ -24,7 +24,7 @@ def wrote.close(file: File, ok: Unit) -> IO(Unit):
       File.close(file)
 
 # force a write Result, then close the file
-def wrote(pair: File & Result<&1, &1, U32 & String, Unit>) -> IO(Unit):  # noqa: L001 IO driver
+def wrote(pair: File & Result<&1, &1, U32 & String, Unit>) -> IO(Unit):
   (file, result) = pair
   do IO<Unit>:
     ok : Unit <- IO.pass(Unit, result)
@@ -270,11 +270,11 @@ def countdown.go(inside: Bool, +every: U32) -> U32:
       every
 
 # steps until the next copied row; unchanged outside `rows`
-def countdown(+depth: U32, +every: U32) -> U32:  # noqa: L001 bench harness, outside the spec
+def countdown(+depth: U32, +every: U32) -> U32:
   countdown.go(U32.is_eq(depth, 1), every)
 
 # full `next` walk. Fuel is the Nat; `AGo` already counted its event
-type All is Data:  # noqa: L001 bench harness, outside the spec
+type All is Data:
   ANeed{cur: Pull.Cur, acc: U32}
   AGo{cur: Pull.Cur, acc: U32}
   AStop{acc: U32}
@@ -327,7 +327,7 @@ def loop.pull.walk(+txt: String, nn: Nat, +sum: U32, +fuel: Nat) -> U32:
       loop.pull.walk(txt, p, step.pull(sum, walk.all(fuel, all.need(Ezjson.cursor(txt), 0))), fuel)
 
 # skip-walk. `KKey` is the bool "this key is rows"
-type Sk is Data:  # noqa: L001 bench harness, outside the spec
+type Sk is Data:
   KNeed{cur: Pull.Cur, acc: U32}
   KGo{cur: Pull.Cur, acc: U32}
   KStop{acc: U32}
@@ -396,7 +396,7 @@ def loop.pull.skip(+txt: String, nn: Nat, +sum: U32, +fuel: Nat) -> U32:
 
 # text-walk. `arm` means the next value is the `rows` array.
 # `depth` 1 is a direct element of that array. `every` counts down to a copy
-type Txt is Data:  # noqa: L001 bench harness, outside the spec
+type Txt is Data:
   TNeed{cur: Pull.Cur, acc: U32, depth: U32, every: U32, arm: Bool}
   TStop{acc: U32}
 
@@ -739,7 +739,7 @@ def args.rest(xs: List<String>) -> List<String>:
       Nil{}
 
 # CLI entry: dispatch by the first argument after the program
-def main() -> IO(Unit):  # noqa: L001 IO entry point
+def main() -> IO(Unit):
   do IO<Unit>:
     args : List<String> <- IO.args()
     main.go(args.of4(args.rest(args)))
