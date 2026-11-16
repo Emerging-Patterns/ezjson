@@ -23,6 +23,7 @@ import ./proofs/HasFindsKey.bend as PHasFindsKey
 import ./proofs/IsArrIsObjTellKinds.bend as PIsArrIsObjTellKinds
 import ./proofs/ItemsGivesElements.bend as PItemsGivesElements
 import ./proofs/LenCountsItems.bend as PLenCountsItems
+import ./proofs/LexersAgree.bend as PLexersAgree
 import ./proofs/NamesCompareDecoded.bend as PNamesCompareDecoded
 import ./proofs/NumBuildsOrNull.bend as PNumBuildsOrNull
 import ./proofs/NumOkIsNumberRule.bend as PNumOkIsNumberRule

@@ -1377,7 +1377,7 @@ law dig_u:
 
 def dig_u(ch, h, tl, left, acc, bb, stack, done, ff):
   hs = Equal.sym(Bool, D2.hexd(ch), True{}, h)
-  %hs : {Pull.next.go(1n+ff, tl, Pull.uni.hit.go(ch, tl, left, acc, bb, stack, Pull.GNext{}, done, _))
+  %hs : {Pull.next.go(1n+ff, tl, Pull.uni.hit.go(ch, tl, left, acc, bb, Pull.C{stack, Pull.GNext{}, done}, _))
     == Pull.next.go(1n+ff, tl, Pull.uni.put(tl, left, acc, Lex.hex(ch), bb, stack, Pull.GNext{}, done)) : Pull.Out}
   {==}
 
@@ -1394,12 +1394,14 @@ law dig_l:
   for +done: Bool
   for +ff: Nat
   {Pull.next.go(1n+ff, SCon{ch, tl}, Pull.S{Pull.MLo{left, acc, hi, bb}, stack, Pull.GNext{}, done, False{}})
-    == Pull.next.go(1n+ff, tl, Pull.lo.put(tl, left, acc, hi, Lex.hex(ch), bb, stack, Pull.GNext{}, done)) : Pull.Out}
+    == Pull.next.go(1n+ff, tl, Pull.lo.put(tl, left, acc, hi, Lex.hex(ch), bb, Pull.C{stack, Pull.GNext{},
+      done})) : Pull.Out}
 
 def dig_l(ch, h, tl, left, acc, hi, bb, stack, done, ff):
   hs = Equal.sym(Bool, D2.hexd(ch), True{}, h)
-  %hs : {Pull.next.go(1n+ff, tl, Pull.lo.hit.go(ch, tl, left, acc, hi, bb, stack, Pull.GNext{}, done, _))
-    == Pull.next.go(1n+ff, tl, Pull.lo.put(tl, left, acc, hi, Lex.hex(ch), bb, stack, Pull.GNext{}, done)) : Pull.Out}
+  %hs : {Pull.next.go(1n+ff, tl, Pull.lo.hit.go(ch, tl, left, acc, hi, bb, Pull.C{stack, Pull.GNext{}, done}, _))
+    == Pull.next.go(1n+ff, tl, Pull.lo.put(tl, left, acc, hi, Lex.hex(ch), bb, Pull.C{stack, Pull.GNext{},
+      done})) : Pull.Out}
   {==}
 
 # a \u escape's four digits, once the backslash is in: its character is copied
@@ -1562,7 +1564,7 @@ def et_pair(h1, h2, h3, h4, l1, l2, l3, l4, h, rest, bf, stack, done, ff):
     Equal.trans(Pull.Out, Pull.next.go(1n+ff, SCon{l4, rest}, Pull.S{Pull.MLo{0n,
       D2.hex.acc(D2.hex.acc(D2.hex.acc(0, l1), l2), l3), D2.hex4(h1, h2, h3, h4), bf}, stack, Pull.GNext{},
       done, False{}}), Pull.next.go(1n+ff, rest, Pull.lo.put(rest, 0n, D2.hex.acc(D2.hex.acc(D2.hex.acc(0, l1),
-      l2), l3), D2.hex4(h1, h2, h3, h4), Lex.hex(l4), bf, stack, Pull.GNext{}, done)), Pull.next.go(1n+ff, rest,
+      l2), l3), D2.hex4(h1, h2, h3, h4), Lex.hex(l4), bf, Pull.C{stack, Pull.GNext{}, done})), Pull.next.go(1n+ff, rest,
       Pull.S{Pull.MCopy{D2.piece.char(D2.PPair{h1, h2, h3, h4, l1, l2, l3, l4}) <> bf}, stack, Pull.GNext{}, done,
       False{}}), dig_l(l4, M3.and4_4(D2.hexd(l1), D2.hexd(l2), D2.hexd(l3), D2.hexd(l4), hl), rest, 0n,
       D2.hex.acc(D2.hex.acc(D2.hex.acc(0, l1), l2), l3), D2.hex4(h1, h2, h3, h4), bf, stack, done, ff),
@@ -5860,7 +5862,7 @@ law ss_uni:
   for +hp: {M6.prel(stack, False{}, M6.pst(Lex.Lex{Lex.Uni{left, acc}, bf, tk})) == True{} : Bool}
   for hx: Bool
   for +ehx: {Lex.hex.ok(Char.to_u32(ch)) == hx : Bool}
-  M4.sinv(tt, tl, Pull.uni.hit.go(ch, tl, left, acc, buf, stack, Pull.GNext{}, False{}, hx))
+  M4.sinv(tt, tl, Pull.uni.hit.go(ch, tl, left, acc, buf, Pull.C{stack, Pull.GNext{}, False{}}, hx))
 
 def ss_uni(tt, ch, tl, left, acc, buf, stack, bf, tk, h_s, e, hp, hx, ehx):
   match hx:
@@ -5980,7 +5982,7 @@ law ss_lput:
   for +h_s: {D1.short(tl) == True{} : Bool}
   for +e: M6.lx_e(tt, tl, Lex.unicode.low.put(left, acc, hi, dig, bf, tk))
   for +hp: {M6.prel(stack, False{}, M6.pst(Lex.Lex{Lex.Esc{}, bf, tk})) == True{} : Bool}
-  M4.sinv(tt, tl, Pull.lo.put(tl, left, acc, hi, dig, buf, stack, Pull.GNext{}, False{}))
+  M4.sinv(tt, tl, Pull.lo.put(tl, left, acc, hi, dig, buf, Pull.C{stack, Pull.GNext{}, False{}}))
 
 def ss_lput(tt, tl, left, acc, hi, dig, buf, stack, bf, tk, h_s, e, hp):
   match left:
@@ -6007,7 +6009,7 @@ law ss_lo:
   for +hp: {M6.prel(stack, False{}, M6.pst(Lex.Lex{Lex.Lo{left, acc, hi}, bf, tk})) == True{} : Bool}
   for hx: Bool
   for +ehx: {Lex.hex.ok(Char.to_u32(ch)) == hx : Bool}
-  M4.sinv(tt, tl, Pull.lo.hit.go(ch, tl, left, acc, hi, buf, stack, Pull.GNext{}, False{}, hx))
+  M4.sinv(tt, tl, Pull.lo.hit.go(ch, tl, left, acc, hi, buf, Pull.C{stack, Pull.GNext{}, False{}}, hx))
 
 def ss_lo(tt, ch, tl, left, acc, hi, buf, stack, bf, tk, h_s, e, hp, hx, ehx):
   match hx:
@@ -6039,14 +6041,14 @@ law sm_copy.l:
   for +e: M6.lx_e(tt, SCon{ch, tl}, lx)
   for +hm: {M4.lxmode(lx) == M4.mo(Pull.MCopy{buf}) : Lex.Mode}
   for +hp: {M6.prel(stack, False{}, M6.pst(lx)) == True{} : Bool}
-  M4.sinv(tt, tl, Pull.copy.hit(ch, tl, buf, stack, Pull.GNext{}, done, False{}, Lex.classify(ch),
+  M4.sinv(tt, tl, Pull.copy.hit(ch, tl, buf, Pull.C{stack, Pull.GNext{}, done}, False{}, Lex.classify(ch),
     U32.is_lt(Char.to_u32(ch), 32)))
 
 def sm_copy.l(tt, ch, tl, buf, stack, done, h_s, hd, lx, e, hm, hp):
   match lx:
     case Lex.Lex{+md, +bf, +tk}:
       es = Equal.sym(Bool, done, False{}, hd)
-      %es : M4.sinv(tt, tl, Pull.copy.hit(ch, tl, buf, stack, Pull.GNext{}, _, False{}, Lex.classify(ch),
+      %es : M4.sinv(tt, tl, Pull.copy.hit(ch, tl, buf, Pull.C{stack, Pull.GNext{}, _}, False{}, Lex.classify(ch),
         U32.is_lt(Char.to_u32(ch), 32)))
       ss_copy(tt, ch, tl, buf, stack, bf, tk, h_s, lxfix_e(tt, SCon{ch, tl}, md, Lex.Str{}, bf, tk, hm, e),
         lxfix_p(stack, md, Lex.Str{}, bf, tk, hm, hp), Lex.classify(ch), {==}, U32.is_lt(Char.to_u32(ch), 32), {==})
@@ -6060,7 +6062,7 @@ law sm_copy:
   for +stack: List<&2, Pull.Frame>
   for +done: Bool
   for hh: M4.sminv(tt, SCon{ch, tl}, Pull.MCopy{buf}, stack, done)
-  M4.sinv(tt, tl, Pull.copy.hit(ch, tl, buf, stack, Pull.GNext{}, done, False{}, Lex.classify(ch),
+  M4.sinv(tt, tl, Pull.copy.hit(ch, tl, buf, Pull.C{stack, Pull.GNext{}, done}, False{}, Lex.classify(ch),
     U32.is_lt(Char.to_u32(ch), 32)))
 
 def sm_copy(tt, ch, tl, buf, stack, done, hh):
@@ -6200,13 +6202,13 @@ law sm_uni.l:
   for +e: M6.lx_e(tt, SCon{ch, tl}, lx)
   for +hm: {M4.lxmode(lx) == M4.mo(Pull.MUni{left, acc, buf}) : Lex.Mode}
   for +hp: {M6.prel(stack, False{}, M6.pst(lx)) == True{} : Bool}
-  M4.sinv(tt, tl, Pull.uni.hit(ch, tl, left, acc, buf, stack, Pull.GNext{}, done, False{}))
+  M4.sinv(tt, tl, Pull.uni.hit(ch, tl, left, acc, buf, Pull.C{stack, Pull.GNext{}, done}, False{}))
 
 def sm_uni.l(tt, ch, tl, left, acc, buf, stack, done, h_s, hd, lx, e, hm, hp):
   match lx:
     case Lex.Lex{+md, +bf, +tk}:
       es = Equal.sym(Bool, done, False{}, hd)
-      %es : M4.sinv(tt, tl, Pull.uni.hit(ch, tl, left, acc, buf, stack, Pull.GNext{}, _, False{}))
+      %es : M4.sinv(tt, tl, Pull.uni.hit(ch, tl, left, acc, buf, Pull.C{stack, Pull.GNext{}, _}, False{}))
       ss_uni(tt, ch, tl, left, acc, buf, stack, bf, tk, h_s, lxfix_e(tt, SCon{ch, tl}, md, Lex.Uni{left, acc}, bf, tk,
         hm, e), lxfix_p(stack, md, Lex.Uni{left, acc}, bf, tk, hm, hp), Lex.hex.ok(Char.to_u32(ch)), {==})
 
@@ -6221,7 +6223,7 @@ law sm_uni:
   for +stack: List<&2, Pull.Frame>
   for +done: Bool
   for hh: M4.sminv(tt, SCon{ch, tl}, Pull.MUni{left, acc, buf}, stack, done)
-  M4.sinv(tt, tl, Pull.uni.hit(ch, tl, left, acc, buf, stack, Pull.GNext{}, done, False{}))
+  M4.sinv(tt, tl, Pull.uni.hit(ch, tl, left, acc, buf, Pull.C{stack, Pull.GNext{}, done}, False{}))
 
 def sm_uni(tt, ch, tl, left, acc, buf, stack, done, hh):
   (h_s, (hd, (+lx, (e, (hm, hp))))) = hh
@@ -6326,13 +6328,13 @@ law sm_lo.l:
   for +e: M6.lx_e(tt, SCon{ch, tl}, lx)
   for +hm: {M4.lxmode(lx) == M4.mo(Pull.MLo{left, acc, hi, buf}) : Lex.Mode}
   for +hp: {M6.prel(stack, False{}, M6.pst(lx)) == True{} : Bool}
-  M4.sinv(tt, tl, Pull.lo.hit(ch, tl, left, acc, hi, buf, stack, Pull.GNext{}, done, False{}))
+  M4.sinv(tt, tl, Pull.lo.hit(ch, tl, left, acc, hi, buf, Pull.C{stack, Pull.GNext{}, done}, False{}))
 
 def sm_lo.l(tt, ch, tl, left, acc, hi, buf, stack, done, h_s, hd, lx, e, hm, hp):
   match lx:
     case Lex.Lex{+md, +bf, +tk}:
       es = Equal.sym(Bool, done, False{}, hd)
-      %es : M4.sinv(tt, tl, Pull.lo.hit(ch, tl, left, acc, hi, buf, stack, Pull.GNext{}, _, False{}))
+      %es : M4.sinv(tt, tl, Pull.lo.hit(ch, tl, left, acc, hi, buf, Pull.C{stack, Pull.GNext{}, _}, False{}))
       ss_lo(tt, ch, tl, left, acc, hi, buf, stack, bf, tk, h_s, lxfix_e(tt, SCon{ch, tl}, md, Lex.Lo{left, acc, hi},
         bf, tk, hm, e), lxfix_p(stack, md, Lex.Lo{left, acc, hi}, bf, tk, hm, hp), Lex.hex.ok(Char.to_u32(ch)), {==})
 
@@ -6348,7 +6350,7 @@ law sm_lo:
   for +stack: List<&2, Pull.Frame>
   for +done: Bool
   for hh: M4.sminv(tt, SCon{ch, tl}, Pull.MLo{left, acc, hi, buf}, stack, done)
-  M4.sinv(tt, tl, Pull.lo.hit(ch, tl, left, acc, hi, buf, stack, Pull.GNext{}, done, False{}))
+  M4.sinv(tt, tl, Pull.lo.hit(ch, tl, left, acc, hi, buf, Pull.C{stack, Pull.GNext{}, done}, False{}))
 
 def sm_lo(tt, ch, tl, left, acc, hi, buf, stack, done, hh):
   (h_s, (hd, (+lx, (e, (hm, hp))))) = hh
@@ -6705,7 +6707,7 @@ def pgo_inv(tt, ff, xx, st, hh, hst):
       Empty.absurd(oinv(tt, Pull.next.go(1n+pp, SCon{ch, tl}, Pull.S{Pull.MSpan{c1, n1}, stack, Pull.GSkip{g1}, done,
         True{}})), hh)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MCopy{+b1}, +stack, Pull.GNext{}, +done, False{}}:
-      pgo_inv(tt, 1n+pp, tl, Pull.copy.hit(ch, tl, b1, stack, Pull.GNext{}, done, False{}, Lex.classify(ch),
+      pgo_inv(tt, 1n+pp, tl, Pull.copy.hit(ch, tl, b1, Pull.C{stack, Pull.GNext{}, done}, False{}, Lex.classify(ch),
         U32.is_lt(Char.to_u32(ch), 32)),
         sm_copy(tt, ch, tl, b1, stack, done, hh), hst)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MCopy{+b1}, +stack, Pull.GNext{}, +done, True{}}:
@@ -6730,7 +6732,7 @@ def pgo_inv(tt, ff, xx, st, hh, hst):
       Empty.absurd(oinv(tt, Pull.next.go(1n+pp, SCon{ch, tl}, Pull.S{Pull.MEsc{b1}, stack, Pull.GSkip{g1}, done,
         True{}})), hh)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MUni{+l1, +a1, +b1}, +stack, Pull.GNext{}, +done, False{}}:
-      pgo_inv(tt, 1n+pp, tl, Pull.uni.hit(ch, tl, l1, a1, b1, stack, Pull.GNext{}, done, False{}),
+      pgo_inv(tt, 1n+pp, tl, Pull.uni.hit(ch, tl, l1, a1, b1, Pull.C{stack, Pull.GNext{}, done}, False{}),
         sm_uni(tt, ch, tl, l1, a1, b1, stack, done, hh), hst)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MUni{+l1, +a1, +b1}, +stack, Pull.GNext{}, +done, True{}}:
       Empty.absurd(oinv(tt, Pull.next.go(1n+pp, SCon{ch, tl}, Pull.S{Pull.MUni{l1, a1, b1}, stack, Pull.GNext{}, done,
@@ -6766,7 +6768,7 @@ def pgo_inv(tt, ff, xx, st, hh, hst):
       Empty.absurd(oinv(tt, Pull.next.go(1n+pp, SCon{ch, tl}, Pull.S{Pull.MHiEsc{h1, b1}, stack, Pull.GSkip{g1}, done,
         True{}})), hh)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MLo{+l1, +a1, +h1, +b1}, +stack, Pull.GNext{}, +done, False{}}:
-      pgo_inv(tt, 1n+pp, tl, Pull.lo.hit(ch, tl, l1, a1, h1, b1, stack, Pull.GNext{}, done, False{}),
+      pgo_inv(tt, 1n+pp, tl, Pull.lo.hit(ch, tl, l1, a1, h1, b1, Pull.C{stack, Pull.GNext{}, done}, False{}),
         sm_lo(tt, ch, tl, l1, a1, h1, b1, stack, done, hh), hst)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MLo{+l1, +a1, +h1, +b1}, +stack, Pull.GNext{}, +done, True{}}:
       Empty.absurd(oinv(tt, Pull.next.go(1n+pp, SCon{ch, tl}, Pull.S{Pull.MLo{l1, a1, h1, b1}, stack, Pull.GNext{},

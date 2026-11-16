@@ -345,7 +345,7 @@ def tokens.hit(
   +ch: Char,
   tail: String,
   cut: String,
-  +nn: U32,
+  +size: U32,
   mode: Span,
   toks: List<&2, Tok>,
   cls: Class,
@@ -353,35 +353,35 @@ def tokens.hit(
 ) -> Scan:
   match mode cls ctrl:
     case GIdle{} CSpace{} b:
-      Go{cut, nn, GIdle{}, toks}
+      Go{cut, size, GIdle{}, toks}
     case GIdle{} CPunct{p} b:
-      Go{cut, nn, GIdle{}, p <> toks}
+      Go{cut, size, GIdle{}, p <> toks}
     case GIdle{} CQuote{} b:
       Go{tail, 0, GStr{}, toks}
     case GIdle{} CBack{} b:
-      Go{cut, nn, GBad{}, toks}
+      Go{cut, size, GBad{}, toks}
     case GIdle{} COther{} b:
       Go{SCon{ch, tail}, 1, GWord{}, toks}
     case GWord{} COther{} b:
-      Go{cut, U32.add(nn, 1), GWord{}, toks}
+      Go{cut, U32.add(size, 1), GWord{}, toks}
     case GWord{} CPunct{p} b:
-      Go{"", 0, GIdle{}, p <> tokens.push(cut, nn, True{}, toks)}
+      Go{"", 0, GIdle{}, p <> tokens.push(cut, size, True{}, toks)}
     case GWord{} CQuote{} b:
-      Go{tail, 0, GStr{}, tokens.push(cut, nn, True{}, toks)}
+      Go{tail, 0, GStr{}, tokens.push(cut, size, True{}, toks)}
     case GWord{} CBack{} b:
-      Go{cut, nn, GBad{}, toks}
+      Go{cut, size, GBad{}, toks}
     case GWord{} k b:
-      Go{"", 0, GIdle{}, tokens.push(cut, nn, True{}, toks)}
+      Go{"", 0, GIdle{}, tokens.push(cut, size, True{}, toks)}
     case GStr{} k True{}:
-      Go{cut, nn, GBad{}, toks}
+      Go{cut, size, GBad{}, toks}
     case GStr{} CQuote{} False{}:
-      Go{"", 0, GIdle{}, tokens.push(cut, nn, False{}, toks)}
+      Go{"", 0, GIdle{}, tokens.push(cut, size, False{}, toks)}
     case GStr{} CBack{} False{}:
-      Old{feed('\\', Lex{Str{}, tokens.rev(cut, nn, U32.is_zero(nn), []), toks})}
+      Old{feed('\\', Lex{Str{}, tokens.rev(cut, size, U32.is_zero(size), []), toks})}
     case GStr{} k False{}:
-      Go{cut, U32.add(nn, 1), GStr{}, toks}
+      Go{cut, U32.add(size, 1), GStr{}, toks}
     case GBad{} k b:
-      Go{cut, nn, GBad{}, toks}
+      Go{cut, size, GBad{}, toks}
 
 def tokens.done(cut: String, nn: U32, mode: Span, toks: List<&2, Tok>) -> List<&2, Tok>:
   match mode:

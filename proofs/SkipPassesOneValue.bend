@@ -318,19 +318,19 @@ def go_add(aa, xx, st, bb):
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MSpan{+cut, +nn}, +stack, +goal, +done, True{}}:
       go_add(1n+pp, tl, Pull.err.st(goal), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MCopy{+buf}, +stack, +goal, +done, False{}}:
-      go_add(1n+pp, tl, Pull.copy.hit(ch, tl, buf, stack, goal, done, False{}, Lex.classify(ch),
+      go_add(1n+pp, tl, Pull.copy.hit(ch, tl, buf, Pull.C{stack, goal, done}, False{}, Lex.classify(ch),
         U32.is_lt(Char.to_u32(ch), 32)), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MCopy{+buf}, +stack, +goal, +done, True{}}:
-      go_add(1n+pp, tl, Pull.copy.hit(ch, tl, buf, stack, goal, done, True{}, Lex.classify(ch),
+      go_add(1n+pp, tl, Pull.copy.hit(ch, tl, buf, Pull.C{stack, goal, done}, True{}, Lex.classify(ch),
         U32.is_lt(Char.to_u32(ch), 32)), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MEsc{+buf}, +stack, +goal, +done, False{}}:
       go_add(1n+pp, tl, Pull.esc.hit(ch, tl, buf, stack, goal, done, False{}), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MEsc{+buf}, +stack, +goal, +done, True{}}:
       go_add(1n+pp, tl, Pull.esc.hit(ch, tl, buf, stack, goal, done, True{}), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MUni{+left2, +acc, +buf}, +stack, +goal, +done, False{}}:
-      go_add(1n+pp, tl, Pull.uni.hit(ch, tl, left2, acc, buf, stack, goal, done, False{}), bb)
+      go_add(1n+pp, tl, Pull.uni.hit(ch, tl, left2, acc, buf, Pull.C{stack, goal, done}, False{}), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MUni{+left2, +acc, +buf}, +stack, +goal, +done, True{}}:
-      go_add(1n+pp, tl, Pull.uni.hit(ch, tl, left2, acc, buf, stack, goal, done, True{}), bb)
+      go_add(1n+pp, tl, Pull.uni.hit(ch, tl, left2, acc, buf, Pull.C{stack, goal, done}, True{}), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MHi{+hi, +buf}, +stack, +goal, +done, False{}}:
       go_add(1n+pp, tl, Pull.hi.hit(tl, hi, buf, stack, goal, done, False{}, Lex.classify(ch)), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MHi{+hi, +buf}, +stack, +goal, +done, True{}}:
@@ -340,9 +340,9 @@ def go_add(aa, xx, st, bb):
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MHiEsc{+hi, +buf}, +stack, +goal, +done, True{}}:
       go_add(1n+pp, tl, Pull.hiesc.hit(ch, tl, hi, buf, stack, goal, done, True{}), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MLo{+left2, +acc, +hi, +buf}, +stack, +goal, +done, False{}}:
-      go_add(1n+pp, tl, Pull.lo.hit(ch, tl, left2, acc, hi, buf, stack, goal, done, False{}), bb)
+      go_add(1n+pp, tl, Pull.lo.hit(ch, tl, left2, acc, hi, buf, Pull.C{stack, goal, done}, False{}), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MLo{+left2, +acc, +hi, +buf}, +stack, +goal, +done, True{}}:
-      go_add(1n+pp, tl, Pull.lo.hit(ch, tl, left2, acc, hi, buf, stack, goal, done, True{}), bb)
+      go_add(1n+pp, tl, Pull.lo.hit(ch, tl, left2, acc, hi, buf, Pull.C{stack, goal, done}, True{}), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MSkStr{}, +stack, +goal, +done, False{}}:
       go_add(1n+pp, tl, Pull.sk.advance(Pull.span.kind.of(ch), stack, goal, done), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MSkStr{}, +stack, +goal, +done, True{}}:
@@ -364,9 +364,11 @@ def go_add(aa, xx, st, bb):
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MSkHiEsc{+hi}, +stack, +goal, +done, True{}}:
       go_add(1n+pp, tl, Pull.sk.hiesc(stack, goal, done, hi, U32.is_eq(Char.to_u32(ch), 117)), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MSkLo{+left2, +acc, +hi}, +stack, +goal, +done, False{}}:
-      go_add(1n+pp, tl, Pull.sk.lo.go(ch, tl, left2, acc, hi, stack, goal, done, Lex.hex.ok(Char.to_u32(ch))), bb)
+      go_add(1n+pp, tl, Pull.sk.lo.go(ch, tl, left2, acc, hi, Pull.C{stack, goal, done},
+        Lex.hex.ok(Char.to_u32(ch))), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MSkLo{+left2, +acc, +hi}, +stack, +goal, +done, True{}}:
-      go_add(1n+pp, tl, Pull.sk.lo.go(ch, tl, left2, acc, hi, stack, goal, done, Lex.hex.ok(Char.to_u32(ch))), bb)
+      go_add(1n+pp, tl, Pull.sk.lo.go(ch, tl, left2, acc, hi, Pull.C{stack, goal, done},
+        Lex.hex.ok(Char.to_u32(ch))), bb)
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MDone{+stop, +saved}, +stack, +goal, +done, False{}}:
       {==}
     case 1n+pp SCon{+ch, +tl} Pull.S{Pull.MDone{+stop, +saved}, +stack, +goal, +done, True{}}:
@@ -1781,7 +1783,7 @@ law ls_uh:
   for ih: @m2: Pull.Mode -> @g2: Nat -> {isstr(m2) == True{} : Bool} -> kq(sel, Pull.next.go(1n+fn, tl, Pull.S{m2,
     stack, Pull.GNext{}, False{}, False{}}), Pull.next.go(1n+fu(tl, g2), tl, Pull.S{skm(m2), stack, Pull.GSkip{ee},
     False{}, False{}}), ee)
-  kq(sel, Pull.next.go(1n+fn, tl, Pull.uni.hit.go(ch, tl, left2, acc, buf, stack, Pull.GNext{}, False{}, ok)),
+  kq(sel, Pull.next.go(1n+fn, tl, Pull.uni.hit.go(ch, tl, left2, acc, buf, Pull.C{stack, Pull.GNext{}, False{}}, ok)),
     Pull.next.go(1n+fu(tl, 2n+gg), tl, Pull.sk.uni.go(ch, tl, left2, acc, stack, Pull.GSkip{ee}, False{}, ok)), ee)
 
 def ls_uh(tl, fn, ch, left2, acc, buf, ok, stack, ee, gg, sel, hsel, ih):
@@ -1892,7 +1894,7 @@ law ls_lp:
   for ih: @m2: Pull.Mode -> @g2: Nat -> {isstr(m2) == True{} : Bool} -> kq(sel, Pull.next.go(1n+fn, tl, Pull.S{m2,
     stack, Pull.GNext{}, False{}, False{}}), Pull.next.go(1n+fu(tl, g2), tl, Pull.S{skm(m2), stack, Pull.GSkip{ee},
     False{}, False{}}), ee)
-  kq(sel, Pull.next.go(1n+fn, tl, Pull.lo.put(tl, left2, acc, hi, dig, buf, stack, Pull.GNext{}, False{})),
+  kq(sel, Pull.next.go(1n+fn, tl, Pull.lo.put(tl, left2, acc, hi, dig, buf, Pull.C{stack, Pull.GNext{}, False{}})),
     Pull.next.go(1n+fu(tl, 2n+gg), tl, Pull.sk.lo.put(tl, left2, acc, hi, dig, stack, Pull.GSkip{ee}, False{})), ee)
 
 def ls_lp(tl, fn, left2, acc, hi, dig, buf, stack, ee, gg, sel, hsel, ih):
@@ -1921,8 +1923,10 @@ law ls_lh:
   for ih: @m2: Pull.Mode -> @g2: Nat -> {isstr(m2) == True{} : Bool} -> kq(sel, Pull.next.go(1n+fn, tl, Pull.S{m2,
     stack, Pull.GNext{}, False{}, False{}}), Pull.next.go(1n+fu(tl, g2), tl, Pull.S{skm(m2), stack, Pull.GSkip{ee},
     False{}, False{}}), ee)
-  kq(sel, Pull.next.go(1n+fn, tl, Pull.lo.hit.go(ch, tl, left2, acc, hi, buf, stack, Pull.GNext{}, False{}, ok)),
-    Pull.next.go(1n+fu(tl, 2n+gg), tl, Pull.sk.lo.go(ch, tl, left2, acc, hi, stack, Pull.GSkip{ee}, False{}, ok)), ee)
+  kq(sel, Pull.next.go(1n+fn, tl, Pull.lo.hit.go(ch, tl, left2, acc, hi, buf, Pull.C{stack, Pull.GNext{}, False{}},
+      ok)),
+    Pull.next.go(1n+fu(tl, 2n+gg), tl, Pull.sk.lo.go(ch, tl, left2, acc, hi, Pull.C{stack, Pull.GSkip{ee}, False{}},
+      ok)), ee)
 
 def ls_lh(tl, fn, ch, left2, acc, hi, buf, ok, stack, ee, gg, sel, hsel, ih):
   match ok:
