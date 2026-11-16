@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/Emerging-Patterns/ezjson/compare/v1.4.0...v1.5.0) (2026-11-16)
+
+
+### Bug Fixes
+
+* **lint:** clear bolt 1.65 findings (ez 1.16.0, bolt 1.65.0) ([57cbd29](https://github.com/Emerging-Patterns/ezjson/commit/57cbd29087aa10e3f59b7c873c17298b385d9862))
+
 ## [1.4.0](https://github.com/Emerging-Patterns/ezjson/compare/v1.3.0...v1.4.0) (2026-10-25)
 
 
