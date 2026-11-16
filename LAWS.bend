@@ -50,6 +50,7 @@ import ./laws/HasFindsKey.bend as HasFindsKey
 import ./laws/IsArrIsObjTellKinds.bend as IsArrIsObjTellKinds
 import ./laws/ItemsGivesElements.bend as ItemsGivesElements
 import ./laws/LenCountsItems.bend as LenCountsItems
+import ./laws/LexersAgree.bend as LexersAgree
 import ./laws/NamesCompareDecoded.bend as NamesCompareDecoded
 import ./laws/NumBuildsOrNull.bend as NumBuildsOrNull
 import ./laws/NumOkIsNumberRule.bend as NumOkIsNumberRule

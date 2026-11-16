@@ -147,11 +147,3 @@ def pretty.go(val: V.Json, +pad: String, +close: String) -> String:
 # a value as JSON indented two spaces a level, one element or member a line
 def pretty(val: V.Json) -> String:
   pretty.go(val, "", "")
-
-# a parse result: the value, or "<bad>"
-def maybe(mb: Maybe<&2, V.Json>) -> String:
-  match mb:
-    case None{}:
-      "<bad>"
-    case Some{j}:
-      print(j)

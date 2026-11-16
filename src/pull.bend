@@ -115,6 +115,12 @@ type Mode is Data:
 type St is Data:
   S{mode: Mode, stack: List<&2, Frame>, goal: Goal, done: Bool, bad: Bool}
 
+# what a string step carries through unchanged: the open frames, the goal,
+# and whether the top value is done. A step inside a string hands these to
+# the state it builds as they came
+type Ctx is Data:
+  C{stack: List<&2, Frame>, goal: Goal, done: Bool}
+
 # what a walk hands back: a finished step, or a budget used up, to resume on
 # `txt` in state `st`
 type Out is Type:
@@ -972,17 +978,15 @@ def copy.hit(
   +ch: Char,
   +tl: String,
   buf: List<&2, Char>,
-  stack: List<&2, Frame>,
-  goal: Goal,
-  done: Bool,
+  ctx: Ctx,
   bad: Bool,
   cls: Lex.Class,
   ctrl: Bool
 ) -> St:
-  match bad:
-    case True{}:
+  match ctx bad:
+    case C{stack, goal, done} True{}:
       err.st(goal)
-    case False{}:
+    case C{stack, goal, done} False{}:
       copy.hit.go(ch, tl, buf, stack, goal, done, cls, ctrl)
 
 # the character after a backslash, once `u` has been noticed
@@ -1085,15 +1089,13 @@ def uni.hit.go(
   left: Nat,
   acc: U32,
   buf: List<&2, Char>,
-  stack: List<&2, Frame>,
-  goal: Goal,
-  done: Bool,
+  ctx: Ctx,
   ok: Bool
 ) -> St:
-  match ok:
-    case True{}:
+  match ctx ok:
+    case C{stack, goal, done} True{}:
       uni.put(tl, left, acc, Lex.hex(ch), buf, stack, goal, done)
-    case False{}:
+    case C{stack, goal, done} False{}:
       err.st(goal)
 
 # one hex digit of a `\u` escape
@@ -1103,16 +1105,14 @@ def uni.hit(
   left: Nat,
   acc: U32,
   buf: List<&2, Char>,
-  stack: List<&2, Frame>,
-  goal: Goal,
-  done: Bool,
+  ctx: Ctx,
   bad: Bool
 ) -> St:
-  match bad:
-    case True{}:
+  match ctx bad:
+    case C{stack, goal, done} True{}:
       err.st(goal)
-    case False{}:
-      uni.hit.go(ch, tl, left, acc, buf, stack, goal, done, Lex.hex.ok(Char.to_u32(ch)))
+    case C{stack, goal, done} False{}:
+      uni.hit.go(ch, tl, left, acc, buf, C{stack, goal, done}, Lex.hex.ok(Char.to_u32(ch)))
 
 # the character after a high surrogate, on a live cursor
 def hi.hit.go(
@@ -1217,14 +1217,12 @@ def lo.put(
   hi: U32,
   dig: U32,
   buf: List<&2, Char>,
-  stack: List<&2, Frame>,
-  goal: Goal,
-  done: Bool
+  ctx: Ctx
 ) -> St:
-  match left:
-    case 0n:
+  match left ctx:
+    case 0n C{stack, goal, done}:
       lo.end(tl, (acc * 16 + dig : U32), hi, buf, stack, goal, done)
-    case 1n+p:
+    case 1n+p C{stack, goal, done}:
       S{MLo{p, (acc * 16 + dig : U32), hi, buf}, stack, goal, done, False{}}
 
 # one hex digit of the low surrogate
@@ -1235,15 +1233,13 @@ def lo.hit.go(
   acc: U32,
   hi: U32,
   buf: List<&2, Char>,
-  stack: List<&2, Frame>,
-  goal: Goal,
-  done: Bool,
+  ctx: Ctx,
   ok: Bool
 ) -> St:
-  match ok:
-    case True{}:
-      lo.put(tl, left, acc, hi, Lex.hex(ch), buf, stack, goal, done)
-    case False{}:
+  match ctx ok:
+    case C{stack, goal, done} True{}:
+      lo.put(tl, left, acc, hi, Lex.hex(ch), buf, C{stack, goal, done})
+    case C{stack, goal, done} False{}:
       err.st(goal)
 
 # one hex digit of the low surrogate
@@ -1254,16 +1250,14 @@ def lo.hit(
   acc: U32,
   hi: U32,
   buf: List<&2, Char>,
-  stack: List<&2, Frame>,
-  goal: Goal,
-  done: Bool,
+  ctx: Ctx,
   bad: Bool
 ) -> St:
-  match bad:
-    case True{}:
+  match ctx bad:
+    case C{stack, goal, done} True{}:
       err.st(goal)
-    case False{}:
-      lo.hit.go(ch, tl, left, acc, hi, buf, stack, goal, done, Lex.hex.ok(Char.to_u32(ch)))
+    case C{stack, goal, done} False{}:
+      lo.hit.go(ch, tl, left, acc, hi, buf, C{stack, goal, done}, Lex.hex.ok(Char.to_u32(ch)))
 
 # a decoded short escape puts the skip back in the string
 def sk.esc.put(
@@ -1434,15 +1428,13 @@ def sk.lo.go(
   left: Nat,
   acc: U32,
   hi: U32,
-  stack: List<&2, Frame>,
-  goal: Goal,
-  done: Bool,
+  ctx: Ctx,
   ok: Bool
 ) -> St:
-  match ok:
-    case True{}:
+  match ctx ok:
+    case C{stack, goal, done} True{}:
       sk.lo.put(tl, left, acc, hi, Lex.hex(ch), stack, goal, done)
-    case False{}:
+    case C{stack, goal, done} False{}:
       err.st(goal)
 
 # the levels of the walk's budget: next.grow runs levels 0 to 32 of leaves of
@@ -1491,7 +1483,7 @@ def next.go(fuel: Nat, txt: String, st: St) -> Out:
     case 1n+left SNil{} S{MCopy{buf}, stack, goal, done, bad}:
       Fin{bad.cur()}
     case 1n+left SCon{+ch, +tl} S{MCopy{buf}, stack, goal, done, bad}:
-      next.go(1n+left, tl, copy.hit(ch, tl, buf, stack, goal, done, bad, Lex.classify(ch),
+      next.go(1n+left, tl, copy.hit(ch, tl, buf, C{stack, goal, done}, bad, Lex.classify(ch),
         U32.is_lt(Char.to_u32(ch), 32)))
     case 1n+left SNil{} S{MEsc{buf}, stack, goal, done, bad}:
       Fin{bad.cur()}
@@ -1500,7 +1492,7 @@ def next.go(fuel: Nat, txt: String, st: St) -> Out:
     case 1n+left SNil{} S{MUni{left2, acc, buf}, stack, goal, done, bad}:
       Fin{bad.cur()}
     case 1n+left SCon{+ch, +tl} S{MUni{left2, acc, buf}, stack, goal, done, bad}:
-      next.go(1n+left, tl, uni.hit(ch, tl, left2, acc, buf, stack, goal, done, bad))
+      next.go(1n+left, tl, uni.hit(ch, tl, left2, acc, buf, C{stack, goal, done}, bad))
     case 1n+left SNil{} S{MHi{hi, buf}, stack, goal, done, bad}:
       Fin{bad.cur()}
     case 1n+left SCon{ch, tl} S{MHi{hi, buf}, stack, goal, done, bad}:
@@ -1512,7 +1504,7 @@ def next.go(fuel: Nat, txt: String, st: St) -> Out:
     case 1n+left SNil{} S{MLo{left2, acc, hi, buf}, stack, goal, done, bad}:
       Fin{bad.cur()}
     case 1n+left SCon{+ch, +tl} S{MLo{left2, acc, hi, buf}, stack, goal, done, bad}:
-      next.go(1n+left, tl, lo.hit(ch, tl, left2, acc, hi, buf, stack, goal, done, bad))
+      next.go(1n+left, tl, lo.hit(ch, tl, left2, acc, hi, buf, C{stack, goal, done}, bad))
     case 1n+left SNil{} S{MSkStr{}, stack, goal, done, bad}:
       Fin{bad.cur()}
     case 1n+left SCon{ch, tl} S{MSkStr{}, stack, goal, done, True{}}:
@@ -1538,7 +1530,7 @@ def next.go(fuel: Nat, txt: String, st: St) -> Out:
     case 1n+left SNil{} S{MSkLo{left2, acc, hi}, stack, goal, done, bad}:
       Fin{bad.cur()}
     case 1n+left SCon{+ch, tl} S{MSkLo{left2, acc, hi}, stack, goal, done, bad}:
-      next.go(1n+left, tl, sk.lo.go(ch, tl, left2, acc, hi, stack, goal, done,
+      next.go(1n+left, tl, sk.lo.go(ch, tl, left2, acc, hi, C{stack, goal, done},
         Lex.hex.ok(Char.to_u32(ch))))
 
 # the jumps one leaf of the budget allows. A plain word takes two (the burst
